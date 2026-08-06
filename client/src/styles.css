@@ -18,3 +18,52 @@ body {
   background-color: var(--fabulari-background);
   color: var(--fabulari-navy);
 }
+
+/* All three navigation variants share the same structure and responsive behaviour. */
+.fabulari-header {
+  background-color: #ffffff;
+  border-bottom: 1px solid var(--fabulari-border);
+}
+
+.fabulari-brand {
+  display: flex;
+  justify-content: center;
+  padding: 0.75rem;
+}
+
+.fabulari-brand img {
+  width: 150px;
+  height: auto;
+}
+
+.fabulari-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  border-top: 1px solid var(--fabulari-border);
+}
+
+.fabulari-nav a {
+  padding: 0.75rem 1rem;
+  color: var(--fabulari-navy);
+  text-align: center;
+  text-decoration: none;
+}
+
+.fabulari-nav a:hover,
+.fabulari-nav a.active {
+  background-color: #fff4d6;
+}
+
+.fabulari-nav a.active {
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.25rem;
+}
+
+@media (max-width: 768px) {
+  .fabulari-nav a {
+    flex: 1 1 50%;
+    border-bottom: 1px solid var(--fabulari-border);
+  }
+}

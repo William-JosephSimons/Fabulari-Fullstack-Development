@@ -27,13 +27,15 @@ export const routes: Routes = [
   { path: 'super-admin-dashboard', component: SuperAdminDashboard },
   { path: 'groups', component: Groups },
 
-  // Group and room IDs will replace these temporary static paths next.
-  { path: 'group', component: GroupDetail },
-  { path: 'room-management', component: RoomManagement },
-  { path: 'chat', component: Chat },
+  // More specific parameter routes come before the general group-detail route.
+  { path: 'groups/:groupId/rooms/:roomId', component: Chat },
+  { path: 'groups/:groupId/rooms', component: RoomManagement },
+  { path: 'groups/:groupId', component: GroupDetail },
 
   { path: 'requests', component: Requests },
   { path: 'profile', component: Profile },
+  // Requests is shared, so route data tells it which navigation variant to display.
+  { path: 'admin/requests', component: Requests, data: { navigation: 'superAdmin' } },
   { path: 'admin/users', component: AdminUsers },
   { path: 'admin/audit-logs', component: AuditLogs },
 
