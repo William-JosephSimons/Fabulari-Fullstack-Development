@@ -1,5 +1,57 @@
 <app-super-admin-navigation />
 
-<main class="container py-4">
+<main class="container py-4 dashboard-page">
   <h1>Super Administrator Dashboard</h1>
+  <p class="lead">Hello, {{ userName }}</p>
+
+  <div class="row g-4">
+    <section class="col-lg-7">
+      <div class="card dashboard-card">
+        <div class="card-body">
+          <h2 class="h4 card-title">System summary</h2>
+
+          <div class="table-responsive">
+            <table class="table table-bordered align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th scope="col">Item</th>
+                  <th scope="col">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of systemSummary; track item.label) {
+                  <tr>
+                    <td>{{ item.label }}</td>
+                    <td>{{ item.total }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="col-lg-5">
+      <div class="card dashboard-card">
+        <div class="card-body">
+          <h2 class="h4 card-title">Waiting for a decision</h2>
+
+          <dl class="dashboard-count-list mb-3">
+            @for (item of pendingItems; track item.label) {
+              <dt>{{ item.label }}</dt>
+              <dd>{{ item.count }}</dd>
+            }
+          </dl>
+
+          <a class="btn btn-outline-dark" routerLink="/admin/requests">Open request inbox</a>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="dashboard-actions mt-4">
+    <a class="btn btn-outline-dark" routerLink="/admin/users">View users</a>
+    <a class="btn btn-outline-dark" routerLink="/admin/audit-logs">View audit logs</a>
+  </div>
 </main>

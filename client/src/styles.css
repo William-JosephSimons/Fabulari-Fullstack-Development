@@ -67,3 +67,31 @@ body {
     border-bottom: 1px solid var(--fabulari-border);
   }
 }
+
+.dashboard-page {
+  max-width: 1200px;
+}
+
+.dashboard-card {
+  height: 100%;
+  background-color: #ffffff;
+  border: 1px solid var(--fabulari-border);
+}
+
+.dashboard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.dashboard-count-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem 1rem;
+  margin: 0;
+}
+
+.dashboard-count-list dt,
+.dashboard-count-list dd {
+  margin: 0;
+}

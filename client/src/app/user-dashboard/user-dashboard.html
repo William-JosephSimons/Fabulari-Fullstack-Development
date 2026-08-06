@@ -1,5 +1,65 @@
 <app-main-navigation />
 
-<main class="container py-4">
+<main class="container py-4 dashboard-page">
   <h1>User Dashboard</h1>
+  <p class="lead">Hello, {{ userName }}</p>
+
+  <div class="row g-4">
+    <section class="col-lg-7">
+      <div class="card dashboard-card">
+        <div class="card-body">
+          <h2 class="h4 card-title">My groups</h2>
+
+          <div class="table-responsive mb-3">
+            <table class="table table-bordered align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th scope="col">Group</th>
+                  <th scope="col">Access</th>
+                  <th scope="col">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (group of groups; track group.id) {
+                  <tr>
+                    <td>{{ group.name }}</td>
+                    <td>{{ group.access }}</td>
+                    <td>
+                      <a class="btn btn-outline-dark btn-sm" [routerLink]="['/groups', group.id]">
+                        Open
+                      </a>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <div class="dashboard-actions">
+            <a class="btn btn-outline-dark" routerLink="/groups">Browse all groups</a>
+            <a class="btn btn-outline-dark" routerLink="/requests">Request a new group</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="col-lg-5">
+      <div class="card dashboard-card">
+        <div class="card-body">
+          <h2 class="h4 card-title">My recent requests</h2>
+
+          <ul class="list-group list-group-flush mb-3">
+            @for (request of recentRequests; track request.description) {
+              <li class="list-group-item d-flex justify-content-between gap-3 px-0">
+                <span>{{ request.description }}</span>
+                <strong>{{ request.status }}</strong>
+              </li>
+            }
+          </ul>
+
+          <a class="btn btn-outline-dark" routerLink="/requests">View request history</a>
+        </div>
+      </div>
+    </section>
+  </div>
 </main>
