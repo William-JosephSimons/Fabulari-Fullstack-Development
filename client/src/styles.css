@@ -1,1 +1,20 @@
-/* You can add global styles to this file, and also import other style files */
+/* Shared colours are taken from the supplied Fabulari logo. */
+:root {
+  --fabulari-navy: #2b334f;
+  --fabulari-blue: #4da3f5;
+  --fabulari-yellow: #ffc653;
+  --fabulari-red: #ff6366;
+  --fabulari-background: #f5f6fa;
+  --fabulari-border: #d8dbe6;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--fabulari-background);
+  color: var(--fabulari-navy);
+}
