@@ -137,9 +137,10 @@ route.
 | `/groups/:groupId`               | `GroupDetail`         | List the rooms available to a member of the selected group.                |
 | `/groups/:groupId/rooms`         | `RoomManagement`      | Demonstrate direct room management for the selected group.                 |
 | `/groups/:groupId/rooms/:roomId` | `Chat`                | Display the selected room's chat and presence prototype.                   |
-| `/requests`                      | `Requests`            | Display the normal user or Group Admin request page.                       |
+| `/groups/:groupId/requests`      | `GroupRequests`       | Display the Group Admin request inbox for the selected group.              |
+| `/requests`                      | `Requests`            | Display the current user's personal request history.                       |
 | `/profile`                       | `Profile`             | Display the current user's private profile page.                           |
-| `/admin/requests`                | `Requests`            | Reuse the request page with Super Admin navigation selected by route data. |
+| `/admin/requests`                | `AdminRequests`       | Display the Super Admin request inbox.                                     |
 | `/admin/users`                   | `AdminUsers`          | Display the safe user and permanent system-ban page.                       |
 | `/admin/audit-logs`              | `AuditLogs`           | Display the Super Admin audit-log page.                                    |
 
