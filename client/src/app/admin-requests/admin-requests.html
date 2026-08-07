@@ -1,0 +1,93 @@
+<app-super-admin-navigation />
+
+<main class="container py-4 content-page">
+  <h1 class="mb-4">Super Admin Requests</h1>
+
+  <section class="card content-card" aria-labelledby="admin-inbox-heading">
+    <div class="card-body">
+      <h2 id="admin-inbox-heading" class="h4">Waiting for a decision</h2>
+
+      @if (decisionMessage) {
+        <div class="alert alert-success" role="status">{{ decisionMessage }}</div>
+      }
+
+      <div class="table-responsive">
+        <table class="table table-bordered align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th scope="col">Requester</th>
+              <th scope="col">Group</th>
+              <th scope="col">Type</th>
+              <th scope="col">Reason or request</th>
+              <th scope="col">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (request of requests; track request.id) {
+              <tr>
+                <td>{{ request.requester }}</td>
+                <td>{{ request.group }}</td>
+                <td>{{ request.type }}</td>
+                <td>{{ request.reason }}</td>
+                <td>
+                  <div class="d-grid gap-2">
+                    <button
+                      class="btn btn-outline-dark btn-sm"
+                      type="button"
+                      (click)="approveRequest(request.id)"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      class="btn btn-outline-dark btn-sm"
+                      type="button"
+                      (click)="beginRejection(request.id)"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5">There are no system requests waiting for a decision.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  @if (rejectionRequest; as request) {
+    <section class="card content-card mt-4" aria-labelledby="admin-rejection-heading">
+      <div class="card-body">
+        <h2 id="admin-rejection-heading" class="h4">Reject request</h2>
+        <p><strong>{{ request.type }} - {{ request.group }} - {{ request.requester }}</strong></p>
+
+        <form (ngSubmit)="confirmRejection()">
+          <label class="form-label" for="admin-rejection-reason">Rejection reason</label>
+          <textarea
+            id="admin-rejection-reason"
+            class="form-control"
+            name="rejectionReason"
+            rows="3"
+            [(ngModel)]="rejectionReason"
+            required
+          ></textarea>
+
+          @if (decisionError) {
+            <div class="alert alert-danger mt-3 mb-0" role="alert">{{ decisionError }}</div>
+          }
+
+          <div class="d-flex flex-wrap justify-content-end gap-2 mt-3">
+            <button class="btn btn-outline-dark" type="button" (click)="closeRejection()">
+              Cancel
+            </button>
+            <button class="btn btn-outline-dark" type="submit">Confirm rejection</button>
+          </div>
+        </form>
+      </div>
+    </section>
+  }
+</main>

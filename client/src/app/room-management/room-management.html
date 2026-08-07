@@ -16,7 +16,9 @@
     <button class="btn btn-outline-dark" type="button">Settings</button>
     <button class="btn btn-outline-dark" type="button">Members</button>
     <button class="btn btn-outline-dark active-tab" type="button" aria-current="page">Rooms</button>
-    <button class="btn btn-outline-dark" type="button">Requests</button>
+    <a class="btn btn-outline-dark" [routerLink]="['/groups', groupId, 'requests']">
+      Requests
+    </a>
   </nav>
 
   @if (roomMessage) {

@@ -1,10 +1,12 @@
 import { Routes } from '@angular/router';
+import { AdminRequests } from './admin-requests/admin-requests';
 import { AdminUsers } from './admin-users/admin-users';
 import { AuditLogs } from './audit-logs/audit-logs';
 import { Chat } from './chat/chat';
 import { FirstRunSetup } from './first-run-setup/first-run-setup';
 import { GroupAdminDashboard } from './group-admin-dashboard/group-admin-dashboard';
 import { GroupDetail } from './group-detail/group-detail';
+import { GroupRequests } from './group-requests/group-requests';
 import { Groups } from './groups/groups';
 import { Login } from './login/login';
 import { Profile } from './profile/profile';
@@ -30,12 +32,12 @@ export const routes: Routes = [
   // More specific parameter routes come before the general group-detail route.
   { path: 'groups/:groupId/rooms/:roomId', component: Chat },
   { path: 'groups/:groupId/rooms', component: RoomManagement },
+  { path: 'groups/:groupId/requests', component: GroupRequests },
   { path: 'groups/:groupId', component: GroupDetail },
 
   { path: 'requests', component: Requests },
   { path: 'profile', component: Profile },
-  // Requests is shared, so route data tells it which navigation variant to display.
-  { path: 'admin/requests', component: Requests, data: { navigation: 'superAdmin' } },
+  { path: 'admin/requests', component: AdminRequests },
   { path: 'admin/users', component: AdminUsers },
   { path: 'admin/audit-logs', component: AuditLogs },
 

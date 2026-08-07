@@ -69,7 +69,12 @@
             }
           </dl>
 
-          <a class="btn btn-outline-dark" routerLink="/requests">Open request inbox</a>
+          <a
+            class="btn btn-outline-dark"
+            [routerLink]="['/groups', selectedGroupId, 'requests']"
+          >
+            Open request inbox
+          </a>
         </div>
       </div>
     </section>
