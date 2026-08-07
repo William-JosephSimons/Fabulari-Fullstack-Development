@@ -1,5 +1,113 @@
 <app-auth-navigation />
 
-<main class="container py-4">
-  <h1>Create an Account</h1>
+<main class="container py-4 auth-page">
+  <section class="card auth-card" aria-labelledby="register-heading">
+    <div class="card-body p-4">
+      <h1 id="register-heading" class="h2 mb-4">Create an Account</h1>
+
+      <form (ngSubmit)="submitRegistration()">
+        <div class="row g-3">
+          <div class="col-sm-6">
+            <label class="form-label" for="register-first-name">First name</label>
+            <input
+              id="register-first-name"
+              class="form-control"
+              name="firstName"
+              [(ngModel)]="registrationDetails.firstName"
+              required
+            />
+          </div>
+
+          <div class="col-sm-6">
+            <label class="form-label" for="register-last-name">Last name</label>
+            <input
+              id="register-last-name"
+              class="form-control"
+              name="lastName"
+              [(ngModel)]="registrationDetails.lastName"
+              required
+            />
+          </div>
+
+          <div class="col-12">
+            <label class="form-label" for="register-username">Username</label>
+            <input
+              id="register-username"
+              class="form-control"
+              name="username"
+              [(ngModel)]="registrationDetails.username"
+              required
+            />
+          </div>
+
+          <div class="col-12">
+            <label class="form-label" for="register-email">Email</label>
+            <input
+              id="register-email"
+              class="form-control"
+              type="email"
+              name="email"
+              [(ngModel)]="registrationDetails.email"
+              required
+            />
+          </div>
+
+          <div class="col-12">
+            <label class="form-label" for="register-age">Age</label>
+            <input
+              id="register-age"
+              class="form-control"
+              type="number"
+              name="age"
+              min="1"
+              [(ngModel)]="registrationDetails.age"
+              required
+            />
+          </div>
+
+          <div class="col-sm-6">
+            <label class="form-label" for="register-password">Password</label>
+            <input
+              id="register-password"
+              class="form-control"
+              type="password"
+              name="password"
+              autocomplete="new-password"
+              [(ngModel)]="registrationDetails.password"
+              required
+            />
+          </div>
+
+          <div class="col-sm-6">
+            <label class="form-label" for="register-confirm-password">Confirm password</label>
+            <input
+              id="register-confirm-password"
+              class="form-control"
+              type="password"
+              name="confirmPassword"
+              autocomplete="new-password"
+              [(ngModel)]="registrationDetails.confirmPassword"
+              required
+            />
+          </div>
+        </div>
+
+        @if (registrationError) {
+          <div class="alert alert-danger mt-3 mb-0" role="alert">
+            {{ registrationError }}
+          </div>
+        }
+        @if (registrationMessage) {
+          <div class="alert alert-success mt-3 mb-0" role="status">
+            {{ registrationMessage }}
+          </div>
+        }
+
+        <div class="d-grid gap-2 mt-4">
+          <button class="btn btn-outline-dark" type="submit">Register</button>
+          <a class="btn btn-outline-dark" routerLink="/login">Return to login</a>
+        </div>
+      </form>
+    </div>
+  </section>
 </main>

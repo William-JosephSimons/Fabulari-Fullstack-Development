@@ -1,5 +1,45 @@
 <app-auth-navigation />
 
-<main class="container py-4">
-  <h1>Login</h1>
+<main class="container py-4 auth-page">
+  <section class="card auth-card" aria-labelledby="login-heading">
+    <div class="card-body p-4">
+      <h1 id="login-heading" class="h2 mb-4">Login</h1>
+
+      <form (ngSubmit)="submitLogin()">
+        <div class="mb-3">
+          <label class="form-label" for="login-username">Username</label>
+          <input
+            id="login-username"
+            class="form-control"
+            name="username"
+            autocomplete="username"
+            [(ngModel)]="loginDetails.username"
+            required
+          />
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="login-password">Password</label>
+          <input
+            id="login-password"
+            class="form-control"
+            type="password"
+            name="password"
+            autocomplete="current-password"
+            [(ngModel)]="loginDetails.password"
+            required
+          />
+        </div>
+
+        @if (loginMessage) {
+          <div class="alert alert-success" role="status">{{ loginMessage }}</div>
+        }
+
+        <div class="d-grid gap-2">
+          <button class="btn btn-outline-dark" type="submit">Login</button>
+          <a class="btn btn-outline-dark" routerLink="/register">Create an account</a>
+        </div>
+      </form>
+    </div>
+  </section>
 </main>

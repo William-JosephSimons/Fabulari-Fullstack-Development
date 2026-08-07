@@ -105,3 +105,12 @@ body {
   background-color: #ffffff;
   border-color: var(--fabulari-border);
 }
+
+.auth-page {
+  max-width: 620px;
+}
+
+.auth-card {
+  background-color: #ffffff;
+  border-color: var(--fabulari-border);
+}
