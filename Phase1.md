@@ -112,20 +112,95 @@ Fabulari-Fullstack-Development/
 
 ## 5. Proposed data structures
 
-## 6. Proposed Angular architecture
+## 6. Angular architecture
+
+`App` is the root component and contains a `RouterOutlet`, so Angular replaces
+the displayed page when the URL changes. Each page keeps its TypeScript, HTML
+and CSS in the same folder. The project currently uses local demonstration data
+so the layouts can be reviewed before services and HTTP requests are introduced.
+
+### 6.1 Routed pages
+
+Routes are defined in `client/src/app/app.routes.ts`. Parameter routes are
+listed before the general group route because Angular uses the first matching
+route.
+
+| Route                            | Component             | Current responsibility                                                     |
+| -------------------------------- | --------------------- | -------------------------------------------------------------------------- |
+| `/setup`                         | `FirstRunSetup`       | Display the first Super Admin setup page.                                  |
+| `/login`                         | `Login`               | Display username and password login.                                       |
+| `/register`                      | `Register`            | Display normal-user registration.                                          |
+| `/user-dashboard`                | `UserDashboard`       | Summarise the current user's groups and requests.                          |
+| `/group-admin-dashboard`         | `GroupAdminDashboard` | Select an administered group and view work awaiting a decision.            |
+| `/super-admin-dashboard`         | `SuperAdminDashboard` | Summarise system totals and Super Admin requests.                          |
+| `/groups`                        | `Groups`              | Browse/search groups and demonstrate membership and group requests.        |
+| `/groups/:groupId`               | `GroupDetail`         | List the rooms available to a member of the selected group.                |
+| `/groups/:groupId/rooms`         | `RoomManagement`      | Demonstrate direct room management for the selected group.                 |
+| `/groups/:groupId/rooms/:roomId` | `Chat`                | Display the selected room's chat and presence prototype.                   |
+| `/requests`                      | `Requests`            | Display the normal user or Group Admin request page.                       |
+| `/profile`                       | `Profile`             | Display the current user's private profile page.                           |
+| `/admin/requests`                | `Requests`            | Reuse the request page with Super Admin navigation selected by route data. |
+| `/admin/users`                   | `AdminUsers`          | Display the safe user and permanent system-ban page.                       |
+| `/admin/audit-logs`              | `AuditLogs`           | Display the Super Admin audit-log page.                                    |
+
+An empty path redirects to `/login`. The wildcard route is last and redirects
+unknown URLs to `/login`.
+
+### 6.2 Shared navigation components
+
+| Component              | Used by                                                    |
+| ---------------------- | ---------------------------------------------------------- |
+| `AuthNavigation`       | First-run setup, login and registration.                   |
+| `MainNavigation`       | User, Group Admin, group, profile, request and chat pages. |
+| `SuperAdminNavigation` | Super Admin dashboard, requests, users and audit logs.     |
+
+The logo and common navigation styles are shared, while the available links
+change for authentication, ordinary application and Super Admin pages. A user
+who administers one or more groups can still move between the User dashboard
+and Group Administrator dashboard.
+
+### 6.3 Current Angular patterns
+
+- Components list their own dependencies in the `imports` array.
+- `RouterLink` is used for links in templates and `Router.navigate()` is used
+  when a TypeScript method performs the navigation.
+- Group and room IDs are read with `ActivatedRoute.snapshot.paramMap.get()`.
+- `FormsModule` and `[(ngModel)]` provide two-way binding for the current mock
+  forms and selection controls.
+- `@if`, `@for`, `@switch` and interpolation display local data and interface
+  states.
+- Bootstrap supplies the grid, cards, tables, forms and responsive utilities.
+  Small Fabulari-specific rules remain in component or global CSS files.
+
+The dashboard, group, room and chat data is intentionally temporary. Week 5
+services will replace those arrays with typed HTTP responses without changing
+the overall page structure.
 
 ## 7. Proposed Express API
 
 ## 8. Design documents
 
-The storyboards will use the supplied Fabulari logo and a consistent blue/yellow/red/navy palette. Each main screen will have a desktop and tablet version. The planned set covers:
+The storyboards use the supplied Fabulari logo and a consistent black-and-white
+wireframe style. The committed images show the desktop layouts, while the final
+Angular pages will also adapt at tablet widths. Users who administer groups can
+access both the User dashboard and Group Administrator dashboard. The set covers:
 
 - first-run setup, login and registration
 - Super Admin, Group Admin and Normal User dashboards
 - private profile and request history
 - group detail/settings and allowed/banned user lists
 - room administration and request decisions
+- safe users and permanent system-ban records
 - audit logs
 - chat messages, participant list, join/leave notices and Admin badges
 
-The storyboard files will be added under `docs/storyboards` and linked here before the matching Angular pages are implemented.
+The storyboard images will be added under `docs/storyboards` before the matching
+Angular pages are implemented:
+
+- [Authentication screens](docs/storyboards/authentication_screens_storyboard.png)
+- [Dashboards](docs/storyboards/dashboards_storyboard.png)
+- [Group browsing](docs/storyboards/group_browsing_storyboard.png)
+- [Profile and requests](docs/storyboards/profile_requests_storyboard.png)
+- [Group administration](docs/storyboards/group_administration_storyboard.png)
+- [System administration](docs/storyboards/system_administration_storyboard.png)
+- [Chat and presence](docs/storyboards/chat_presence_storyboard.png)
