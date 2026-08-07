@@ -1,9 +1,164 @@
 <app-main-navigation />
 
-<main class="container py-4">
-  <h1>Browse Groups</h1>
+<main class="container py-4 content-page">
+  <h1 class="mb-4">Browse Groups</h1>
 
-  <button class="btn btn-outline-dark mt-3" type="button" (click)="openGroup('book-club')">
-    Open sample group
-  </button>
+  <div class="row g-4">
+    <section class="col-lg-7" aria-labelledby="available-groups-heading">
+      <div class="card content-card">
+        <div class="card-body">
+          <h2 id="available-groups-heading" class="h4">All groups</h2>
+
+          <label class="form-label" for="group-search">Search by name or description</label>
+          <input
+            id="group-search"
+            class="form-control mb-3"
+            type="search"
+            name="groupSearch"
+            placeholder="Search groups"
+            [(ngModel)]="searchTerm"
+          />
+
+          @if (membershipMessage) {
+            <div class="alert alert-success" role="status">{{ membershipMessage }}</div>
+          }
+
+          <div class="group-list">
+            @for (group of filteredGroups; track group.id) {
+              <article class="border rounded p-3">
+                <div class="d-flex flex-wrap justify-content-between gap-2">
+                  <div>
+                    <h3 class="h5 mb-1">{{ group.name }}</h3>
+                    <p class="mb-1">{{ group.description }}</p>
+                  </div>
+                  <strong>Minimum age {{ group.minimumAge }}</strong>
+                </div>
+
+                <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mt-2">
+                  @switch (group.status) {
+                    @case ('member') {
+                      <span>Member</span>
+                      <button
+                        class="btn btn-outline-dark"
+                        type="button"
+                        (click)="openGroup(group.id)"
+                      >
+                        View rooms
+                      </button>
+                    }
+                    @case ('available') {
+                      <span>Not joined</span>
+                      <button
+                        class="btn btn-outline-dark"
+                        type="button"
+                        (click)="requestMembership(group.name)"
+                      >
+                        Request membership
+                      </button>
+                    }
+                    @case ('pending') {
+                      <span>Membership request pending</span>
+                      <button class="btn btn-outline-dark" type="button" disabled>
+                        Request pending
+                      </button>
+                    }
+                    @case ('underAge') {
+                      <span>You do not meet the age requirement</span>
+                      <button class="btn btn-outline-dark" type="button" disabled>
+                        Not old enough to join
+                      </button>
+                    }
+                    @case ('banned') {
+                      <strong class="text-danger">Permanently banned from this group</strong>
+                      <button class="btn btn-outline-dark" type="button" disabled>
+                        Cannot request membership
+                      </button>
+                    }
+                  }
+                </div>
+              </article>
+            } @empty {
+              <p class="mb-0">No groups match your search.</p>
+            }
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="new-group-request" class="col-lg-5" aria-labelledby="group-request-heading">
+      <div class="card content-card">
+        <div class="card-body">
+          <h2 id="group-request-heading" class="h4">Request a new group</h2>
+
+          <form (ngSubmit)="submitGroupRequest()">
+            <div class="mb-3">
+              <label class="form-label" for="group-title">Group title</label>
+              <input
+                id="group-title"
+                class="form-control"
+                name="groupTitle"
+                [(ngModel)]="groupRequest.title"
+                required
+              />
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label" for="group-description">Description</label>
+              <textarea
+                id="group-description"
+                class="form-control"
+                name="groupDescription"
+                rows="3"
+                [(ngModel)]="groupRequest.description"
+                required
+              ></textarea>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-sm-6">
+                <label class="form-label" for="minimum-age">Minimum age</label>
+                <input
+                  id="minimum-age"
+                  class="form-control"
+                  type="number"
+                  name="minimumAge"
+                  min="0"
+                  [(ngModel)]="groupRequest.minimumAge"
+                  required
+                />
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label" for="group-colour">Group colour</label>
+                <input
+                  id="group-colour"
+                  class="form-control form-control-color"
+                  type="color"
+                  name="groupColour"
+                  [(ngModel)]="groupRequest.colour"
+                />
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label" for="request-reason">Reason for request</label>
+              <textarea
+                id="request-reason"
+                class="form-control"
+                name="requestReason"
+                rows="3"
+                [(ngModel)]="groupRequest.reason"
+                required
+              ></textarea>
+            </div>
+
+            <button class="btn btn-outline-dark" type="submit">Submit group request</button>
+          </form>
+
+          @if (requestMessage) {
+            <div class="alert alert-success mt-3 mb-0" role="status">{{ requestMessage }}</div>
+          }
+        </div>
+      </div>
+    </section>
+  </div>
 </main>

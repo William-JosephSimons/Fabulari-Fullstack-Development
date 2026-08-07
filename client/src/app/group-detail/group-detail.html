@@ -1,10 +1,45 @@
 <app-main-navigation />
 
-<main class="container py-4">
-  <h1>Group Details</h1>
+<main class="container py-4 content-page">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+      <h1>{{ groupName }}</h1>
+      <p class="lead mb-0">Rooms available to members</p>
+    </div>
+    <a class="btn btn-outline-dark" routerLink="/groups">Return to all groups</a>
+  </div>
 
-  <p><strong>Group ID:</strong> {{ groupId }}</p>
-  <a class="btn btn-outline-dark" [routerLink]="['/groups', groupId, 'rooms']">
-    Manage rooms
-  </a>
+  <section class="card content-card" aria-labelledby="rooms-heading">
+    <div class="card-body">
+      <h2 id="rooms-heading" class="h4">{{ groupName }} rooms</h2>
+
+      <div class="table-responsive">
+        <table class="table table-bordered align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th scope="col">Room</th>
+              <th scope="col">Description</th>
+              <th scope="col">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (room of rooms; track room.id) {
+              <tr>
+                <td>{{ room.name }}</td>
+                <td>{{ room.description }}</td>
+                <td>
+                  <a
+                    class="btn btn-outline-dark btn-sm"
+                    [routerLink]="['/groups', groupId, 'rooms', room.id]"
+                  >
+                    Open chat
+                  </a>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
 </main>

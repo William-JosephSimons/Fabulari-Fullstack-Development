@@ -1,0 +1,10 @@
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.active-tab {
+  font-weight: 600;
+  border-width: 2px;
+}

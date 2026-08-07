@@ -13,4 +13,11 @@ export class GroupDetail {
 
   // One component can display any group by reading its ID from the current URL.
   protected readonly groupId = this.route.snapshot.paramMap.get('groupId');
+  protected readonly groupName = 'Book Club';
+
+  // Only members reach this room list; membership checks will also be added on the server.
+  protected readonly rooms = [
+    { id: 'general', name: 'General', description: 'Main discussion' },
+    { id: 'reviews', name: 'Reviews', description: 'Book reviews' }
+  ];
 }
