@@ -1,7 +1,7 @@
-import http from 'http';
-import cors from 'cors';
-import express from 'express';
-import { routes } from './routes.js';
+import http from "node:http";
+import cors from "cors";
+import express from "express";
+import { routes } from "./routes.js";
 
 const app = express();
 const server = http.createServer(app);
