@@ -1,9 +1,472 @@
 {
-  "users": [],
-  "groups": [],
-  "rooms": [],
-  "requests": [],
-  "groupBans": [],
-  "systemBans": [],
-  "auditLogs": []
+  "users": [
+    {
+      "id": "user-1",
+      "username": "alex",
+      "email": "alex@example.com",
+      "firstName": "Alex",
+      "lastName": "Admin",
+      "age": 32,
+      "passwordHash": "$2b$10$pRdCT/jBKh6bbxzvwuvjn.gQaHa2zqK9y0qOTdB7brdO1yRO7feXy",
+      "avatarUrl": null,
+      "systemRole": "superAdmin",
+      "createdAt": "2026-07-20T09:00:00.000Z",
+      "updatedAt": "2026-07-20T09:00:00.000Z"
+    },
+    {
+      "id": "user-2",
+      "username": "jordan",
+      "email": "jordan@example.com",
+      "firstName": "Jordan",
+      "lastName": "Lee",
+      "age": 24,
+      "passwordHash": "$2b$10$kY2//lNITn8/he.nwWCz0.5tXuCFWu0066E/qw3JgiIWrDUQGqkVu",
+      "avatarUrl": null,
+      "systemRole": "user",
+      "createdAt": "2026-07-21T09:00:00.000Z",
+      "updatedAt": "2026-07-21T09:00:00.000Z"
+    },
+    {
+      "id": "user-3",
+      "username": "casey",
+      "email": "casey@example.com",
+      "firstName": "Casey",
+      "lastName": "Nguyen",
+      "age": 18,
+      "passwordHash": "$2b$10$nB/rh6YLutvHypPAJ6RnQeH1KFGvFbVrPlY9dExBMRwAcuwTHIi9e",
+      "avatarUrl": null,
+      "systemRole": "user",
+      "createdAt": "2026-07-21T10:00:00.000Z",
+      "updatedAt": "2026-07-21T10:00:00.000Z"
+    },
+    {
+      "id": "user-4",
+      "username": "billy",
+      "email": "billy@example.com",
+      "firstName": "William",
+      "lastName": "Simons",
+      "age": 20,
+      "passwordHash": "$2b$10$iov0RZ8afRMwGMqZbBA.7ez0VAiYwbWPb.DJLCbsqVgxaNRPrXUiy",
+      "avatarUrl": null,
+      "systemRole": "user",
+      "createdAt": "2026-07-22T09:00:00.000Z",
+      "updatedAt": "2026-07-22T09:00:00.000Z"
+    },
+    {
+      "id": "user-5",
+      "username": "avery",
+      "email": "avery@example.com",
+      "firstName": "Avery",
+      "lastName": "Patel",
+      "age": 22,
+      "passwordHash": "$2b$10$fo0jss0ltxnsnLj1kg5zEOwr6GUu5szfR3y8TJmuyfGdg3/.tgA0.",
+      "avatarUrl": null,
+      "systemRole": "user",
+      "createdAt": "2026-07-23T09:00:00.000Z",
+      "updatedAt": "2026-07-23T09:00:00.000Z"
+    },
+    {
+      "id": "user-6",
+      "username": "sam",
+      "email": "sam@example.com",
+      "firstName": "Sam",
+      "lastName": "Taylor",
+      "age": 19,
+      "passwordHash": "$2b$10$EjaPL/DS4nnJn0YVpuz4k.Hbtlil8XKtLiH8hcqN4PHOXxffhvedu",
+      "avatarUrl": null,
+      "systemRole": "user",
+      "createdAt": "2026-07-24T09:00:00.000Z",
+      "updatedAt": "2026-07-24T09:00:00.000Z"
+    },
+    {
+      "id": "user-7",
+      "username": "riley",
+      "email": "riley@example.com",
+      "firstName": "Riley",
+      "lastName": "Chen",
+      "age": 23,
+      "passwordHash": "$2b$10$GE.XOXNVjhXea4T414O5C.sNk24uT5PMNd6lo5Xh7lKCErQkb8Ku6",
+      "avatarUrl": null,
+      "systemRole": "user",
+      "createdAt": "2026-07-25T09:00:00.000Z",
+      "updatedAt": "2026-07-25T09:00:00.000Z"
+    },
+    {
+      "id": "user-8",
+      "username": "morgan",
+      "email": "morgan@example.com",
+      "firstName": "Morgan",
+      "lastName": "Jones",
+      "age": 26,
+      "passwordHash": "$2b$10$4wnnx/NeiZt4/ci0DZ8tuOrlOLJSk6m1hPP2HI/wf8cs8dqZMMpsO",
+      "avatarUrl": null,
+      "systemRole": "user",
+      "createdAt": "2026-07-23T01:00:00.000Z",
+      "updatedAt": "2026-07-23T01:00:00.000Z"
+    }
+  ],
+  "groups": [
+    {
+      "id": "book-club",
+      "title": "Book Club",
+      "description": "Read and discuss great books.",
+      "minimumAge": 16,
+      "colour": "#E5B93F",
+      "memberIds": ["user-2", "user-3", "user-4", "user-5", "user-6", "user-7"],
+      "adminIds": ["user-2", "user-3"],
+      "roomIds": ["room-1", "room-2"],
+      "createdAt": "2026-07-22T10:00:00.000Z",
+      "updatedAt": "2026-08-02T00:18:00.000Z"
+    },
+    {
+      "id": "photography-club",
+      "title": "Photography Club",
+      "description": "Share photos and local photo walks.",
+      "minimumAge": 16,
+      "colour": "#4FA3F5",
+      "memberIds": ["user-8"],
+      "adminIds": ["user-8"],
+      "roomIds": ["room-3", "room-4"],
+      "createdAt": "2026-07-24T10:00:00.000Z",
+      "updatedAt": "2026-07-24T10:10:00.000Z"
+    },
+    {
+      "id": "music-makers",
+      "title": "Music Makers",
+      "description": "Share songs and discuss local music.",
+      "minimumAge": 18,
+      "colour": "#FF6366",
+      "memberIds": ["user-6"],
+      "adminIds": ["user-6"],
+      "roomIds": ["room-5"],
+      "createdAt": "2026-07-25T10:00:00.000Z",
+      "updatedAt": "2026-07-25T10:05:00.000Z"
+    },
+    {
+      "id": "game-makers",
+      "title": "Game Makers",
+      "description": "Design and build games together.",
+      "minimumAge": 21,
+      "colour": "#FFC653",
+      "memberIds": ["user-7"],
+      "adminIds": ["user-7"],
+      "roomIds": [],
+      "createdAt": "2026-07-26T10:00:00.000Z",
+      "updatedAt": "2026-07-26T10:00:00.000Z"
+    },
+    {
+      "id": "competitive-chess",
+      "title": "Competitive Chess",
+      "description": "Tournaments and match discussion.",
+      "minimumAge": 18,
+      "colour": "#2B334F",
+      "memberIds": ["user-2", "user-3"],
+      "adminIds": ["user-2", "user-3"],
+      "roomIds": ["room-6"],
+      "createdAt": "2026-07-27T10:00:00.000Z",
+      "updatedAt": "2026-07-31T04:00:00.000Z"
+    },
+    {
+      "id": "writers-hub",
+      "title": "Writers Hub",
+      "description": "Share drafts and support other writers.",
+      "minimumAge": 18,
+      "colour": "#8A6FC2",
+      "memberIds": ["user-3", "user-5"],
+      "adminIds": ["user-3"],
+      "roomIds": ["room-7"],
+      "createdAt": "2026-07-28T10:00:00.000Z",
+      "updatedAt": "2026-07-28T10:05:00.000Z"
+    }
+  ],
+  "rooms": [
+    {
+      "id": "room-1",
+      "groupId": "book-club",
+      "name": "General",
+      "description": "Main discussion",
+      "createdBy": "user-2",
+      "createdAt": "2026-07-22T10:05:00.000Z",
+      "updatedAt": "2026-07-22T10:05:00.000Z"
+    },
+    {
+      "id": "room-2",
+      "groupId": "book-club",
+      "name": "Reviews",
+      "description": "Book reviews",
+      "createdBy": "user-2",
+      "createdAt": "2026-08-02T00:18:00.000Z",
+      "updatedAt": "2026-08-02T00:18:00.000Z"
+    },
+    {
+      "id": "room-3",
+      "groupId": "photography-club",
+      "name": "Showcase",
+      "description": "Share recent photographs",
+      "createdBy": "user-8",
+      "createdAt": "2026-07-24T10:05:00.000Z",
+      "updatedAt": "2026-07-24T10:05:00.000Z"
+    },
+    {
+      "id": "room-4",
+      "groupId": "photography-club",
+      "name": "Photo Walks",
+      "description": "Plan local photography walks",
+      "createdBy": "user-8",
+      "createdAt": "2026-07-24T10:10:00.000Z",
+      "updatedAt": "2026-07-24T10:10:00.000Z"
+    },
+    {
+      "id": "room-5",
+      "groupId": "music-makers",
+      "name": "General",
+      "description": "Music discussion",
+      "createdBy": "user-6",
+      "createdAt": "2026-07-25T10:05:00.000Z",
+      "updatedAt": "2026-07-25T10:05:00.000Z"
+    },
+    {
+      "id": "room-6",
+      "groupId": "competitive-chess",
+      "name": "Tournaments",
+      "description": "Tournament planning and results",
+      "createdBy": "user-2",
+      "createdAt": "2026-07-27T10:05:00.000Z",
+      "updatedAt": "2026-07-27T10:05:00.000Z"
+    },
+    {
+      "id": "room-7",
+      "groupId": "writers-hub",
+      "name": "General",
+      "description": "Writing discussion",
+      "createdBy": "user-3",
+      "createdAt": "2026-07-28T10:05:00.000Z",
+      "updatedAt": "2026-07-28T10:05:00.000Z"
+    }
+  ],
+  "requests": [
+    {
+      "id": "request-1",
+      "type": "roomProposal",
+      "requesterId": "user-4",
+      "groupId": "book-club",
+      "proposedRoom": {
+        "name": "Events",
+        "description": "Plan book launches and author events"
+      },
+      "reason": "Members need one place to organise events.",
+      "status": "pending",
+      "rejectionReason": null,
+      "decidedBy": null,
+      "createdAt": "2026-08-02T02:00:00.000Z",
+      "decidedAt": null
+    },
+    {
+      "id": "request-2",
+      "type": "membership",
+      "requesterId": "user-4",
+      "groupId": "music-makers",
+      "reason": "I would like to discuss and share music.",
+      "status": "pending",
+      "rejectionReason": null,
+      "decidedBy": null,
+      "createdAt": "2026-08-02T01:30:00.000Z",
+      "decidedAt": null
+    },
+    {
+      "id": "request-3",
+      "type": "membership",
+      "requesterId": "user-4",
+      "groupId": "writers-hub",
+      "reason": "I would like feedback on my writing.",
+      "status": "rejected",
+      "rejectionReason": "The request did not explain what type of writing support was needed.",
+      "decidedBy": "user-3",
+      "createdAt": "2026-07-28T11:00:00.000Z",
+      "decidedAt": "2026-07-29T02:00:00.000Z"
+    },
+    {
+      "id": "request-4",
+      "type": "groupBanReport",
+      "requesterId": "user-3",
+      "groupId": "book-club",
+      "targetUserId": "user-6",
+      "reason": "Repeated harassment in group discussions.",
+      "status": "pending",
+      "rejectionReason": null,
+      "decidedBy": null,
+      "createdAt": "2026-08-01T05:00:00.000Z",
+      "decidedAt": null
+    },
+    {
+      "id": "request-5",
+      "type": "systemBan",
+      "requesterId": "user-2",
+      "groupId": "book-club",
+      "targetUserId": "user-5",
+      "reason": "Serious abuse across several group discussions.",
+      "status": "pending",
+      "rejectionReason": null,
+      "decidedBy": null,
+      "createdAt": "2026-08-01T04:30:00.000Z",
+      "decidedAt": null
+    },
+    {
+      "id": "request-6",
+      "type": "groupDeletion",
+      "requesterId": "user-3",
+      "groupId": "writers-hub",
+      "reason": "The group is no longer active.",
+      "status": "pending",
+      "rejectionReason": null,
+      "decidedBy": null,
+      "createdAt": "2026-08-01T04:00:00.000Z",
+      "decidedAt": null
+    },
+    {
+      "id": "request-7",
+      "type": "groupCreation",
+      "requesterId": "user-8",
+      "proposedGroup": {
+        "title": "Art Space",
+        "description": "A local community for sharing artwork.",
+        "minimumAge": 16,
+        "colour": "#B88AD8"
+      },
+      "reason": "There is no group focused on local artists.",
+      "status": "pending",
+      "rejectionReason": null,
+      "decidedBy": null,
+      "createdAt": "2026-08-01T03:30:00.000Z",
+      "decidedAt": null
+    },
+    {
+      "id": "request-8",
+      "type": "groupCreation",
+      "requesterId": "user-8",
+      "createdGroupId": "photography-club",
+      "proposedGroup": {
+        "title": "Photography Club",
+        "description": "Share photos and local photo walks.",
+        "minimumAge": 16,
+        "colour": "#4FA3F5"
+      },
+      "reason": "Local photographers need a place to organise and share their work.",
+      "status": "approved",
+      "rejectionReason": null,
+      "decidedBy": "user-1",
+      "createdAt": "2026-07-23T02:00:00.000Z",
+      "decidedAt": "2026-07-24T00:42:00.000Z"
+    },
+    {
+      "id": "request-9",
+      "type": "groupBanReport",
+      "requesterId": "user-3",
+      "groupId": "competitive-chess",
+      "targetUserId": "user-4",
+      "reason": "Repeated harassment during tournament discussions.",
+      "status": "approved",
+      "rejectionReason": null,
+      "decidedBy": "user-2",
+      "createdAt": "2026-07-30T03:00:00.000Z",
+      "decidedAt": "2026-07-31T04:00:00.000Z"
+    },
+    {
+      "id": "request-10",
+      "type": "systemBan",
+      "requesterId": "user-2",
+      "groupId": "book-club",
+      "targetUserId": "deleted-user-1",
+      "targetEmail": "banned@example.com",
+      "reason": "Serious and repeated abuse across the application.",
+      "status": "approved",
+      "rejectionReason": null,
+      "decidedBy": "user-1",
+      "createdAt": "2026-07-22T11:00:00.000Z",
+      "decidedAt": "2026-07-22T12:00:00.000Z"
+    }
+  ],
+  "groupBans": [
+    {
+      "id": "group-ban-1",
+      "groupId": "competitive-chess",
+      "bannedUserId": "user-4",
+      "sourceRequestId": "request-9",
+      "approvedBy": "user-2",
+      "reason": "Repeated harassment during tournament discussions.",
+      "bannedAt": "2026-07-31T04:00:00.000Z"
+    }
+  ],
+  "systemBans": [
+    {
+      "id": "system-ban-1",
+      "normalizedEmail": "banned@example.com",
+      "deletedUserId": "deleted-user-1",
+      "sourceRequestId": "request-10",
+      "reason": "Serious and repeated abuse across the application.",
+      "bannedAt": "2026-07-22T12:00:00.000Z"
+    }
+  ],
+  "auditLogs": [
+    {
+      "id": "audit-1",
+      "actorId": "user-2",
+      "actionType": "roomCreated",
+      "entityType": "room",
+      "entityId": "room-2",
+      "groupId": "book-club",
+      "summary": "Created Reviews in Book Club.",
+      "createdAt": "2026-08-02T00:18:00.000Z"
+    },
+    {
+      "id": "audit-2",
+      "actorId": "user-2",
+      "actionType": "groupUpdated",
+      "entityType": "group",
+      "entityId": "book-club",
+      "groupId": "book-club",
+      "summary": "Raised the Book Club minimum age to 16.",
+      "createdAt": "2026-08-01T06:03:00.000Z"
+    },
+    {
+      "id": "audit-3",
+      "actorId": "user-2",
+      "actionType": "groupBanApproved",
+      "entityType": "groupBan",
+      "entityId": "group-ban-1",
+      "groupId": "competitive-chess",
+      "summary": "Permanently banned Billy from Competitive Chess.",
+      "createdAt": "2026-07-31T04:00:00.000Z"
+    },
+    {
+      "id": "audit-4",
+      "actorId": "user-3",
+      "actionType": "requestRejected",
+      "entityType": "request",
+      "entityId": "request-3",
+      "groupId": "writers-hub",
+      "summary": "Rejected Billy's Writers Hub membership request.",
+      "createdAt": "2026-07-29T02:00:00.000Z"
+    },
+    {
+      "id": "audit-5",
+      "actorId": "user-1",
+      "actionType": "groupCreationApproved",
+      "entityType": "group",
+      "entityId": "photography-club",
+      "groupId": "photography-club",
+      "summary": "Approved the Photography Club group request.",
+      "createdAt": "2026-07-24T00:42:00.000Z"
+    },
+    {
+      "id": "audit-6",
+      "actorId": "user-1",
+      "actionType": "systemBanApproved",
+      "entityType": "systemBan",
+      "entityId": "system-ban-1",
+      "groupId": "book-club",
+      "summary": "Approved a permanent system hard ban.",
+      "createdAt": "2026-07-22T12:00:00.000Z"
+    }
+  ]
 }
