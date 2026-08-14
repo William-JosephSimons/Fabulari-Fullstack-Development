@@ -177,6 +177,38 @@ function routes(app) {
       user: safeUser(user),
     });
   });
+
+  app.post("/api/login", async (req, res) => {
+    const username = ensureText(req.body?.username);
+    const password =
+      typeof req.body?.password === "string" ? req.body.password : "";
+
+    if (!username || !password) {
+      return res.status(400).json({
+        valid: false,
+        message: "Username and password are required.",
+      });
+    }
+
+    const data = loadData();
+    const user = data.users.find((item) => {
+      return item.username.toLowerCase() === username.toLowerCase();
+    });
+
+    // The same response is used for an unknown username or incorrect password.
+    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+      return res.status(401).json({
+        valid: false,
+        message: "Username or password is incorrect.",
+      });
+    }
+
+    return res.status(200).json({
+      valid: true,
+      message: "Login successful.",
+      user: safeUser(user),
+    });
+  });
 }
 
 export { routes };
