@@ -4,6 +4,7 @@ import { AdminUsers } from './admin-users/admin-users';
 import { AuditLogs } from './audit-logs/audit-logs';
 import { Chat } from './chat/chat';
 import { FirstRunSetup } from './first-run-setup/first-run-setup';
+import { authGuard } from './guards/auth-guard';
 import { GroupAdminDashboard } from './group-admin-dashboard/group-admin-dashboard';
 import { GroupDetail } from './group-detail/group-detail';
 import { GroupRequests } from './group-requests/group-requests';
@@ -24,22 +25,87 @@ export const routes: Routes = [
   { path: 'login', component: Login },
   { path: 'register', component: Register },
 
-  { path: 'user-dashboard', component: UserDashboard },
-  { path: 'group-admin-dashboard', component: GroupAdminDashboard },
-  { path: 'super-admin-dashboard', component: SuperAdminDashboard },
-  { path: 'groups', component: Groups },
+  {
+    path: 'user-dashboard',
+    component: UserDashboard,
+    canActivate: [authGuard],
+    data: { systemRole: 'user' },
+  },
+  {
+    path: 'group-admin-dashboard',
+    component: GroupAdminDashboard,
+    canActivate: [authGuard],
+    data: { systemRole: 'user' },
+  },
+  {
+    path: 'super-admin-dashboard',
+    component: SuperAdminDashboard,
+    canActivate: [authGuard],
+    data: { systemRole: 'superAdmin' },
+  },
+  {
+    path: 'groups',
+    component: Groups,
+    canActivate: [authGuard],
+    data: { systemRole: 'user' },
+  },
 
   // More specific parameter routes come before the general group-detail route.
-  { path: 'groups/:groupId/rooms/:roomId', component: Chat },
-  { path: 'groups/:groupId/rooms', component: RoomManagement },
-  { path: 'groups/:groupId/requests', component: GroupRequests },
-  { path: 'groups/:groupId', component: GroupDetail },
+  {
+    path: 'groups/:groupId/rooms/:roomId',
+    component: Chat,
+    canActivate: [authGuard],
+    data: { systemRole: 'user' },
+  },
+  {
+    path: 'groups/:groupId/rooms',
+    component: RoomManagement,
+    canActivate: [authGuard],
+    data: { systemRole: 'user' },
+  },
+  {
+    path: 'groups/:groupId/requests',
+    component: GroupRequests,
+    canActivate: [authGuard],
+    data: { systemRole: 'user' },
+  },
+  {
+    path: 'groups/:groupId',
+    component: GroupDetail,
+    canActivate: [authGuard],
+    data: { systemRole: 'user' },
+  },
 
-  { path: 'requests', component: Requests },
-  { path: 'profile', component: Profile },
-  { path: 'admin/requests', component: AdminRequests },
-  { path: 'admin/users', component: AdminUsers },
-  { path: 'admin/audit-logs', component: AuditLogs },
+  {
+    path: 'requests',
+    component: Requests,
+    canActivate: [authGuard],
+    data: { systemRole: 'user' },
+  },
+  {
+    path: 'profile',
+    component: Profile,
+    canActivate: [authGuard],
+    data: { systemRole: 'user' },
+  },
+  {
+    path: 'admin/requests',
+    component: AdminRequests,
+    canActivate: [authGuard],
+    data: { systemRole: 'superAdmin' },
+  },
+  {
+    path: 'admin/users',
+    component: AdminUsers,
+    canActivate: [authGuard],
+    data: { systemRole: 'superAdmin' },
+  },
+  {
+    path: 'admin/audit-logs',
+    component: AuditLogs,
+    canActivate: [authGuard],
+    data: { systemRole: 'superAdmin' },
+  },
 
   // The wildcard route must stay last because Angular uses the first matching route.
   { path: '**', redirectTo: 'login' }
