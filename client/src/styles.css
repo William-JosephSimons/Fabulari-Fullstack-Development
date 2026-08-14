@@ -43,7 +43,10 @@ body {
   border-top: 1px solid var(--fabulari-border);
 }
 
-.fabulari-nav a {
+.fabulari-nav a,
+.fabulari-nav button {
+  border: 0;
+  background-color: transparent;
   padding: 0.75rem 1rem;
   color: var(--fabulari-navy);
   text-align: center;
@@ -51,7 +54,8 @@ body {
 }
 
 .fabulari-nav a:hover,
-.fabulari-nav a.active {
+.fabulari-nav a.active,
+.fabulari-nav button:hover {
   background-color: #fff4d6;
 }
 
@@ -61,8 +65,13 @@ body {
   text-underline-offset: 0.25rem;
 }
 
+.fabulari-nav button {
+  cursor: pointer;
+}
+
 @media (max-width: 768px) {
-  .fabulari-nav a {
+  .fabulari-nav a,
+  .fabulari-nav button {
     flex: 1 1 50%;
     border-bottom: 1px solid var(--fabulari-border);
   }
