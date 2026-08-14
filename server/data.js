@@ -33,6 +33,7 @@ function saveData(data) {
   // Creating the folder here also handles a fresh copy without a data directory.
   fs.mkdirSync(dataFolder, { recursive: true });
   // stringify parameters allow for pretty printing of json
+  // overwrite file rather than append to save valid json
   fs.writeFileSync(dataFile, `${JSON.stringify(data, null, 2)}\n`);
 }
 
