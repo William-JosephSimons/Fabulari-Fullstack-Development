@@ -13,6 +13,10 @@ export class Auth {
     return this.http.post(`${this.serverUrl}/api/login`, loginDetails);
   }
 
+  register(registrationDetails: object) {
+    return this.http.post(`${this.serverUrl}/api/register`, registrationDetails);
+  }
+
   saveCurrentUser(user: object): void {
     // Local storage accepts strings, so the user object is converted to JSON.
     localStorage.setItem(this.storageKey, JSON.stringify(user));

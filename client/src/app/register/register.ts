@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthNavigation } from '../auth-navigation/auth-navigation';
+import { Auth } from '../services/auth';
 
 @Component({
   selector: 'app-register',
@@ -10,6 +11,8 @@ import { AuthNavigation } from '../auth-navigation/auth-navigation';
   styleUrl: './register.css',
 })
 export class Register {
+  private readonly auth = inject(Auth);
+
   protected registrationMessage = '';
   protected registrationError = '';
   protected registrationDetails = {
@@ -23,14 +26,32 @@ export class Register {
   };
 
   protected submitRegistration(): void {
+    this.registrationMessage = '';
+    this.registrationError = '';
+
     if (this.registrationDetails.password !== this.registrationDetails.confirmPassword) {
-      this.registrationMessage = '';
       this.registrationError = 'Passwords do not match.';
       return;
     }
 
-    // The prototype checks matching passwords; Express will perform all account validation.
-    this.registrationError = '';
-    this.registrationMessage = 'Registration form submitted.';
+    // confirmPassword is only used by the form and is not sent to Express.
+    const { confirmPassword, ...accountDetails } = this.registrationDetails;
+
+    this.auth.register(accountDetails).subscribe({
+      next: (response: any) => {
+        if (!response.valid) {
+          this.registrationError = response.message || 'Registration was unsuccessful.';
+          return;
+        }
+
+        this.registrationDetails.password = '';
+        this.registrationDetails.confirmPassword = '';
+        this.registrationMessage = 'Account created. You can now return to login.';
+      },
+      error: (error) => {
+        this.registrationError =
+          error.error?.message || 'Unable to contact the server.';
+      },
+    });
   }
 }
