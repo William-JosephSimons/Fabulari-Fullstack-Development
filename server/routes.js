@@ -98,6 +98,43 @@ function safeUser(user) {
   return userSafe;
 }
 
+function getGroupRequestDetails(body = {}) {
+  return {
+    requesterId: ensureText(body.requesterId),
+    title: ensureText(body.title),
+    description: ensureText(body.description),
+    minimumAge: Number(body.minimumAge),
+    colour: ensureText(body.colour).toUpperCase(),
+    reason: ensureText(body.reason),
+  };
+}
+
+function validateGroupRequest(details) {
+  if (
+    !details.requesterId ||
+    !details.title ||
+    !details.description ||
+    !details.colour ||
+    !details.reason
+  ) {
+    return "All group request fields are required.";
+  }
+
+  if (
+    !Number.isInteger(details.minimumAge) ||
+    details.minimumAge < 0 ||
+    details.minimumAge > 120
+  ) {
+    return "Minimum age must be a whole number between 0 and 120.";
+  }
+
+  if (!/^#[0-9A-F]{6}$/.test(details.colour)) {
+    return "Choose a valid group colour.";
+  }
+
+  return null;
+}
+
 function routes(app) {
   app.get("/api/health", (req, res) => {
     res.status(200).json({ status: "ok" });
@@ -207,6 +244,59 @@ function routes(app) {
       valid: true,
       message: "Login successful.",
       user: safeUser(user),
+    });
+  });
+
+  app.post("/api/group-requests", (req, res) => {
+    const data = loadData();
+    const details = getGroupRequestDetails(req.body);
+    const validationError = validateGroupRequest(details);
+
+    if (validationError) {
+      return res.status(400).json({ valid: false, message: validationError });
+    }
+
+    const requester = data.users.find((user) => user.id === details.requesterId);
+
+    if (!requester) {
+      return res.status(404).json({
+        valid: false,
+        message: "Requesting user was not found.",
+      });
+    }
+
+    if (requester.systemRole !== "user") {
+      return res.status(403).json({
+        valid: false,
+        message: "Super Admin cannot request a new group.",
+      });
+    }
+
+    const request = {
+      id: `request-${randomUUID()}`,
+      type: "groupCreation",
+      requesterId: requester.id,
+      proposedGroup: {
+        title: details.title,
+        description: details.description,
+        minimumAge: details.minimumAge,
+        colour: details.colour,
+      },
+      reason: details.reason,
+      status: "pending",
+      rejectionReason: null,
+      decidedBy: null,
+      createdAt: new Date().toISOString(),
+      decidedAt: null,
+    };
+
+    data.requests.push(request);
+    saveData(data);
+
+    return res.status(201).json({
+      valid: true,
+      message: "Group request submitted for approval.",
+      request,
     });
   });
 }
