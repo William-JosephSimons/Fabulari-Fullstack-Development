@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MainNavigation } from '../main-navigation/main-navigation';
+import { Auth } from '../services/auth';
 
 @Component({
   selector: 'app-group-admin-dashboard',
@@ -10,7 +11,9 @@ import { MainNavigation } from '../main-navigation/main-navigation';
   styleUrl: './group-admin-dashboard.css',
 })
 export class GroupAdminDashboard {
-  protected readonly userName = 'Jordan';
+  private readonly auth = inject(Auth);
+
+  protected readonly userName = this.auth.getCurrentUser()?.firstName || 'User';
   protected selectedGroupId = 'book-club';
 
   // These values let the selection and summary layout work before services are connected.

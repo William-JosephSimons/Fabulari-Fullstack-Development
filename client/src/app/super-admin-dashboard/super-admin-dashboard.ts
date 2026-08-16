@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { Auth } from '../services/auth';
 import { SuperAdminNavigation } from '../super-admin-navigation/super-admin-navigation';
 
 @Component({
@@ -9,7 +10,9 @@ import { SuperAdminNavigation } from '../super-admin-navigation/super-admin-navi
   styleUrl: './super-admin-dashboard.css',
 })
 export class SuperAdminDashboard {
-  protected readonly userName = 'Alex';
+  private readonly auth = inject(Auth);
+
+  protected readonly userName = this.auth.getCurrentUser()?.firstName || 'User';
 
   // Static system figures will be replaced by API results in the connected dashboard.
   protected readonly systemSummary = [
