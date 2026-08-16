@@ -5,102 +5,106 @@
     <div class="card-body p-4">
       <h1 id="setup-heading" class="h2 mb-4">First-run Super Admin Setup</h1>
 
-      <form (ngSubmit)="submitSetup()">
-        <div class="row g-3">
-          <div class="col-sm-6">
-            <label class="form-label" for="setup-first-name">First name</label>
-            <input
-              id="setup-first-name"
-              class="form-control"
-              name="firstName"
-              [(ngModel)]="setupDetails.firstName"
-              required
-            />
+      @if (setupError) {
+        <div class="alert alert-danger" role="alert">{{ setupError }}</div>
+      }
+      @if (setupMessage) {
+        <div class="alert alert-success" role="status">{{ setupMessage }}</div>
+      }
+
+      @if (!statusLoaded) {
+        <div class="alert alert-secondary mb-0" role="status">Checking setup status...</div>
+      } @else if (setupRequired) {
+        <form (ngSubmit)="submitSetup()">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label" for="setup-first-name">First name</label>
+              <input
+                id="setup-first-name"
+                class="form-control"
+                name="firstName"
+                [(ngModel)]="setupDetails.firstName"
+                required
+              />
+            </div>
+
+            <div class="col-sm-6">
+              <label class="form-label" for="setup-last-name">Last name</label>
+              <input
+                id="setup-last-name"
+                class="form-control"
+                name="lastName"
+                [(ngModel)]="setupDetails.lastName"
+                required
+              />
+            </div>
+
+            <div class="col-12">
+              <label class="form-label" for="setup-username">Username</label>
+              <input
+                id="setup-username"
+                class="form-control"
+                name="username"
+                [(ngModel)]="setupDetails.username"
+                required
+              />
+            </div>
+
+            <div class="col-12">
+              <label class="form-label" for="setup-email">Email</label>
+              <input
+                id="setup-email"
+                class="form-control"
+                type="email"
+                name="email"
+                [(ngModel)]="setupDetails.email"
+                required
+              />
+            </div>
+
+            <div class="col-12">
+              <label class="form-label" for="setup-age">Age</label>
+              <input
+                id="setup-age"
+                class="form-control"
+                type="number"
+                name="age"
+                min="1"
+                [(ngModel)]="setupDetails.age"
+                required
+              />
+            </div>
+
+            <div class="col-sm-6">
+              <label class="form-label" for="setup-password">Password</label>
+              <input
+                id="setup-password"
+                class="form-control"
+                type="password"
+                name="password"
+                [(ngModel)]="setupDetails.password"
+                required
+              />
+            </div>
+
+            <div class="col-sm-6">
+              <label class="form-label" for="setup-confirm-password">Confirm password</label>
+              <input
+                id="setup-confirm-password"
+                class="form-control"
+                type="password"
+                name="confirmPassword"
+                [(ngModel)]="setupDetails.confirmPassword"
+                required
+              />
+            </div>
           </div>
 
-          <div class="col-sm-6">
-            <label class="form-label" for="setup-last-name">Last name</label>
-            <input
-              id="setup-last-name"
-              class="form-control"
-              name="lastName"
-              [(ngModel)]="setupDetails.lastName"
-              required
-            />
-          </div>
-
-          <div class="col-12">
-            <label class="form-label" for="setup-username">Username</label>
-            <input
-              id="setup-username"
-              class="form-control"
-              name="username"
-              [(ngModel)]="setupDetails.username"
-              required
-            />
-          </div>
-
-          <div class="col-12">
-            <label class="form-label" for="setup-email">Email</label>
-            <input
-              id="setup-email"
-              class="form-control"
-              type="email"
-              name="email"
-              [(ngModel)]="setupDetails.email"
-              required
-            />
-          </div>
-
-          <div class="col-12">
-            <label class="form-label" for="setup-age">Age</label>
-            <input
-              id="setup-age"
-              class="form-control"
-              type="number"
-              name="age"
-              min="1"
-              [(ngModel)]="setupDetails.age"
-              required
-            />
-          </div>
-
-          <div class="col-sm-6">
-            <label class="form-label" for="setup-password">Password</label>
-            <input
-              id="setup-password"
-              class="form-control"
-              type="password"
-              name="password"
-              [(ngModel)]="setupDetails.password"
-              required
-            />
-          </div>
-
-          <div class="col-sm-6">
-            <label class="form-label" for="setup-confirm-password">Confirm password</label>
-            <input
-              id="setup-confirm-password"
-              class="form-control"
-              type="password"
-              name="confirmPassword"
-              [(ngModel)]="setupDetails.confirmPassword"
-              required
-            />
-          </div>
-        </div>
-
-        @if (setupError) {
-          <div class="alert alert-danger mt-3 mb-0" role="alert">{{ setupError }}</div>
-        }
-        @if (setupMessage) {
-          <div class="alert alert-success mt-3 mb-0" role="status">{{ setupMessage }}</div>
-        }
-
-        <button class="btn btn-outline-dark w-100 mt-4" type="submit">
-          Create Super Admin
-        </button>
-      </form>
+          <button class="btn btn-outline-dark w-100 mt-4" type="submit">Create Super Admin</button>
+        </form>
+      } @else {
+        <a class="btn btn-outline-dark w-100" routerLink="/login">Return to login</a>
+      }
     </div>
   </section>
 </main>

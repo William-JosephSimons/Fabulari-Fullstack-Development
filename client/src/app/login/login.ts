@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthNavigation } from '../auth-navigation/auth-navigation';
@@ -10,15 +10,28 @@ import { Auth } from '../services/auth';
   templateUrl: './login.html',
   styleUrl: './login.css',
 })
-export class Login {
+export class Login implements OnInit {
   private readonly auth = inject(Auth);
   private readonly router = inject(Router);
 
   protected loginMessage = '';
   protected loginDetails = {
     username: '',
-    password: ''
+    password: '',
   };
+
+  ngOnInit(): void {
+    this.auth.getBootstrapStatus().subscribe({
+      next: (response: any) => {
+        if (response.setupRequired) {
+          this.router.navigate(['/setup']);
+        }
+      },
+      error: () => {
+        this.loginMessage = 'Unable to contact the server.';
+      },
+    });
+  }
 
   protected submitLogin(): void {
     this.loginMessage = '';

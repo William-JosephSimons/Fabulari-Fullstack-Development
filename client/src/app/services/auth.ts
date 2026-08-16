@@ -17,6 +17,14 @@ export class Auth {
     return this.http.post(`${this.serverUrl}/api/register`, registrationDetails);
   }
 
+  getBootstrapStatus() {
+    return this.http.get(`${this.serverUrl}/api/bootstrap-status`);
+  }
+
+  createSuperAdmin(setupDetails: object) {
+    return this.http.post(`${this.serverUrl}/api/bootstrap`, setupDetails);
+  }
+
   saveCurrentUser(user: object): void {
     // Local storage accepts strings, so the user object is converted to JSON.
     localStorage.setItem(this.storageKey, JSON.stringify(user));
