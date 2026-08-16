@@ -1,3 +1,5 @@
 [0816/094131.210:ERROR:third_party\crashpad\crashpad\util\win\registration_protocol_win.cc:136] TransactNamedPipe: No process is on the other end of the pipe. (0xE9)
 [0816/095318.759:ERROR:third_party\crashpad\crashpad\util\win\registration_protocol_win.cc:136] TransactNamedPipe: No process is on the other end of the pipe. (0xE9)
 [0816/102231.961:ERROR:third_party\crashpad\crashpad\util\win\registration_protocol_win.cc:136] TransactNamedPipe: No process is on the other end of the pipe. (0xE9)
+[0816/104210.658:ERROR:third_party\crashpad\crashpad\util\win\registration_protocol_win.cc:136] TransactNamedPipe: No process is on the other end of the pipe. (0xE9)
+[0816/105955.511:ERROR:third_party\crashpad\crashpad\util\win\registration_protocol_win.cc:136] TransactNamedPipe: No process is on the other end of the pipe. (0xE9)

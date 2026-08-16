@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MainNavigation } from '../main-navigation/main-navigation';
+import { Auth } from '../services/auth';
 
 @Component({
   selector: 'app-profile',
@@ -8,20 +9,51 @@ import { MainNavigation } from '../main-navigation/main-navigation';
   templateUrl: './profile.html',
   styleUrl: './profile.css',
 })
-export class Profile {
-  protected profileMessage = '';
+export class Profile implements OnInit {
+  private readonly auth = inject(Auth);
 
-  // The email is displayed but deliberately has no editable binding.
-  protected readonly email = 'billy@example.com';
+  protected profileMessage = '';
+  protected email = '';
   protected profile = {
-    firstName: 'William',
-    lastName: 'Simons',
-    username: 'billy',
-    age: 20
+    firstName: '',
+    lastName: '',
+    username: '',
+    age: 18,
   };
 
+  protected get profileInitial(): string {
+    return this.profile.firstName.charAt(0).toUpperCase() || '?';
+  }
+
+  ngOnInit(): void {
+    const currentUser = this.auth.getCurrentUser();
+
+    if (currentUser) {
+      this.email = currentUser.email;
+      this.profile = {
+        firstName: currentUser.firstName,
+        lastName: currentUser.lastName,
+        username: currentUser.username,
+        age: currentUser.age,
+      };
+    }
+  }
+
   protected saveProfile(): void {
-    // Week 5 will send these editable fields to the private profile route.
+    const currentUser = this.auth.getCurrentUser();
+
+    if (!currentUser) {
+      return;
+    }
+
+    // Spreading preserves the ID, email and role while replacing editable fields.
+    const updatedUser = {
+      ...currentUser,
+      ...this.profile,
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.auth.saveCurrentUser(updatedUser);
     this.profileMessage = 'Profile changes saved locally.';
   }
 

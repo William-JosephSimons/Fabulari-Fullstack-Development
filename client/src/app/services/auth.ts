@@ -26,14 +26,12 @@ export class Auth {
   }
 
   saveCurrentUser(user: object): void {
-    // Local storage accepts strings, so the user object is converted to JSON.
     localStorage.setItem(this.storageKey, JSON.stringify(user));
   }
 
   getCurrentUser() {
     const storedUser = localStorage.getItem(this.storageKey);
 
-    // JSON.parse changes the stored string back into a user object.
     return storedUser ? JSON.parse(storedUser) : null;
   }
 
