@@ -1,6 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { Auth } from '../../services/auth/auth';
+import { Group } from '../../services/group/group';
 import { MainNavigation } from '../main-navigation/main-navigation';
 
 @Component({
@@ -11,10 +13,14 @@ import { MainNavigation } from '../main-navigation/main-navigation';
 })
 export class Groups {
   private readonly router = inject(Router);
+  private readonly auth = inject(Auth);
+  private readonly groupService = inject(Group);
 
   protected searchTerm = '';
   protected membershipMessage = '';
   protected requestMessage = '';
+  protected requestError = '';
+  protected requestSubmitting = false;
   protected groupRequest = {
     title: '',
     description: '',
@@ -84,7 +90,45 @@ export class Groups {
   }
 
   protected submitGroupRequest(): void {
-    // Week 5 will replace this local confirmation with an HTTP request.
-    this.requestMessage = `${this.groupRequest.title} was submitted for approval.`;
+    this.requestMessage = '';
+    this.requestError = '';
+
+    const currentUser = this.auth.getCurrentUser();
+    if (!currentUser) {
+      this.requestError = 'You must be logged in to request a group.';
+      return;
+    }
+
+    const requestDetails = {
+      ...this.groupRequest,
+      requesterId: currentUser.id,
+    };
+
+    this.requestSubmitting = true;
+
+    this.groupService.submitGroupRequest(requestDetails).subscribe({
+      next: (response: any) => {
+        this.requestSubmitting = false;
+
+        if (!response.valid) {
+          this.requestError = response.message || 'The group request was unsuccessful.';
+          return;
+        }
+
+        this.requestMessage = response.message;
+        this.groupRequest = {
+          title: '',
+          description: '',
+          minimumAge: 16,
+          colour: '#4FA3F5',
+          reason: '',
+        };
+      },
+      error: (error) => {
+        this.requestSubmitting = false;
+        this.requestError =
+          error.error?.message || 'Unable to contact the server.';
+      },
+    });
   }
 }

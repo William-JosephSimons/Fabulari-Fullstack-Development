@@ -151,8 +151,18 @@
               ></textarea>
             </div>
 
-            <button class="btn btn-outline-dark" type="submit">Submit group request</button>
+            <button
+              class="btn btn-outline-dark"
+              type="submit"
+              [disabled]="requestSubmitting"
+            >
+              {{ requestSubmitting ? 'Submitting...' : 'Submit group request' }}
+            </button>
           </form>
+
+          @if (requestError) {
+            <div class="alert alert-danger mt-3 mb-0" role="alert">{{ requestError }}</div>
+          }
 
           @if (requestMessage) {
             <div class="alert alert-success mt-3 mb-0" role="status">{{ requestMessage }}</div>
