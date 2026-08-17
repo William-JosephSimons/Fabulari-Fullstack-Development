@@ -310,6 +310,46 @@ function routes(app) {
     });
   });
 
+  app.get("/api/admin/requests", (req, res) => {
+    const data = loadData();
+    const userId = ensureText(req.query.userId);
+    const user = data.users.find((item) => item.id === userId);
+
+    if (!user || user.systemRole !== "superAdmin") {
+      return res.status(403).json({
+        valid: false,
+        message: "Only the Super Admin can view system requests.",
+      });
+    }
+
+    const requests = data.requests
+      .filter((request) => {
+        return request.type === "groupCreation" && request.status === "pending";
+      })
+      .sort((first, second) => {
+        return new Date(second.createdAt) - new Date(first.createdAt);
+      })
+      .map((request) => {
+        const requester = data.users.find(
+          (item) => item.id === request.requesterId,
+        );
+
+        // The inbox needs a display name, not the requester's private account details.
+        return {
+          ...request,
+          requesterName:
+            requester ?
+              `${requester.firstName} ${requester.lastName}`
+            : "Deleted user",
+        };
+      });
+
+    return res.status(200).json({
+      valid: true,
+      requests,
+    });
+  });
+
   app.put("/api/requests/:id/decision", (req, res) => {
     const details = getRequestDecisionDetails(req.body);
 
