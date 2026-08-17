@@ -135,6 +135,14 @@ function validateGroupRequest(details) {
   return null;
 }
 
+function getRequestDecisionDetails(body = {}) {
+  return {
+    deciderId: ensureText(body.deciderId),
+    decision: ensureText(body.decision).toLowerCase(),
+    rejectionReason: ensureText(body.rejectionReason),
+  };
+}
+
 function routes(app) {
   app.get("/api/health", (req, res) => {
     res.status(200).json({ status: "ok" });
@@ -256,7 +264,9 @@ function routes(app) {
       return res.status(400).json({ valid: false, message: validationError });
     }
 
-    const requester = data.users.find((user) => user.id === details.requesterId);
+    const requester = data.users.find(
+      (user) => user.id === details.requesterId,
+    );
 
     if (!requester) {
       return res.status(404).json({
@@ -297,6 +307,121 @@ function routes(app) {
       valid: true,
       message: "Group request submitted for approval.",
       request,
+    });
+  });
+
+  app.put("/api/requests/:id/decision", (req, res) => {
+    const details = getRequestDecisionDetails(req.body);
+
+    if (
+      !details.deciderId ||
+      !["approved", "rejected"].includes(details.decision)
+    ) {
+      return res.status(400).json({
+        valid: false,
+        message: "A Super Admin and valid decision are required.",
+      });
+    }
+
+    if (details.decision === "rejected" && !details.rejectionReason) {
+      return res.status(400).json({
+        valid: false,
+        message: "A reason is required when rejecting a request.",
+      });
+    }
+
+    const data = loadData();
+    const request = data.requests.find((item) => item.id === req.params.id);
+
+    if (!request) {
+      return res.status(404).json({
+        valid: false,
+        message: "Request was not found.",
+      });
+    }
+
+    // Other request types will be added as their workflows are implemented.
+    if (request.type !== "groupCreation") {
+      return res.status(400).json({
+        valid: false,
+        message: "This request type cannot be decided here yet.",
+      });
+    }
+
+    if (request.status !== "pending") {
+      return res.status(409).json({
+        valid: false,
+        message: "This request has already been decided.",
+      });
+    }
+
+    const decider = data.users.find((user) => user.id === details.deciderId);
+
+    if (!decider || decider.systemRole !== "superAdmin") {
+      return res.status(403).json({
+        valid: false,
+        message: "Only the Super Admin can decide group requests.",
+      });
+    }
+
+    const requester = data.users.find(
+      (user) => user.id === request.requesterId,
+    );
+
+    if (!requester || requester.systemRole !== "user") {
+      return res.status(409).json({
+        valid: false,
+        message: "The requesting user is no longer available.",
+      });
+    }
+
+    let group = null;
+    const now = new Date().toISOString();
+
+    if (details.decision === "approved") {
+      const titleAlreadyExists = data.groups.some((item) => {
+        return (
+          item.title.toLowerCase() === request.proposedGroup.title.toLowerCase()
+        );
+      });
+
+      if (titleAlreadyExists) {
+        return res.status(409).json({
+          valid: false,
+          message: "A group with that title already exists.",
+        });
+      }
+
+      group = {
+        id: `group-${randomUUID()}`,
+        title: request.proposedGroup.title,
+        description: request.proposedGroup.description,
+        minimumAge: request.proposedGroup.minimumAge,
+        colour: request.proposedGroup.colour,
+        memberIds: [requester.id],
+        adminIds: [requester.id],
+        roomIds: [],
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      data.groups.push(group);
+      request.createdGroupId = group.id;
+    }
+
+    request.status = details.decision;
+    request.rejectionReason =
+      details.decision === "rejected" ? details.rejectionReason : null;
+    request.decidedBy = decider.id;
+    request.decidedAt = now;
+
+    saveData(data);
+
+    return res.status(200).json({
+      valid: true,
+      message: `Group request ${details.decision}.`,
+      request,
+      group,
     });
   });
 }
