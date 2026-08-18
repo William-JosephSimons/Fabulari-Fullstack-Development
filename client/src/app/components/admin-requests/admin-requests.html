@@ -11,51 +11,68 @@
         <div class="alert alert-success" role="status">{{ decisionMessage }}</div>
       }
 
-      <div class="table-responsive">
-        <table class="table table-bordered align-middle mb-0">
-          <thead class="table-light">
-            <tr>
-              <th scope="col">Requester</th>
-              <th scope="col">Group</th>
-              <th scope="col">Type</th>
-              <th scope="col">Reason or request</th>
-              <th scope="col">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (request of requests; track request.id) {
+      @if (requestError) {
+        <div class="alert alert-danger" role="alert">{{ requestError }}</div>
+      }
+
+      @if (isLoading) {
+        <p class="mb-0">Loading requests...</p>
+      } @else {
+        <div class="table-responsive">
+          <table class="table table-bordered align-middle mb-0">
+            <thead class="table-light">
               <tr>
-                <td>{{ request.requester }}</td>
-                <td>{{ request.group }}</td>
-                <td>{{ request.type }}</td>
-                <td>{{ request.reason }}</td>
-                <td>
-                  <div class="d-grid gap-2">
-                    <button
-                      class="btn btn-outline-dark btn-sm"
-                      type="button"
-                      (click)="approveRequest(request.id)"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      class="btn btn-outline-dark btn-sm"
-                      type="button"
-                      (click)="beginRejection(request.id)"
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </td>
+                <th scope="col">Requester</th>
+                <th scope="col">Proposed group</th>
+                <th scope="col">Request details</th>
+                <th scope="col">Reason</th>
+                <th scope="col">Action</th>
               </tr>
-            } @empty {
-              <tr>
-                <td colspan="5">There are no system requests waiting for a decision.</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              @for (request of requests; track request.id) {
+                <tr>
+                  <td>{{ request.requesterName }}</td>
+                  <td>
+                    <strong>{{ request.proposedGroup.title }}</strong><br />
+                    Group creation
+                  </td>
+                  <td>
+                    <p>{{ request.proposedGroup.description }}</p>
+                    <span>Minimum age: {{ request.proposedGroup.minimumAge }}</span><br />
+                    <span>Colour: {{ request.proposedGroup.colour }}</span>
+                  </td>
+                  <td>{{ request.reason }}</td>
+                  <td>
+                    <div class="d-grid gap-2">
+                      <button
+                        class="btn btn-outline-dark btn-sm"
+                        type="button"
+                        [disabled]="requestBeingDecided !== null"
+                        (click)="approveRequest(request.id)"
+                      >
+                        {{ requestBeingDecided === request.id ? 'Saving...' : 'Approve' }}
+                      </button>
+                      <button
+                        class="btn btn-outline-dark btn-sm"
+                        type="button"
+                        [disabled]="requestBeingDecided !== null"
+                        (click)="beginRejection(request.id)"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="5">There are no system requests waiting for a decision.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
     </div>
   </section>
 
@@ -63,7 +80,11 @@
     <section class="card content-card mt-4" aria-labelledby="admin-rejection-heading">
       <div class="card-body">
         <h2 id="admin-rejection-heading" class="h4">Reject request</h2>
-        <p><strong>{{ request.type }} - {{ request.group }} - {{ request.requester }}</strong></p>
+        <p>
+          <strong>
+            Group creation - {{ request.proposedGroup.title }} - {{ request.requesterName }}
+          </strong>
+        </p>
 
         <form (ngSubmit)="confirmRejection()">
           <label class="form-label" for="admin-rejection-reason">Rejection reason</label>
@@ -76,15 +97,26 @@
             required
           ></textarea>
 
-          @if (decisionError) {
-            <div class="alert alert-danger mt-3 mb-0" role="alert">{{ decisionError }}</div>
+          @if (rejectionError) {
+            <div class="alert alert-danger mt-3 mb-0" role="alert">{{ rejectionError }}</div>
           }
 
           <div class="d-flex flex-wrap justify-content-end gap-2 mt-3">
-            <button class="btn btn-outline-dark" type="button" (click)="closeRejection()">
+            <button
+              class="btn btn-outline-dark"
+              type="button"
+              [disabled]="requestBeingDecided !== null"
+              (click)="closeRejection()"
+            >
               Cancel
             </button>
-            <button class="btn btn-outline-dark" type="submit">Confirm rejection</button>
+            <button
+              class="btn btn-outline-dark"
+              type="submit"
+              [disabled]="requestBeingDecided !== null"
+            >
+              {{ requestBeingDecided === request.id ? 'Saving...' : 'Confirm rejection' }}
+            </button>
           </div>
         </form>
       </div>
