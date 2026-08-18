@@ -143,6 +143,13 @@ function getRequestDecisionDetails(body = {}) {
   };
 }
 
+function getMembershipRequestDetails(body = {}) {
+  return {
+    requesterId: ensureText(body.requesterId),
+    reason: ensureText(body.reason),
+  };
+}
+
 function routes(app) {
   app.get("/api/health", (req, res) => {
     res.status(200).json({ status: "ok" });
@@ -347,6 +354,106 @@ function routes(app) {
     return res.status(200).json({
       valid: true,
       requests,
+    });
+  });
+
+  app.post("/api/groups/:id/join-requests", (req, res) => {
+    const details = getMembershipRequestDetails(req.body);
+
+    if (!details.requesterId || !details.reason) {
+      return res.status(400).json({
+        valid: false,
+        message: "A requesting user and reason are required.",
+      });
+    }
+
+    const data = loadData();
+    const group = data.groups.find((item) => item.id === req.params.id);
+
+    if (!group) {
+      return res.status(404).json({
+        valid: false,
+        message: "Group was not found.",
+      });
+    }
+
+    const requester = data.users.find((user) => user.id === details.requesterId);
+
+    if (!requester) {
+      return res.status(404).json({
+        valid: false,
+        message: "Requesting user was not found.",
+      });
+    }
+
+    if (requester.systemRole !== "user") {
+      return res.status(403).json({
+        valid: false,
+        message: "Super Admin cannot join groups.",
+      });
+    }
+
+    if (requester.age < group.minimumAge) {
+      return res.status(403).json({
+        valid: false,
+        message: "You do not meet this group's minimum age.",
+      });
+    }
+
+    if (group.memberIds.includes(requester.id)) {
+      return res.status(409).json({
+        valid: false,
+        message: "You are already a member of this group.",
+      });
+    }
+
+    const isGroupBanned = data.groupBans.some((ban) => {
+      return ban.groupId === group.id && ban.bannedUserId === requester.id;
+    });
+
+    if (isGroupBanned) {
+      return res.status(403).json({
+        valid: false,
+        message: "You are permanently banned from this group.",
+      });
+    }
+
+    const existingRequest = data.requests.some((request) => {
+      return (
+        request.type === "membership" &&
+        request.groupId === group.id &&
+        request.requesterId === requester.id &&
+        request.status === "pending"
+      );
+    });
+
+    if (existingRequest) {
+      return res.status(409).json({
+        valid: false,
+        message: "You already have a pending membership request for this group.",
+      });
+    }
+
+    const request = {
+      id: `request-${randomUUID()}`,
+      type: "membership",
+      requesterId: requester.id,
+      groupId: group.id,
+      reason: details.reason,
+      status: "pending",
+      rejectionReason: null,
+      decidedBy: null,
+      createdAt: new Date().toISOString(),
+      decidedAt: null,
+    };
+
+    data.requests.push(request);
+    saveData(data);
+
+    return res.status(201).json({
+      valid: true,
+      message: `Membership request submitted to ${group.title}.`,
+      request,
     });
   });
 
