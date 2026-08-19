@@ -150,6 +150,43 @@ function getMembershipRequestDetails(body = {}) {
   };
 }
 
+function getGroupMembershipStatus(data, group, user) {
+  if (user.systemRole === "superAdmin") {
+    return "readOnly";
+  }
+
+  const isGroupBanned = data.groupBans.some((ban) => {
+    return ban.groupId === group.id && ban.bannedUserId === user.id;
+  });
+
+  if (isGroupBanned) {
+    return "banned";
+  }
+
+  if (group.memberIds.includes(user.id)) {
+    return "member";
+  }
+
+  const hasPendingRequest = data.requests.some((request) => {
+    return (
+      request.type === "membership" &&
+      request.groupId === group.id &&
+      request.requesterId === user.id &&
+      request.status === "pending"
+    );
+  });
+
+  if (hasPendingRequest) {
+    return "pending";
+  }
+
+  if (user.age < group.minimumAge) {
+    return "underAge";
+  }
+
+  return "available";
+}
+
 function routes(app) {
   app.get("/api/health", (req, res) => {
     res.status(200).json({ status: "ok" });
@@ -259,6 +296,37 @@ function routes(app) {
       valid: true,
       message: "Login successful.",
       user: safeUser(user),
+    });
+  });
+
+  app.get("/api/groups", (req, res) => {
+    const data = loadData();
+    const userId = ensureText(req.query.userId);
+    const user = data.users.find((item) => item.id === userId);
+
+    if (!user) {
+      return res.status(404).json({
+        valid: false,
+        message: "Current user was not found.",
+      });
+    }
+
+    // Membership state is derived from current data rather than stored twice.
+    const groups = data.groups.map((group) => {
+      return {
+        id: group.id,
+        title: group.title,
+        description: group.description,
+        minimumAge: group.minimumAge,
+        colour: group.colour,
+        status: getGroupMembershipStatus(data, group, user),
+        isAdmin: group.adminIds.includes(user.id),
+      };
+    });
+
+    return res.status(200).json({
+      valid: true,
+      groups,
     });
   });
 
