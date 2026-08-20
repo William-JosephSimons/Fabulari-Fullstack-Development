@@ -150,6 +150,13 @@ function getMembershipRequestDetails(body = {}) {
   };
 }
 
+function getAdminChangeDetails(body = {}) {
+  return {
+    actingUserId: ensureText(body.actingUserId),
+    targetUserId: ensureText(body.targetUserId),
+  };
+}
+
 function getGroupMembershipStatus(data, group, user) {
   if (user.systemRole === "superAdmin") {
     return "readOnly";
@@ -579,6 +586,147 @@ function routes(app) {
       valid: true,
       message: `Membership request submitted to ${group.title}.`,
       request,
+    });
+  });
+
+  app.post("/api/groups/:id/admins", (req, res) => {
+    const details = getAdminChangeDetails(req.body);
+
+    if (!details.actingUserId || !details.targetUserId) {
+      return res.status(400).json({
+        valid: false,
+        message: "An acting user and target user are required.",
+      });
+    }
+
+    const data = loadData();
+    const group = data.groups.find((item) => item.id === req.params.id);
+
+    if (!group) {
+      return res.status(404).json({
+        valid: false,
+        message: "Group was not found.",
+      });
+    }
+
+    const actingUser = data.users.find(
+      (user) => user.id === details.actingUserId,
+    );
+
+    if (
+      !actingUser ||
+      actingUser.systemRole !== "user" ||
+      !group.adminIds.includes(actingUser.id)
+    ) {
+      return res.status(403).json({
+        valid: false,
+        message: "Only a Group Admin can promote group members.",
+      });
+    }
+
+    const targetUser = data.users.find(
+      (user) => user.id === details.targetUserId,
+    );
+
+    if (!targetUser || targetUser.systemRole !== "user") {
+      return res.status(404).json({
+        valid: false,
+        message: "Target user was not found.",
+      });
+    }
+
+    if (!group.memberIds.includes(targetUser.id)) {
+      return res.status(409).json({
+        valid: false,
+        message: "Only an existing group member can become a Group Admin.",
+      });
+    }
+
+    if (group.adminIds.includes(targetUser.id)) {
+      return res.status(409).json({
+        valid: false,
+        message: "That user is already a Group Admin.",
+      });
+    }
+
+    group.adminIds.push(targetUser.id);
+    group.updatedAt = new Date().toISOString();
+    saveData(data);
+
+    return res.status(200).json({
+      valid: true,
+      message: `${targetUser.firstName} is now a Group Admin.`,
+      groupId: group.id,
+      adminIds: group.adminIds,
+    });
+  });
+
+  app.delete("/api/groups/:id/admins/:userId", (req, res) => {
+    const actingUserId = ensureText(req.query.actingUserId);
+    const targetUserId = ensureText(req.params.userId);
+
+    if (!actingUserId || !targetUserId) {
+      return res.status(400).json({
+        valid: false,
+        message: "An acting user and target user are required.",
+      });
+    }
+
+    const data = loadData();
+    const group = data.groups.find((item) => item.id === req.params.id);
+
+    if (!group) {
+      return res.status(404).json({
+        valid: false,
+        message: "Group was not found.",
+      });
+    }
+
+    const actingUser = data.users.find((user) => user.id === actingUserId);
+
+    if (
+      !actingUser ||
+      actingUser.systemRole !== "user" ||
+      !group.adminIds.includes(actingUser.id)
+    ) {
+      return res.status(403).json({
+        valid: false,
+        message: "Only a Group Admin can demote another Group Admin.",
+      });
+    }
+
+    const targetUser = data.users.find((user) => user.id === targetUserId);
+
+    if (!targetUser || !group.adminIds.includes(targetUser.id)) {
+      return res.status(409).json({
+        valid: false,
+        message: "That user is not a Group Admin.",
+      });
+    }
+
+    if (group.adminIds.length === 1) {
+      return res.status(409).json({
+        valid: false,
+        message: "A group must always have at least one Group Admin.",
+      });
+    }
+
+    if (actingUser.id === targetUser.id) {
+      return res.status(403).json({
+        valid: false,
+        message: "A Group Admin cannot demote themselves.",
+      });
+    }
+
+    group.adminIds = group.adminIds.filter((userId) => userId !== targetUser.id);
+    group.updatedAt = new Date().toISOString();
+    saveData(data);
+
+    return res.status(200).json({
+      valid: true,
+      message: `${targetUser.firstName} is no longer a Group Admin.`,
+      groupId: group.id,
+      adminIds: group.adminIds,
     });
   });
 
