@@ -58,7 +58,7 @@ export const routes: Routes = [
     data: { systemRole: 'user' },
   },
   {
-    path: 'groups/:groupId/rooms',
+    path: 'groups/:groupId/admin',
     component: RoomManagement,
     canActivate: [authGuard],
     data: { systemRole: 'user' },

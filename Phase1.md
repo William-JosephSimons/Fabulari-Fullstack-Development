@@ -135,7 +135,7 @@ route.
 | `/super-admin-dashboard`         | `SuperAdminDashboard` | Summarise system totals and Super Admin requests.                          |
 | `/groups`                        | `Groups`              | Browse/search groups and demonstrate membership and group requests.        |
 | `/groups/:groupId`               | `GroupDetail`         | List the rooms available to a member of the selected group.                |
-| `/groups/:groupId/rooms`         | `RoomManagement`      | Demonstrate direct room management for the selected group.                 |
+| `/groups/:groupId/admin`         | `RoomManagement`      | Manage the selected group's settings, members and rooms.                   |
 | `/groups/:groupId/rooms/:roomId` | `Chat`                | Display the selected room's chat and presence prototype.                   |
 | `/groups/:groupId/requests`      | `GroupRequests`       | Display the Group Admin request inbox for the selected group.              |
 | `/requests`                      | `Requests`            | Display the current user's personal request history.                       |
