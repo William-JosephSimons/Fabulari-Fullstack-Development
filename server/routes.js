@@ -147,6 +147,41 @@ function validateGroupRequest(details) {
   return null;
 }
 
+function getGroupSettingsDetails(body = {}) {
+  return {
+    actingUserId: ensureText(body.actingUserId),
+    title: ensureText(body.title),
+    description: ensureText(body.description),
+    minimumAge: Number(body.minimumAge),
+    colour: ensureText(body.colour).toUpperCase(),
+  };
+}
+
+function validateGroupSettings(details) {
+  if (
+    !details.actingUserId ||
+    !details.title ||
+    !details.description ||
+    !details.colour
+  ) {
+    return "All group settings are required.";
+  }
+
+  if (
+    !Number.isInteger(details.minimumAge) ||
+    details.minimumAge < 0 ||
+    details.minimumAge > 120
+  ) {
+    return "Minimum age must be a whole number between 0 and 120.";
+  }
+
+  if (!/^#[0-9A-F]{6}$/.test(details.colour)) {
+    return "Choose a valid group colour.";
+  }
+
+  return null;
+}
+
 function getRequestDecisionDetails(body = {}) {
   return {
     deciderId: ensureText(body.deciderId),
@@ -346,6 +381,89 @@ function routes(app) {
     return res.status(200).json({
       valid: true,
       groups,
+    });
+  });
+
+  app.patch("/api/groups/:id", (req, res) => {
+    const details = getGroupSettingsDetails(req.body);
+    const validationError = validateGroupSettings(details);
+
+    if (validationError) {
+      return res.status(400).json({ valid: false, message: validationError });
+    }
+
+    const data = loadData();
+    const group = data.groups.find((item) => item.id === req.params.id);
+
+    if (!group) {
+      return res.status(404).json({
+        valid: false,
+        message: "Group was not found.",
+      });
+    }
+
+    const actingUser = data.users.find((user) => {
+      return user.id === details.actingUserId;
+    });
+
+    if (
+      !actingUser ||
+      actingUser.systemRole !== "user" ||
+      !group.adminIds.includes(actingUser.id)
+    ) {
+      return res.status(403).json({
+        valid: false,
+        message: "Only a Group Admin can change this group's settings.",
+      });
+    }
+
+    const titleAlreadyExists = data.groups.some((item) => {
+      return (
+        item.id !== group.id &&
+        item.title.toLowerCase() === details.title.toLowerCase()
+      );
+    });
+
+    if (titleAlreadyExists) {
+      return res.status(409).json({
+        valid: false,
+        message: "A group with that title already exists.",
+      });
+    }
+
+    const underAgeMemberIds = group.memberIds.filter((memberId) => {
+      const member = data.users.find((user) => user.id === memberId);
+      return member && member.age < details.minimumAge;
+    });
+
+    const remainingAdminIds = group.adminIds.filter((adminId) => {
+      return !underAgeMemberIds.includes(adminId);
+    });
+
+    if (remainingAdminIds.length === 0) {
+      return res.status(409).json({
+        valid: false,
+        message: "The minimum age cannot remove every Group Admin.",
+      });
+    }
+
+    group.title = details.title;
+    group.description = details.description;
+    group.minimumAge = details.minimumAge;
+    group.colour = details.colour;
+    // Room access is derived from group membership, so no room records need changing.
+    group.memberIds = group.memberIds.filter((memberId) => {
+      return !underAgeMemberIds.includes(memberId);
+    });
+    group.adminIds = remainingAdminIds;
+    group.updatedAt = new Date().toISOString();
+    saveData(data);
+
+    return res.status(200).json({
+      valid: true,
+      message: "Group settings updated.",
+      group,
+      removedMemberCount: underAgeMemberIds.length,
     });
   });
 
