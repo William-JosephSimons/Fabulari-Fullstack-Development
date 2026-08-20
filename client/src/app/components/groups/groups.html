@@ -23,64 +23,119 @@
             <div class="alert alert-success" role="status">{{ membershipMessage }}</div>
           }
 
-          <div class="group-list">
-            @for (group of filteredGroups; track group.id) {
-              <article class="border rounded p-3">
-                <div class="d-flex flex-wrap justify-content-between gap-2">
-                  <div>
-                    <h3 class="h5 mb-1">{{ group.name }}</h3>
-                    <p class="mb-1">{{ group.description }}</p>
-                  </div>
-                  <strong>Minimum age {{ group.minimumAge }}</strong>
-                </div>
+          @if (groupsError) {
+            <div class="alert alert-danger" role="alert">{{ groupsError }}</div>
+          }
 
-                <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mt-2">
-                  @switch (group.status) {
-                    @case ('member') {
-                      <span>Member</span>
-                      <button
-                        class="btn btn-outline-dark"
-                        type="button"
-                        (click)="openGroup(group.id)"
-                      >
-                        View rooms
-                      </button>
+          @if (groupsLoading) {
+            <p class="mb-0">Loading groups...</p>
+          } @else {
+            <div class="group-list">
+              @for (group of filteredGroups; track group.id) {
+                <article class="border rounded p-3">
+                  <div class="d-flex flex-wrap justify-content-between gap-2">
+                    <div>
+                      <h3 class="h5 mb-1">{{ group.title }}</h3>
+                      <p class="mb-1">{{ group.description }}</p>
+                    </div>
+                    <strong>Minimum age {{ group.minimumAge }}</strong>
+                  </div>
+
+                  <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mt-2">
+                    @switch (group.status) {
+                      @case ('member') {
+                        <span>{{ group.isAdmin ? 'Group Admin' : 'Member' }}</span>
+                        <button
+                          class="btn btn-outline-dark"
+                          type="button"
+                          (click)="openGroup(group.id)"
+                        >
+                          View rooms
+                        </button>
+                      }
+                      @case ('available') {
+                        <span>Not joined</span>
+                        <button
+                          class="btn btn-outline-dark"
+                          type="button"
+                          [disabled]="membershipSubmitting"
+                          (click)="beginMembershipRequest(group.id)"
+                        >
+                          Request membership
+                        </button>
+                      }
+                      @case ('pending') {
+                        <span>Membership request pending</span>
+                        <button class="btn btn-outline-dark" type="button" disabled>
+                          Request pending
+                        </button>
+                      }
+                      @case ('underAge') {
+                        <span>You do not meet the age requirement</span>
+                        <button class="btn btn-outline-dark" type="button" disabled>
+                          Not old enough to join
+                        </button>
+                      }
+                      @case ('banned') {
+                        <strong class="text-danger">Permanently banned from this group</strong>
+                        <button class="btn btn-outline-dark" type="button" disabled>
+                          Cannot request membership
+                        </button>
+                      }
+                      @case ('readOnly') {
+                        <span>Read-only access</span>
+                        <button class="btn btn-outline-dark" type="button" disabled>
+                          Cannot join
+                        </button>
+                      }
                     }
-                    @case ('available') {
-                      <span>Not joined</span>
-                      <button
-                        class="btn btn-outline-dark"
-                        type="button"
-                        (click)="requestMembership(group.name)"
-                      >
-                        Request membership
-                      </button>
-                    }
-                    @case ('pending') {
-                      <span>Membership request pending</span>
-                      <button class="btn btn-outline-dark" type="button" disabled>
-                        Request pending
-                      </button>
-                    }
-                    @case ('underAge') {
-                      <span>You do not meet the age requirement</span>
-                      <button class="btn btn-outline-dark" type="button" disabled>
-                        Not old enough to join
-                      </button>
-                    }
-                    @case ('banned') {
-                      <strong class="text-danger">Permanently banned from this group</strong>
-                      <button class="btn btn-outline-dark" type="button" disabled>
-                        Cannot request membership
-                      </button>
-                    }
+                  </div>
+
+                  @if (membershipRequestGroupId === group.id) {
+                    <form class="border-top mt-3 pt-3" (ngSubmit)="submitMembershipRequest(group.id)">
+                      <label class="form-label" for="membership-reason-{{ group.id }}">
+                        Reason for joining {{ group.title }}
+                      </label>
+                      <textarea
+                        id="membership-reason-{{ group.id }}"
+                        class="form-control"
+                        name="membershipReason"
+                        rows="3"
+                        [(ngModel)]="membershipReason"
+                        required
+                      ></textarea>
+
+                      @if (membershipError) {
+                        <div class="alert alert-danger mt-3 mb-0" role="alert">
+                          {{ membershipError }}
+                        </div>
+                      }
+
+                      <div class="d-flex flex-wrap justify-content-end gap-2 mt-3">
+                        <button
+                          class="btn btn-outline-dark"
+                          type="button"
+                          [disabled]="membershipSubmitting"
+                          (click)="cancelMembershipRequest()"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          class="btn btn-outline-dark"
+                          type="submit"
+                          [disabled]="membershipSubmitting"
+                        >
+                          {{ membershipSubmitting ? 'Submitting...' : 'Submit request' }}
+                        </button>
+                      </div>
+                    </form>
                   }
-                </div>
-              </article>
-            } @empty {
-              <p class="mb-0">No groups match your search.</p>
-            }
-          </div>
+                </article>
+              } @empty {
+                <p class="mb-0">No groups match your search.</p>
+              }
+            </div>
+          }
         </div>
       </div>
     </section>

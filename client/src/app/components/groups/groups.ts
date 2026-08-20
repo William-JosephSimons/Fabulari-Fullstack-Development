@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Auth } from '../../services/auth/auth';
@@ -11,13 +11,19 @@ import { MainNavigation } from '../main-navigation/main-navigation';
   templateUrl: './groups.html',
   styleUrl: './groups.css',
 })
-export class Groups {
+export class Groups implements OnInit {
   private readonly router = inject(Router);
   private readonly auth = inject(Auth);
   private readonly groupService = inject(Group);
 
   protected searchTerm = '';
   protected membershipMessage = '';
+  protected membershipError = '';
+  protected membershipReason = '';
+  protected membershipRequestGroupId: string | null = null;
+  protected membershipSubmitting = false;
+  protected groupsLoading = true;
+  protected groupsError = '';
   protected requestMessage = '';
   protected requestError = '';
   protected requestSubmitting = false;
@@ -29,44 +35,11 @@ export class Groups {
     reason: ''
   };
 
-  // These groups demonstrate each membership state until the HTTP service is added.
-  protected readonly groups = [
-    {
-      id: 'book-club',
-      name: 'Book Club',
-      description: 'Read and discuss great books.',
-      minimumAge: 16,
-      status: 'member'
-    },
-    {
-      id: 'photography-club',
-      name: 'Photography Club',
-      description: 'Share photos and local photo walks.',
-      minimumAge: 16,
-      status: 'available'
-    },
-    {
-      id: 'music-makers',
-      name: 'Music Makers',
-      description: 'Share songs and discuss local music.',
-      minimumAge: 18,
-      status: 'pending'
-    },
-    {
-      id: 'game-makers',
-      name: 'Game Makers',
-      description: 'Design and build games together.',
-      minimumAge: 21,
-      status: 'underAge'
-    },
-    {
-      id: 'competitive-chess',
-      name: 'Competitive Chess',
-      description: 'Tournaments and match discussion.',
-      minimumAge: 18,
-      status: 'banned'
-    }
-  ];
+  protected groups: any[] = [];
+
+  ngOnInit(): void {
+    this.loadGroups();
+  }
 
   protected get filteredGroups() {
     const search = this.searchTerm.trim().toLowerCase();
@@ -76,7 +49,7 @@ export class Groups {
     }
 
     return this.groups.filter((group) =>
-      `${group.name} ${group.description}`.toLowerCase().includes(search)
+      `${group.title} ${group.description}`.toLowerCase().includes(search)
     );
   }
 
@@ -85,8 +58,64 @@ export class Groups {
     this.router.navigate(['/groups', groupId]);
   }
 
-  protected requestMembership(groupName: string): void {
-    this.membershipMessage = `Membership request sent to ${groupName}.`;
+  protected beginMembershipRequest(groupId: string): void {
+    this.membershipRequestGroupId = groupId;
+    this.membershipReason = '';
+    this.membershipMessage = '';
+    this.membershipError = '';
+  }
+
+  protected cancelMembershipRequest(): void {
+    this.membershipRequestGroupId = null;
+    this.membershipReason = '';
+    this.membershipError = '';
+  }
+
+  protected submitMembershipRequest(groupId: string): void {
+    const reason = this.membershipReason.trim();
+
+    if (!reason) {
+      this.membershipError = 'A reason is required.';
+      return;
+    }
+
+    const currentUser = this.auth.getCurrentUser();
+    if (!currentUser) {
+      this.membershipError = 'You must be logged in to request membership.';
+      return;
+    }
+
+    this.membershipSubmitting = true;
+    this.membershipError = '';
+
+    this.groupService
+      .submitMembershipRequest(groupId, {
+        requesterId: currentUser.id,
+        reason,
+      })
+      .subscribe({
+        next: (response: any) => {
+          this.membershipSubmitting = false;
+
+          if (!response.valid) {
+            this.membershipError = response.message || 'The membership request was unsuccessful.';
+            return;
+          }
+
+          const group = this.groups.find((item) => item.id === groupId);
+          if (group) {
+            group.status = 'pending';
+          }
+
+          this.membershipMessage = response.message;
+          this.cancelMembershipRequest();
+        },
+        error: (error) => {
+          this.membershipSubmitting = false;
+          this.membershipError =
+            error.error?.message || 'Unable to contact the server.';
+        },
+      });
   }
 
   protected submitGroupRequest(): void {
@@ -127,6 +156,34 @@ export class Groups {
       error: (error) => {
         this.requestSubmitting = false;
         this.requestError =
+          error.error?.message || 'Unable to contact the server.';
+      },
+    });
+  }
+
+  private loadGroups(): void {
+    const currentUser = this.auth.getCurrentUser();
+
+    if (!currentUser) {
+      this.groupsLoading = false;
+      this.groupsError = 'You must be logged in to browse groups.';
+      return;
+    }
+
+    this.groupService.getGroups(currentUser.id).subscribe({
+      next: (response: any) => {
+        this.groupsLoading = false;
+
+        if (!response.valid) {
+          this.groupsError = response.message || 'Unable to load groups.';
+          return;
+        }
+
+        this.groups = response.groups;
+      },
+      error: (error) => {
+        this.groupsLoading = false;
+        this.groupsError =
           error.error?.message || 'Unable to contact the server.';
       },
     });
