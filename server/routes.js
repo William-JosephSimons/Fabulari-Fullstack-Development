@@ -98,6 +98,18 @@ function safeUser(user) {
   return userSafe;
 }
 
+function safeGroupUser(user, isAdmin = false) {
+  return {
+    id: user.id,
+    username: user.username,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    age: user.age,
+    avatarUrl: user.avatarUrl,
+    isAdmin,
+  };
+}
+
 function getGroupRequestDetails(body = {}) {
   return {
     requesterId: ensureText(body.requesterId),
@@ -486,6 +498,74 @@ function routes(app) {
         title: group.title,
       },
       requests,
+    });
+  });
+
+  app.get("/api/groups/:id/users", (req, res) => {
+    const data = loadData();
+    const userId = ensureText(req.query.userId);
+    const group = data.groups.find((item) => item.id === req.params.id);
+
+    if (!group) {
+      return res.status(404).json({
+        valid: false,
+        message: "Group was not found.",
+      });
+    }
+
+    const user = data.users.find((item) => item.id === userId);
+
+    if (
+      !user ||
+      user.systemRole !== "user" ||
+      !group.adminIds.includes(user.id)
+    ) {
+      return res.status(403).json({
+        valid: false,
+        message: "Only a Group Admin can view this group's users.",
+      });
+    }
+
+    const members = group.memberIds
+      .map((memberId) => data.users.find((item) => item.id === memberId))
+      .filter((member) => member)
+      .map((member) => {
+        return safeGroupUser(member, group.adminIds.includes(member.id));
+      })
+      .sort((first, second) => {
+        return first.firstName.localeCompare(second.firstName);
+      });
+
+    const bannedUsers = data.groupBans
+      .filter((ban) => ban.groupId === group.id)
+      .map((ban) => {
+        const bannedUser = data.users.find(
+          (item) => item.id === ban.bannedUserId,
+        );
+
+        return {
+          id: ban.bannedUserId,
+          username: bannedUser ? bannedUser.username : "Deleted user",
+          firstName: bannedUser ? bannedUser.firstName : "Deleted",
+          lastName: bannedUser ? bannedUser.lastName : "user",
+          age: bannedUser ? bannedUser.age : null,
+          avatarUrl: bannedUser ? bannedUser.avatarUrl : null,
+          reason: ban.reason,
+          bannedAt: ban.bannedAt,
+        };
+      })
+      .sort((first, second) => {
+        return new Date(second.bannedAt) - new Date(first.bannedAt);
+      });
+
+    return res.status(200).json({
+      valid: true,
+      group: {
+        id: group.id,
+        title: group.title,
+      },
+      members,
+      bannedUsers,
     });
   });
 
