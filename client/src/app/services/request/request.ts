@@ -14,6 +14,12 @@ export class Request {
     });
   }
 
+  getGroupRequests(groupId: string, userId: string) {
+    return this.http.get(`${this.serverUrl}/api/groups/${groupId}/requests`, {
+      params: { userId },
+    });
+  }
+
   decideRequest(requestId: string, decisionDetails: object) {
     return this.http.put(
       `${this.serverUrl}/api/requests/${requestId}/decision`,

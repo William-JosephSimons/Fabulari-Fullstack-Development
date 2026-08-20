@@ -16,53 +16,61 @@
         <div class="alert alert-success" role="status">{{ decisionMessage }}</div>
       }
 
-      <div class="table-responsive">
-        <table class="table table-bordered align-middle mb-0">
-          <thead class="table-light">
-            <tr>
-              <th scope="col">Requester</th>
-              <th scope="col">Type</th>
-              <th scope="col">Reason or request</th>
-              <th scope="col">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (request of requests; track request.id) {
+      @if (requestError) {
+        <div class="alert alert-danger" role="alert">{{ requestError }}</div>
+      }
+
+      @if (isLoading) {
+        <p class="mb-0">Loading requests...</p>
+      } @else {
+        <div class="table-responsive">
+          <table class="table table-bordered align-middle mb-0">
+            <thead class="table-light">
               <tr>
-                <td>{{ request.requester }}</td>
-                <td>{{ request.type }}</td>
-                <td>{{ request.reason }}</td>
-                <td>
-                  @if (request.decidable) {
+                <th scope="col">Requester</th>
+                <th scope="col">Age</th>
+                <th scope="col">Type</th>
+                <th scope="col">Reason</th>
+                <th scope="col">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (request of requests; track request.id) {
+                <tr>
+                  <td>{{ request.requesterName }}</td>
+                  <td>{{ request.requesterAge }}</td>
+                  <td>Membership</td>
+                  <td>{{ request.reason }}</td>
+                  <td>
                     <div class="d-grid gap-2">
                       <button
                         class="btn btn-outline-dark btn-sm"
                         type="button"
+                        [disabled]="requestBeingDecided !== null"
                         (click)="approveRequest(request.id)"
                       >
-                        Approve
+                        {{ requestBeingDecided === request.id ? 'Saving...' : 'Approve' }}
                       </button>
                       <button
                         class="btn btn-outline-dark btn-sm"
                         type="button"
+                        [disabled]="requestBeingDecided !== null"
                         (click)="beginRejection(request.id)"
                       >
                         Reject
                       </button>
                     </div>
-                  } @else {
-                    <span>Pending Super Admin</span>
-                  }
-                </td>
-              </tr>
-            } @empty {
-              <tr>
-                <td colspan="4">This group has no requests waiting for a decision.</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="5">This group has no requests waiting for a decision.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
     </div>
   </section>
 
@@ -70,7 +78,7 @@
     <section class="card content-card mt-4" aria-labelledby="group-rejection-heading">
       <div class="card-body">
         <h2 id="group-rejection-heading" class="h4">Reject request</h2>
-        <p><strong>{{ request.type }} - {{ request.requester }}</strong></p>
+        <p><strong>Membership - {{ request.requesterName }}</strong></p>
 
         <form (ngSubmit)="confirmRejection()">
           <label class="form-label" for="group-rejection-reason">Rejection reason</label>
@@ -88,10 +96,21 @@
           }
 
           <div class="d-flex flex-wrap justify-content-end gap-2 mt-3">
-            <button class="btn btn-outline-dark" type="button" (click)="closeRejection()">
+            <button
+              class="btn btn-outline-dark"
+              type="button"
+              [disabled]="requestBeingDecided !== null"
+              (click)="closeRejection()"
+            >
               Cancel
             </button>
-            <button class="btn btn-outline-dark" type="submit">Confirm rejection</button>
+            <button
+              class="btn btn-outline-dark"
+              type="submit"
+              [disabled]="requestBeingDecided !== null"
+            >
+              {{ requestBeingDecided === request.id ? 'Saving...' : 'Confirm rejection' }}
+            </button>
           </div>
         </form>
       </div>
