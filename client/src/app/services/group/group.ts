@@ -14,6 +14,12 @@ export class Group {
     });
   }
 
+  getGroupUsers(groupId: string, userId: string) {
+    return this.http.get(`${this.serverUrl}/api/groups/${groupId}/users`, {
+      params: { userId },
+    });
+  }
+
   submitGroupRequest(requestDetails: object) {
     return this.http.post(`${this.serverUrl}/api/group-requests`, requestDetails);
   }
@@ -22,6 +28,20 @@ export class Group {
     return this.http.post(
       `${this.serverUrl}/api/groups/${groupId}/join-requests`,
       requestDetails
+    );
+  }
+
+  promoteMember(groupId: string, adminDetails: object) {
+    return this.http.post(
+      `${this.serverUrl}/api/groups/${groupId}/admins`,
+      adminDetails
+    );
+  }
+
+  demoteAdmin(groupId: string, targetUserId: string, actingUserId: string) {
+    return this.http.delete(
+      `${this.serverUrl}/api/groups/${groupId}/admins/${targetUserId}`,
+      { params: { actingUserId } }
     );
   }
 }

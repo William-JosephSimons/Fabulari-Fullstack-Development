@@ -3,8 +3,8 @@
 <main class="container py-4 content-page">
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
-      <h1>Book Club Administration</h1>
-      <p class="lead mb-0">Room management</p>
+      <h1>{{ groupName }} Administration</h1>
+      <p class="lead mb-0">Group management</p>
     </div>
     <a class="btn btn-outline-dark" routerLink="/group-admin-dashboard">
       Return to dashboard
@@ -14,101 +14,215 @@
   <nav class="admin-tabs mb-4" aria-label="Group administration sections">
     <button class="btn btn-outline-dark" type="button">Overview</button>
     <button class="btn btn-outline-dark" type="button">Settings</button>
-    <button class="btn btn-outline-dark" type="button">Members</button>
-    <button class="btn btn-outline-dark active-tab" type="button" aria-current="page">Rooms</button>
+    <button
+      class="btn btn-outline-dark"
+      type="button"
+      [class.active-tab]="activeSection === 'members'"
+      [attr.aria-current]="activeSection === 'members' ? 'page' : null"
+      (click)="showSection('members')"
+    >
+      Members
+    </button>
+    <button
+      class="btn btn-outline-dark"
+      type="button"
+      [class.active-tab]="activeSection === 'rooms'"
+      [attr.aria-current]="activeSection === 'rooms' ? 'page' : null"
+      (click)="showSection('rooms')"
+    >
+      Rooms
+    </button>
     <a class="btn btn-outline-dark" [routerLink]="['/groups', groupId, 'requests']">
       Requests
     </a>
   </nav>
 
-  @if (roomMessage) {
-    <div class="alert alert-success" role="status">{{ roomMessage }}</div>
+  @if (activeSection === 'members') {
+    @if (adminMessage) {
+      <div class="alert alert-success" role="status">{{ adminMessage }}</div>
+    }
+
+    @if (usersError) {
+      <div class="alert alert-danger" role="alert">{{ usersError }}</div>
+    }
+
+    @if (usersLoading) {
+      <p>Loading group users...</p>
+    } @else {
+      <div class="row g-4">
+        <section class="col-lg-8" aria-labelledby="group-members-heading">
+          <div class="card content-card">
+            <div class="card-body">
+              <h2 id="group-members-heading" class="h4">Group members</h2>
+
+              <div class="table-responsive">
+                <table class="table table-bordered align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th scope="col">Name</th>
+                      <th scope="col">Username</th>
+                      <th scope="col">Age</th>
+                      <th scope="col">Role</th>
+                      <th scope="col">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (member of members; track member.id) {
+                      <tr>
+                        <td>{{ member.firstName }} {{ member.lastName }}</td>
+                        <td>{{ member.username }}</td>
+                        <td>{{ member.age }}</td>
+                        <td>{{ member.isAdmin ? 'Group Admin' : 'Member' }}</td>
+                        <td>
+                          @if (!member.isAdmin) {
+                            <button
+                              class="btn btn-outline-dark btn-sm"
+                              type="button"
+                              [disabled]="adminChangingId !== null"
+                              (click)="promoteMember(member)"
+                            >
+                              {{ adminChangingId === member.id ? 'Saving...' : 'Promote' }}
+                            </button>
+                          } @else if (member.id === currentUserId) {
+                            Current user
+                          } @else {
+                            <button
+                              class="btn btn-outline-dark btn-sm"
+                              type="button"
+                              [disabled]="adminChangingId !== null || administratorCount === 1"
+                              (click)="demoteAdmin(member)"
+                            >
+                              {{ adminChangingId === member.id ? 'Saving...' : 'Demote' }}
+                            </button>
+                          }
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="5">This group has no members.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="col-lg-4" aria-labelledby="banned-users-heading">
+          <div class="card content-card">
+            <div class="card-body">
+              <h2 id="banned-users-heading" class="h4">Banned users</h2>
+
+              @for (bannedUser of bannedUsers; track bannedUser.id) {
+                <div class="border rounded p-3 mb-3">
+                  <p class="fw-semibold mb-1">
+                    {{ bannedUser.firstName }} {{ bannedUser.lastName }}
+                  </p>
+                  <p class="mb-1">{{ bannedUser.username }}</p>
+                  <p class="mb-1">{{ bannedUser.reason }}</p>
+                  <p class="mb-0">{{ bannedUser.bannedAt.slice(0, 10) }}</p>
+                </div>
+              } @empty {
+                <p class="mb-0">This group has no banned users.</p>
+              }
+            </div>
+          </div>
+        </section>
+      </div>
+    }
   }
 
-  <div class="row g-4">
-    <section class="col-lg-8" aria-labelledby="managed-rooms-heading">
-      <div class="card content-card">
-        <div class="card-body">
-          <h2 id="managed-rooms-heading" class="h4">Rooms</h2>
+  @if (activeSection === 'rooms') {
+    @if (roomMessage) {
+      <div class="alert alert-success" role="status">{{ roomMessage }}</div>
+    }
 
-          <div class="table-responsive">
-            <table class="table table-bordered align-middle mb-0">
-              <thead class="table-light">
-                <tr>
-                  <th scope="col">Room</th>
-                  <th scope="col">Description</th>
-                  <th scope="col">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (room of rooms; track room.id) {
+    <div class="row g-4">
+      <section class="col-lg-8" aria-labelledby="managed-rooms-heading">
+        <div class="card content-card">
+          <div class="card-body">
+            <h2 id="managed-rooms-heading" class="h4">Rooms</h2>
+
+            <div class="table-responsive">
+              <table class="table table-bordered align-middle mb-0">
+                <thead class="table-light">
                   <tr>
-                    <td>{{ room.name }}</td>
-                    <td>{{ room.description }}</td>
-                    <td>
-                      <div class="d-flex flex-wrap gap-2">
-                        <a
-                          class="btn btn-outline-dark btn-sm"
-                          [routerLink]="['/groups', groupId, 'rooms', room.id]"
-                        >
-                          Open
-                        </a>
-                        <button class="btn btn-outline-dark btn-sm" type="button">Edit</button>
-                        <button
-                          class="btn btn-outline-dark btn-sm"
-                          type="button"
-                          (click)="deleteRoom(room.id)"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
+                    <th scope="col">Room</th>
+                    <th scope="col">Description</th>
+                    <th scope="col">Actions</th>
                   </tr>
-                } @empty {
-                  <tr>
-                    <td colspan="3">This group has no rooms.</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  @for (room of rooms; track room.id) {
+                    <tr>
+                      <td>{{ room.name }}</td>
+                      <td>{{ room.description }}</td>
+                      <td>
+                        <div class="d-flex flex-wrap gap-2">
+                          <a
+                            class="btn btn-outline-dark btn-sm"
+                            [routerLink]="['/groups', groupId, 'rooms', room.id]"
+                          >
+                            Open
+                          </a>
+                          <button class="btn btn-outline-dark btn-sm" type="button">Edit</button>
+                          <button
+                            class="btn btn-outline-dark btn-sm"
+                            type="button"
+                            (click)="deleteRoom(room.id)"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="3">This group has no rooms.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section class="col-lg-4" aria-labelledby="create-room-heading">
-      <div class="card content-card">
-        <div class="card-body">
-          <h2 id="create-room-heading" class="h4">Create a room</h2>
+      <section class="col-lg-4" aria-labelledby="create-room-heading">
+        <div class="card content-card">
+          <div class="card-body">
+            <h2 id="create-room-heading" class="h4">Create a room</h2>
 
-          <form (ngSubmit)="createRoom()">
-            <div class="mb-3">
-              <label class="form-label" for="room-name">Room name</label>
-              <input
-                id="room-name"
-                class="form-control"
-                name="roomName"
-                [(ngModel)]="newRoom.name"
-                required
-              />
-            </div>
+            <form (ngSubmit)="createRoom()">
+              <div class="mb-3">
+                <label class="form-label" for="room-name">Room name</label>
+                <input
+                  id="room-name"
+                  class="form-control"
+                  name="roomName"
+                  [(ngModel)]="newRoom.name"
+                  required
+                />
+              </div>
 
-            <div class="mb-3">
-              <label class="form-label" for="room-description">Description</label>
-              <textarea
-                id="room-description"
-                class="form-control"
-                name="roomDescription"
-                rows="3"
-                [(ngModel)]="newRoom.description"
-                required
-              ></textarea>
-            </div>
+              <div class="mb-3">
+                <label class="form-label" for="room-description">Description</label>
+                <textarea
+                  id="room-description"
+                  class="form-control"
+                  name="roomDescription"
+                  rows="3"
+                  [(ngModel)]="newRoom.description"
+                  required
+                ></textarea>
+              </div>
 
-            <button class="btn btn-outline-dark" type="submit">Create room</button>
-          </form>
+              <button class="btn btn-outline-dark" type="submit">Create room</button>
+            </form>
+          </div>
         </div>
-      </div>
-    </section>
-  </div>
+      </section>
+    </div>
+  }
 </main>
