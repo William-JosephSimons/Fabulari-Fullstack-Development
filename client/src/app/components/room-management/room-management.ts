@@ -22,6 +22,15 @@ export class RoomManagement implements OnInit {
   protected groupName = 'Group';
   protected usersLoading = true;
   protected usersError = '';
+  protected settingsMessage = '';
+  protected settingsError = '';
+  protected settingsSaving = false;
+  protected groupSettings = {
+    title: '',
+    description: '',
+    minimumAge: 0,
+    colour: '#000000',
+  };
   protected adminMessage = '';
   protected adminChangingId: string | null = null;
   protected members: any[] = [];
@@ -45,6 +54,58 @@ export class RoomManagement implements OnInit {
 
   protected showSection(section: string): void {
     this.activeSection = section;
+  }
+
+  protected saveGroupSettings(): void {
+    if (!this.groupId || !this.currentUserId) {
+      this.settingsError = 'A group and current user are required.';
+      return;
+    }
+
+    this.settingsMessage = '';
+    this.settingsError = '';
+    this.settingsSaving = true;
+
+    this.groupService
+      .updateGroupSettings(this.groupId, {
+        actingUserId: this.currentUserId,
+        title: this.groupSettings.title,
+        description: this.groupSettings.description,
+        minimumAge: this.groupSettings.minimumAge,
+        colour: this.groupSettings.colour,
+      })
+      .subscribe({
+        next: (response: any) => {
+          this.settingsSaving = false;
+
+          if (!response.valid) {
+            this.settingsError = response.message || 'The group settings could not be saved.';
+            return;
+          }
+
+          this.groupName = response.group.title;
+          this.groupSettings.title = response.group.title;
+          this.groupSettings.description = response.group.description;
+          this.groupSettings.minimumAge = response.group.minimumAge;
+          this.groupSettings.colour = response.group.colour;
+          // Match the Members tab to any removals caused by the new minimum age.
+          this.members = this.members.filter((member) => {
+            return member.age >= response.group.minimumAge;
+          });
+
+          this.settingsMessage = response.message;
+          if (response.removedMemberCount > 0) {
+            const memberWord =
+              response.removedMemberCount === 1 ? 'member' : 'members';
+            this.settingsMessage += ` ${response.removedMemberCount} under-age ${memberWord} removed.`;
+          }
+        },
+        error: (error) => {
+          this.settingsSaving = false;
+          this.settingsError =
+            error.error?.message || 'Unable to contact the server.';
+        },
+      });
   }
 
   protected promoteMember(member: any): void {
@@ -136,6 +197,7 @@ export class RoomManagement implements OnInit {
     if (!this.groupId || !this.currentUserId) {
       this.usersLoading = false;
       this.usersError = 'A group and current user are required.';
+      this.settingsError = this.usersError;
       return;
     }
 
@@ -145,10 +207,15 @@ export class RoomManagement implements OnInit {
 
         if (!response.valid) {
           this.usersError = response.message || 'Unable to load group users.';
+          this.settingsError = this.usersError;
           return;
         }
 
         this.groupName = response.group.title;
+        this.groupSettings.title = response.group.title;
+        this.groupSettings.description = response.group.description;
+        this.groupSettings.minimumAge = response.group.minimumAge;
+        this.groupSettings.colour = response.group.colour;
         this.members = response.members;
         this.bannedUsers = response.bannedUsers;
       },
@@ -156,6 +223,7 @@ export class RoomManagement implements OnInit {
         this.usersLoading = false;
         this.usersError =
           error.error?.message || 'Unable to contact the server.';
+        this.settingsError = this.usersError;
       },
     });
   }

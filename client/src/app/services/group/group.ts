@@ -20,6 +20,13 @@ export class Group {
     });
   }
 
+  updateGroupSettings(groupId: string, settingsDetails: object) {
+    return this.http.patch(
+      `${this.serverUrl}/api/groups/${groupId}`,
+      settingsDetails
+    );
+  }
+
   submitGroupRequest(requestDetails: object) {
     return this.http.post(`${this.serverUrl}/api/group-requests`, requestDetails);
   }

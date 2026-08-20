@@ -681,6 +681,9 @@ function routes(app) {
       group: {
         id: group.id,
         title: group.title,
+        description: group.description,
+        minimumAge: group.minimumAge,
+        colour: group.colour,
       },
       members,
       bannedUsers,

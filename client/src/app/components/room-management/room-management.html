@@ -13,7 +13,15 @@
 
   <nav class="admin-tabs mb-4" aria-label="Group administration sections">
     <button class="btn btn-outline-dark" type="button">Overview</button>
-    <button class="btn btn-outline-dark" type="button">Settings</button>
+    <button
+      class="btn btn-outline-dark"
+      type="button"
+      [class.active-tab]="activeSection === 'settings'"
+      [attr.aria-current]="activeSection === 'settings' ? 'page' : null"
+      (click)="showSection('settings')"
+    >
+      Settings
+    </button>
     <button
       class="btn btn-outline-dark"
       type="button"
@@ -36,6 +44,91 @@
       Requests
     </a>
   </nav>
+
+  @if (activeSection === 'settings') {
+    @if (settingsMessage) {
+      <div class="alert alert-success" role="status">{{ settingsMessage }}</div>
+    }
+
+    @if (settingsError) {
+      <div class="alert alert-danger" role="alert">{{ settingsError }}</div>
+    }
+
+    @if (usersLoading) {
+      <p>Loading group settings...</p>
+    } @else {
+      <section class="card content-card" aria-labelledby="group-settings-heading">
+        <div class="card-body">
+          <h2 id="group-settings-heading" class="h4">Group settings</h2>
+
+          <form #settingsForm="ngForm" (ngSubmit)="saveGroupSettings()">
+            <div class="mb-3">
+              <label class="form-label" for="group-title">Group title</label>
+              <input
+                id="group-title"
+                class="form-control"
+                name="groupTitle"
+                [(ngModel)]="groupSettings.title"
+                required
+              />
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label" for="group-description">Description</label>
+              <textarea
+                id="group-description"
+                class="form-control"
+                name="groupDescription"
+                rows="4"
+                [(ngModel)]="groupSettings.description"
+                required
+              ></textarea>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label" for="group-minimum-age">Minimum age</label>
+                <input
+                  id="group-minimum-age"
+                  class="form-control"
+                  name="groupMinimumAge"
+                  type="number"
+                  min="0"
+                  max="120"
+                  [(ngModel)]="groupSettings.minimumAge"
+                  required
+                />
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label" for="group-colour">Group colour</label>
+                <input
+                  id="group-colour"
+                  class="form-control form-control-color"
+                  name="groupColour"
+                  type="color"
+                  [(ngModel)]="groupSettings.colour"
+                  required
+                />
+              </div>
+            </div>
+
+            <p class="text-muted">
+              Raising the minimum age removes members who no longer meet it.
+            </p>
+
+            <button
+              class="btn btn-outline-dark"
+              type="submit"
+              [disabled]="settingsForm.invalid || settingsSaving"
+            >
+              {{ settingsSaving ? 'Saving...' : 'Save settings' }}
+            </button>
+          </form>
+        </div>
+      </section>
+    }
+  }
 
   @if (activeSection === 'members') {
     @if (adminMessage) {
