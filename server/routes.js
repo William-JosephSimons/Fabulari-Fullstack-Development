@@ -204,6 +204,22 @@ function getAdminChangeDetails(body = {}) {
   };
 }
 
+function getRoomDetails(body = {}) {
+  return {
+    actingUserId: ensureText(body.actingUserId),
+    name: ensureText(body.name),
+    description: ensureText(body.description),
+  };
+}
+
+function validateRoomDetails(details) {
+  if (!details.actingUserId || !details.name || !details.description) {
+    return "A Group Admin, room name and description are required.";
+  }
+
+  return null;
+}
+
 function getGroupMembershipStatus(data, group, user) {
   if (user.systemRole === "superAdmin") {
     return "readOnly";
@@ -687,6 +703,232 @@ function routes(app) {
       },
       members,
       bannedUsers,
+    });
+  });
+
+  app.get("/api/groups/:id/rooms", (req, res) => {
+    const data = loadData();
+    const userId = ensureText(req.query.userId);
+    const group = data.groups.find((item) => item.id === req.params.id);
+
+    if (!group) {
+      return res.status(404).json({
+        valid: false,
+        message: "Group was not found.",
+      });
+    }
+
+    const user = data.users.find((item) => item.id === userId);
+
+    if (
+      !user ||
+      user.systemRole !== "user" ||
+      !group.memberIds.includes(user.id) ||
+      user.age < group.minimumAge
+    ) {
+      return res.status(403).json({
+        valid: false,
+        message: "Only eligible group members can view these rooms.",
+      });
+    }
+
+    // roomIds keeps the rooms in the order saved by the group.
+    const rooms = group.roomIds
+      .map((roomId) => data.rooms.find((room) => room.id === roomId))
+      .filter((room) => room);
+
+    return res.status(200).json({
+      valid: true,
+      group: {
+        id: group.id,
+        title: group.title,
+        minimumAge: group.minimumAge,
+        colour: group.colour,
+        isAdmin: group.adminIds.includes(user.id),
+      },
+      rooms,
+    });
+  });
+
+  app.post("/api/groups/:id/rooms", (req, res) => {
+    const details = getRoomDetails(req.body);
+    const validationError = validateRoomDetails(details);
+
+    if (validationError) {
+      return res.status(400).json({ valid: false, message: validationError });
+    }
+
+    const data = loadData();
+    const group = data.groups.find((item) => item.id === req.params.id);
+
+    if (!group) {
+      return res.status(404).json({
+        valid: false,
+        message: "Group was not found.",
+      });
+    }
+
+    const actingUser = data.users.find((user) => {
+      return user.id === details.actingUserId;
+    });
+
+    if (
+      !actingUser ||
+      actingUser.systemRole !== "user" ||
+      !group.adminIds.includes(actingUser.id)
+    ) {
+      return res.status(403).json({
+        valid: false,
+        message: "Only a Group Admin can create rooms in this group.",
+      });
+    }
+
+    const nameAlreadyExists = data.rooms.some((room) => {
+      return (
+        room.groupId === group.id &&
+        room.name.toLowerCase() === details.name.toLowerCase()
+      );
+    });
+
+    if (nameAlreadyExists) {
+      return res.status(409).json({
+        valid: false,
+        message: "A room with that name already exists in this group.",
+      });
+    }
+
+    const now = new Date().toISOString();
+    const room = {
+      id: `room-${randomUUID()}`,
+      groupId: group.id,
+      name: details.name,
+      description: details.description,
+      createdBy: actingUser.id,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    // Rooms inherit the group's age and colour, so those values are not copied here.
+    data.rooms.push(room);
+    group.roomIds.push(room.id);
+    group.updatedAt = now;
+    saveData(data);
+
+    return res.status(201).json({
+      valid: true,
+      message: "Room created.",
+      room,
+    });
+  });
+
+  app.patch("/api/rooms/:id", (req, res) => {
+    const details = getRoomDetails(req.body);
+    const validationError = validateRoomDetails(details);
+
+    if (validationError) {
+      return res.status(400).json({ valid: false, message: validationError });
+    }
+
+    const data = loadData();
+    const room = data.rooms.find((item) => item.id === req.params.id);
+
+    if (!room) {
+      return res.status(404).json({
+        valid: false,
+        message: "Room was not found.",
+      });
+    }
+
+    const group = data.groups.find((item) => item.id === room.groupId);
+    const actingUser = data.users.find((user) => {
+      return user.id === details.actingUserId;
+    });
+
+    if (
+      !group ||
+      !actingUser ||
+      actingUser.systemRole !== "user" ||
+      !group.adminIds.includes(actingUser.id)
+    ) {
+      return res.status(403).json({
+        valid: false,
+        message: "Only a Group Admin can edit this room.",
+      });
+    }
+
+    const nameAlreadyExists = data.rooms.some((item) => {
+      return (
+        item.id !== room.id &&
+        item.groupId === group.id &&
+        item.name.toLowerCase() === details.name.toLowerCase()
+      );
+    });
+
+    if (nameAlreadyExists) {
+      return res.status(409).json({
+        valid: false,
+        message: "A room with that name already exists in this group.",
+      });
+    }
+
+    room.name = details.name;
+    room.description = details.description;
+    room.updatedAt = new Date().toISOString();
+    group.updatedAt = room.updatedAt;
+    saveData(data);
+
+    return res.status(200).json({
+      valid: true,
+      message: "Room updated.",
+      room,
+    });
+  });
+
+  app.delete("/api/rooms/:id", (req, res) => {
+    const actingUserId = ensureText(req.query.actingUserId);
+
+    if (!actingUserId) {
+      return res.status(400).json({
+        valid: false,
+        message: "An acting Group Admin is required.",
+      });
+    }
+
+    const data = loadData();
+    const room = data.rooms.find((item) => item.id === req.params.id);
+
+    if (!room) {
+      return res.status(404).json({
+        valid: false,
+        message: "Room was not found.",
+      });
+    }
+
+    const group = data.groups.find((item) => item.id === room.groupId);
+    const actingUser = data.users.find((user) => user.id === actingUserId);
+
+    if (
+      !group ||
+      !actingUser ||
+      actingUser.systemRole !== "user" ||
+      !group.adminIds.includes(actingUser.id)
+    ) {
+      return res.status(403).json({
+        valid: false,
+        message: "Only a Group Admin can delete this room.",
+      });
+    }
+
+    // Delete the room record and the matching reference held by its group.
+    data.rooms = data.rooms.filter((item) => item.id !== room.id);
+    group.roomIds = group.roomIds.filter((roomId) => roomId !== room.id);
+    group.updatedAt = new Date().toISOString();
+    saveData(data);
+
+    return res.status(200).json({
+      valid: true,
+      message: "Room deleted.",
+      roomId: room.id,
     });
   });
 
