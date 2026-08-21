@@ -1474,246 +1474,253 @@ function routes(app) {
     let responseMessage = "";
     const now = new Date().toISOString();
 
-    if (request.type === "groupCreation") {
-      if (decider.systemRole !== "superAdmin") {
-        return res.status(403).json({
-          valid: false,
-          message: "Only the Super Admin can decide group requests.",
-        });
-      }
-
-      if (details.decision === "approved") {
-        const titleAlreadyExists = data.groups.some((item) => {
-          return (
-            item.title.toLowerCase() === request.proposedGroup.title.toLowerCase()
-          );
-        });
-
-        if (titleAlreadyExists) {
-          return res.status(409).json({
+    switch (request.type) {
+      case "groupCreation": {
+        if (decider.systemRole !== "superAdmin") {
+          return res.status(403).json({
             valid: false,
-            message: "A group with that title already exists.",
+            message: "Only the Super Admin can decide group requests.",
           });
         }
 
-        group = {
-          id: `group-${randomUUID()}`,
-          title: request.proposedGroup.title,
-          description: request.proposedGroup.description,
-          minimumAge: request.proposedGroup.minimumAge,
-          colour: request.proposedGroup.colour,
-          memberIds: [requester.id],
-          adminIds: [requester.id],
-          roomIds: [],
-          createdAt: now,
-          updatedAt: now,
-        };
+        if (details.decision === "approved") {
+          const titleAlreadyExists = data.groups.some((item) => {
+            return (
+              item.title.toLowerCase() ===
+              request.proposedGroup.title.toLowerCase()
+            );
+          });
 
-        data.groups.push(group);
-        request.createdGroupId = group.id;
+          if (titleAlreadyExists) {
+            return res.status(409).json({
+              valid: false,
+              message: "A group with that title already exists.",
+            });
+          }
+
+          group = {
+            id: `group-${randomUUID()}`,
+            title: request.proposedGroup.title,
+            description: request.proposedGroup.description,
+            minimumAge: request.proposedGroup.minimumAge,
+            colour: request.proposedGroup.colour,
+            memberIds: [requester.id],
+            adminIds: [requester.id],
+            roomIds: [],
+            createdAt: now,
+            updatedAt: now,
+          };
+
+          data.groups.push(group);
+          request.createdGroupId = group.id;
+        }
+
+        responseMessage = `Group request ${details.decision}.`;
+        break;
       }
 
-      responseMessage = `Group request ${details.decision}.`;
-    }
+      case "membership": {
+        group = data.groups.find((item) => item.id === request.groupId);
 
-    if (request.type === "membership") {
-      group = data.groups.find((item) => item.id === request.groupId);
-
-      if (!group) {
-        return res.status(409).json({
-          valid: false,
-          message: "The requested group is no longer available.",
-        });
-      }
-
-      if (!group.adminIds.includes(decider.id)) {
-        return res.status(403).json({
-          valid: false,
-          message: "Only a Group Admin can decide membership requests.",
-        });
-      }
-
-      if (details.decision === "approved") {
-        if (requester.age < group.minimumAge) {
+        if (!group) {
           return res.status(409).json({
             valid: false,
-            message: "The requester no longer meets the group's minimum age.",
+            message: "The requested group is no longer available.",
           });
         }
 
-        const isGroupBanned = data.groupBans.some((ban) => {
-          return ban.groupId === group.id && ban.bannedUserId === requester.id;
-        });
-
-        if (isGroupBanned) {
-          return res.status(409).json({
+        if (!group.adminIds.includes(decider.id)) {
+          return res.status(403).json({
             valid: false,
-            message: "The requester is permanently banned from this group.",
+            message: "Only a Group Admin can decide membership requests.",
           });
         }
 
-        if (group.memberIds.includes(requester.id)) {
+        if (details.decision === "approved") {
+          if (requester.age < group.minimumAge) {
+            return res.status(409).json({
+              valid: false,
+              message: "The requester no longer meets the group's minimum age.",
+            });
+          }
+
+          const isGroupBanned = data.groupBans.some((ban) => {
+            return ban.groupId === group.id && ban.bannedUserId === requester.id;
+          });
+
+          if (isGroupBanned) {
+            return res.status(409).json({
+              valid: false,
+              message: "The requester is permanently banned from this group.",
+            });
+          }
+
+          if (group.memberIds.includes(requester.id)) {
+            return res.status(409).json({
+              valid: false,
+              message: "The requester is already a member of this group.",
+            });
+          }
+
+          group.memberIds.push(requester.id);
+          group.updatedAt = now;
+        }
+
+        responseMessage = `Membership request ${details.decision}.`;
+        break;
+      }
+
+      case "roomProposal": {
+        group = data.groups.find((item) => item.id === request.groupId);
+
+        if (!group) {
           return res.status(409).json({
             valid: false,
-            message: "The requester is already a member of this group.",
+            message: "The requested group is no longer available.",
           });
         }
 
-        group.memberIds.push(requester.id);
-        group.updatedAt = now;
-      }
-
-      responseMessage = `Membership request ${details.decision}.`;
-    }
-
-    if (request.type === "roomProposal") {
-      group = data.groups.find((item) => item.id === request.groupId);
-
-      if (!group) {
-        return res.status(409).json({
-          valid: false,
-          message: "The requested group is no longer available.",
-        });
-      }
-
-      if (!group.adminIds.includes(decider.id)) {
-        return res.status(403).json({
-          valid: false,
-          message: "Only a Group Admin can decide room proposals.",
-        });
-      }
-
-      if (details.decision === "approved") {
-        if (
-          !group.memberIds.includes(requester.id) ||
-          requester.age < group.minimumAge
-        ) {
-          return res.status(409).json({
+        if (!group.adminIds.includes(decider.id)) {
+          return res.status(403).json({
             valid: false,
-            message: "The requester is no longer an eligible group member.",
+            message: "Only a Group Admin can decide room proposals.",
           });
         }
 
-        const nameAlreadyExists = data.rooms.some((room) => {
-          return (
-            room.groupId === group.id &&
-            room.name.toLowerCase() === request.proposedRoom.name.toLowerCase()
-          );
-        });
+        if (details.decision === "approved") {
+          if (
+            !group.memberIds.includes(requester.id) ||
+            requester.age < group.minimumAge
+          ) {
+            return res.status(409).json({
+              valid: false,
+              message: "The requester is no longer an eligible group member.",
+            });
+          }
 
-        if (nameAlreadyExists) {
+          const nameAlreadyExists = data.rooms.some((room) => {
+            return (
+              room.groupId === group.id &&
+              room.name.toLowerCase() === request.proposedRoom.name.toLowerCase()
+            );
+          });
+
+          if (nameAlreadyExists) {
+            return res.status(409).json({
+              valid: false,
+              message: "A room with that name already exists in this group.",
+            });
+          }
+
+          const room = {
+            id: `room-${randomUUID()}`,
+            groupId: group.id,
+            name: request.proposedRoom.name,
+            description: request.proposedRoom.description,
+            createdBy: requester.id,
+            approvedBy: decider.id,
+            requestId: request.id,
+            createdAt: now,
+            updatedAt: now,
+          };
+
+          data.rooms.push(room);
+          group.roomIds.push(room.id);
+          group.updatedAt = now;
+          request.createdRoomId = room.id;
+        }
+
+        responseMessage = `Room proposal ${details.decision}.`;
+        break;
+      }
+
+      case "groupBanReport": {
+        group = data.groups.find((item) => item.id === request.groupId);
+
+        if (!group) {
           return res.status(409).json({
             valid: false,
-            message: "A room with that name already exists in this group.",
+            message: "The reported group is no longer available.",
           });
         }
 
-        const room = {
-          id: `room-${randomUUID()}`,
-          groupId: group.id,
-          name: request.proposedRoom.name,
-          description: request.proposedRoom.description,
-          createdBy: requester.id,
-          approvedBy: decider.id,
-          requestId: request.id,
-          createdAt: now,
-          updatedAt: now,
-        };
-
-        data.rooms.push(room);
-        group.roomIds.push(room.id);
-        group.updatedAt = now;
-        request.createdRoomId = room.id;
-      }
-
-      responseMessage = `Room proposal ${details.decision}.`;
-    }
-
-    if (request.type === "groupBanReport") {
-      group = data.groups.find((item) => item.id === request.groupId);
-
-      if (!group) {
-        return res.status(409).json({
-          valid: false,
-          message: "The reported group is no longer available.",
-        });
-      }
-
-      if (!group.adminIds.includes(decider.id)) {
-        return res.status(403).json({
-          valid: false,
-          message: "Only a Group Admin can decide group-ban reports.",
-        });
-      }
-
-      if (
-        details.decision === "approved" &&
-        decider.id === request.requesterId
-      ) {
-        return res.status(403).json({
-          valid: false,
-          message: "The report submitter cannot approve their own report.",
-        });
-      }
-
-      if (details.decision === "approved") {
-        const targetUser = data.users.find((user) => {
-          return user.id === request.targetUserId;
-        });
-
-        if (!targetUser || !group.memberIds.includes(targetUser.id)) {
-          return res.status(409).json({
+        if (!group.adminIds.includes(decider.id)) {
+          return res.status(403).json({
             valid: false,
-            message: "The reported user is no longer a group member.",
-          });
-        }
-
-        const alreadyBanned = data.groupBans.some((ban) => {
-          return (
-            ban.groupId === group.id && ban.bannedUserId === targetUser.id
-          );
-        });
-
-        if (alreadyBanned) {
-          return res.status(409).json({
-            valid: false,
-            message: "That account is already banned from this group.",
+            message: "Only a Group Admin can decide group-ban reports.",
           });
         }
 
         if (
-          group.adminIds.includes(targetUser.id) &&
-          group.adminIds.length === 1
+          details.decision === "approved" &&
+          decider.id === request.requesterId
         ) {
-          return res.status(409).json({
+          return res.status(403).json({
             valid: false,
-            message: "The final Group Admin cannot be banned.",
+            message: "The report submitter cannot approve their own report.",
           });
         }
 
-        const groupBan = {
-          id: `group-ban-${randomUUID()}`,
-          groupId: group.id,
-          bannedUserId: targetUser.id,
-          sourceRequestId: request.id,
-          approvedBy: decider.id,
-          reason: request.reason,
-          bannedAt: now,
-        };
+        if (details.decision === "approved") {
+          const targetUser = data.users.find((user) => {
+            return user.id === request.targetUserId;
+          });
 
-        data.groupBans.push(groupBan);
-        // Removing group membership also removes access to every room in the group.
-        group.memberIds = group.memberIds.filter((userId) => {
-          return userId !== targetUser.id;
-        });
-        group.adminIds = group.adminIds.filter((userId) => {
-          return userId !== targetUser.id;
-        });
-        group.updatedAt = now;
-        request.createdGroupBanId = groupBan.id;
+          if (!targetUser || !group.memberIds.includes(targetUser.id)) {
+            return res.status(409).json({
+              valid: false,
+              message: "The reported user is no longer a group member.",
+            });
+          }
+
+          const alreadyBanned = data.groupBans.some((ban) => {
+            return (
+              ban.groupId === group.id && ban.bannedUserId === targetUser.id
+            );
+          });
+
+          if (alreadyBanned) {
+            return res.status(409).json({
+              valid: false,
+              message: "That account is already banned from this group.",
+            });
+          }
+
+          if (
+            group.adminIds.includes(targetUser.id) &&
+            group.adminIds.length === 1
+          ) {
+            return res.status(409).json({
+              valid: false,
+              message: "The final Group Admin cannot be banned.",
+            });
+          }
+
+          const groupBan = {
+            id: `group-ban-${randomUUID()}`,
+            groupId: group.id,
+            bannedUserId: targetUser.id,
+            sourceRequestId: request.id,
+            approvedBy: decider.id,
+            reason: request.reason,
+            bannedAt: now,
+          };
+
+          data.groupBans.push(groupBan);
+          // Removing group membership also removes access to every room in the group.
+          group.memberIds = group.memberIds.filter((userId) => {
+            return userId !== targetUser.id;
+          });
+          group.adminIds = group.adminIds.filter((userId) => {
+            return userId !== targetUser.id;
+          });
+          group.updatedAt = now;
+          request.createdGroupBanId = groupBan.id;
+        }
+
+        responseMessage = `Group-ban report ${details.decision}.`;
+        break;
       }
-
-      responseMessage = `Group-ban report ${details.decision}.`;
     }
 
     request.status = details.decision;
