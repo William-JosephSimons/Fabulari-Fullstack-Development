@@ -64,6 +64,13 @@ export class Group {
     );
   }
 
+  submitRoomProposal(groupId: string, proposalDetails: object) {
+    return this.http.post(
+      `${this.serverUrl}/api/groups/${groupId}/room-requests`,
+      proposalDetails
+    );
+  }
+
   promoteMember(groupId: string, adminDetails: object) {
     return this.http.post(
       `${this.serverUrl}/api/groups/${groupId}/admins`,

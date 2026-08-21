@@ -624,7 +624,7 @@ function routes(app) {
     const requests = data.requests
       .filter((request) => {
         return (
-          request.type === "membership" &&
+          ["membership", "roomProposal"].includes(request.type) &&
           request.groupId === group.id &&
           request.status === "pending"
         );

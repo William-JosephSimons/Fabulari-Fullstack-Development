@@ -30,6 +30,7 @@
                 <th scope="col">Requester</th>
                 <th scope="col">Age</th>
                 <th scope="col">Type</th>
+                <th scope="col">Details</th>
                 <th scope="col">Reason</th>
                 <th scope="col">Action</th>
               </tr>
@@ -39,7 +40,17 @@
                 <tr>
                   <td>{{ request.requesterName }}</td>
                   <td>{{ request.requesterAge }}</td>
-                  <td>Membership</td>
+                  <td>
+                    {{ request.type === 'roomProposal' ? 'Room proposal' : 'Membership' }}
+                  </td>
+                  <td>
+                    @if (request.type === 'roomProposal') {
+                      <strong>{{ request.proposedRoom.name }}</strong><br />
+                      {{ request.proposedRoom.description }}
+                    } @else {
+                      Join group
+                    }
+                  </td>
                   <td>{{ request.reason }}</td>
                   <td>
                     <div class="d-grid gap-2">
@@ -64,7 +75,7 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="5">This group has no requests waiting for a decision.</td>
+                  <td colspan="6">This group has no requests waiting for a decision.</td>
                 </tr>
               }
             </tbody>
@@ -78,7 +89,12 @@
     <section class="card content-card mt-4" aria-labelledby="group-rejection-heading">
       <div class="card-body">
         <h2 id="group-rejection-heading" class="h4">Reject request</h2>
-        <p><strong>Membership - {{ request.requesterName }}</strong></p>
+        <p>
+          <strong>
+            {{ request.type === 'roomProposal' ? 'Room proposal' : 'Membership' }}
+            from {{ request.requesterName }}
+          </strong>
+        </p>
 
         <form (ngSubmit)="confirmRejection()">
           <label class="form-label" for="group-rejection-reason">Rejection reason</label>

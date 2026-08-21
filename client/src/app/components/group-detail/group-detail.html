@@ -9,37 +9,121 @@
     <a class="btn btn-outline-dark" routerLink="/groups">Return to all groups</a>
   </div>
 
-  <section class="card content-card" aria-labelledby="rooms-heading">
-    <div class="card-body">
-      <h2 id="rooms-heading" class="h4">{{ groupName }} rooms</h2>
+  @if (roomError) {
+    <div class="alert alert-danger" role="alert">{{ roomError }}</div>
+  }
 
-      <div class="table-responsive">
-        <table class="table table-bordered align-middle mb-0">
-          <thead class="table-light">
-            <tr>
-              <th scope="col">Room</th>
-              <th scope="col">Description</th>
-              <th scope="col">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (room of rooms; track room.id) {
-              <tr>
-                <td>{{ room.name }}</td>
-                <td>{{ room.description }}</td>
-                <td>
-                  <a
-                    class="btn btn-outline-dark btn-sm"
-                    [routerLink]="['/groups', groupId, 'rooms', room.id]"
-                  >
-                    Open chat
-                  </a>
-                </td>
-              </tr>
+  @if (isLoading) {
+    <p>Loading rooms...</p>
+  } @else if (!roomError) {
+    <div class="row g-4">
+      <section class="col-lg-8" aria-labelledby="rooms-heading">
+        <div class="card content-card">
+          <div class="card-body">
+            <h2 id="rooms-heading" class="h4">{{ groupName }} rooms</h2>
+
+            <div class="table-responsive">
+              <table class="table table-bordered align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th scope="col">Room</th>
+                    <th scope="col">Description</th>
+                    <th scope="col">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (room of rooms; track room.id) {
+                    <tr>
+                      <td>{{ room.name }}</td>
+                      <td>{{ room.description }}</td>
+                      <td>
+                        <a
+                          class="btn btn-outline-dark btn-sm"
+                          [routerLink]="['/groups', groupId, 'rooms', room.id]"
+                        >
+                          Open chat
+                        </a>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="3">This group has no rooms.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="col-lg-4" aria-labelledby="room-proposal-heading">
+        <div class="card content-card">
+          <div class="card-body">
+            @if (isGroupAdmin) {
+              <h2 id="room-proposal-heading" class="h4">Group administration</h2>
+              <a class="btn btn-outline-dark" [routerLink]="['/groups', groupId, 'admin']">
+                Manage rooms
+              </a>
+            } @else {
+              <h2 id="room-proposal-heading" class="h4">Propose a room</h2>
+
+              @if (proposalMessage) {
+                <div class="alert alert-success" role="status">{{ proposalMessage }}</div>
+              }
+
+              @if (proposalError) {
+                <div class="alert alert-danger" role="alert">{{ proposalError }}</div>
+              }
+
+              <form #proposalForm="ngForm" (ngSubmit)="submitRoomProposal()">
+                <div class="mb-3">
+                  <label class="form-label" for="proposed-room-name">Room name</label>
+                  <input
+                    id="proposed-room-name"
+                    class="form-control"
+                    name="proposedRoomName"
+                    [(ngModel)]="proposalDetails.name"
+                    required
+                  />
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label" for="proposed-room-description"> Description </label>
+                  <textarea
+                    id="proposed-room-description"
+                    class="form-control"
+                    name="proposedRoomDescription"
+                    rows="3"
+                    [(ngModel)]="proposalDetails.description"
+                    required
+                  ></textarea>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label" for="room-proposal-reason">Reason</label>
+                  <textarea
+                    id="room-proposal-reason"
+                    class="form-control"
+                    name="roomProposalReason"
+                    rows="3"
+                    [(ngModel)]="proposalDetails.reason"
+                    required
+                  ></textarea>
+                </div>
+
+                <button
+                  class="btn btn-outline-dark"
+                  type="submit"
+                  [disabled]="proposalForm.invalid || proposalSaving"
+                >
+                  {{ proposalSaving ? 'Submitting...' : 'Submit proposal' }}
+                </button>
+              </form>
             }
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </div>
+      </section>
     </div>
-  </section>
+  }
 </main>
