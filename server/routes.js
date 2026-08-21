@@ -220,6 +220,28 @@ function validateRoomDetails(details) {
   return null;
 }
 
+function getRoomProposalDetails(body = {}) {
+  return {
+    requesterId: ensureText(body.requesterId),
+    name: ensureText(body.name),
+    description: ensureText(body.description),
+    reason: ensureText(body.reason),
+  };
+}
+
+function validateRoomProposal(details) {
+  if (
+    !details.requesterId ||
+    !details.name ||
+    !details.description ||
+    !details.reason
+  ) {
+    return "A member, room name, description and reason are required.";
+  }
+
+  return null;
+}
+
 function getGroupMembershipStatus(data, group, user) {
   if (user.systemRole === "superAdmin") {
     return "readOnly";
@@ -932,6 +954,97 @@ function routes(app) {
     });
   });
 
+  app.post("/api/groups/:id/room-requests", (req, res) => {
+    const details = getRoomProposalDetails(req.body);
+    const validationError = validateRoomProposal(details);
+
+    if (validationError) {
+      return res.status(400).json({ valid: false, message: validationError });
+    }
+
+    const data = loadData();
+    const group = data.groups.find((item) => item.id === req.params.id);
+
+    if (!group) {
+      return res.status(404).json({
+        valid: false,
+        message: "Group was not found.",
+      });
+    }
+
+    const requester = data.users.find((user) => {
+      return user.id === details.requesterId;
+    });
+
+    if (
+      !requester ||
+      requester.systemRole !== "user" ||
+      !group.memberIds.includes(requester.id) ||
+      requester.age < group.minimumAge
+    ) {
+      return res.status(403).json({
+        valid: false,
+        message: "Only eligible group members can propose a room.",
+      });
+    }
+
+    const roomAlreadyExists = data.rooms.some((room) => {
+      return (
+        room.groupId === group.id &&
+        room.name.toLowerCase() === details.name.toLowerCase()
+      );
+    });
+
+    if (roomAlreadyExists) {
+      return res.status(409).json({
+        valid: false,
+        message: "A room with that name already exists in this group.",
+      });
+    }
+
+    const matchingProposal = data.requests.some((request) => {
+      return (
+        request.type === "roomProposal" &&
+        request.groupId === group.id &&
+        request.status === "pending" &&
+        request.proposedRoom.name.toLowerCase() === details.name.toLowerCase()
+      );
+    });
+
+    if (matchingProposal) {
+      return res.status(409).json({
+        valid: false,
+        message: "That room has already been proposed for this group.",
+      });
+    }
+
+    const request = {
+      id: `request-${randomUUID()}`,
+      type: "roomProposal",
+      requesterId: requester.id,
+      groupId: group.id,
+      proposedRoom: {
+        name: details.name,
+        description: details.description,
+      },
+      reason: details.reason,
+      status: "pending",
+      rejectionReason: null,
+      decidedBy: null,
+      createdAt: new Date().toISOString(),
+      decidedAt: null,
+    };
+
+    data.requests.push(request);
+    saveData(data);
+
+    return res.status(201).json({
+      valid: true,
+      message: "Room proposal submitted.",
+      request,
+    });
+  });
+
   app.post("/api/groups/:id/join-requests", (req, res) => {
     const details = getMembershipRequestDetails(req.body);
 
@@ -1204,7 +1317,9 @@ function routes(app) {
     }
 
     // Other request types will be added as their workflows are implemented.
-    if (!["groupCreation", "membership"].includes(request.type)) {
+    if (
+      !["groupCreation", "membership", "roomProposal"].includes(request.type)
+    ) {
       return res.status(400).json({
         valid: false,
         message: "This request type cannot be decided here yet.",
@@ -1332,6 +1447,69 @@ function routes(app) {
       }
 
       responseMessage = `Membership request ${details.decision}.`;
+    }
+
+    if (request.type === "roomProposal") {
+      group = data.groups.find((item) => item.id === request.groupId);
+
+      if (!group) {
+        return res.status(409).json({
+          valid: false,
+          message: "The requested group is no longer available.",
+        });
+      }
+
+      if (!group.adminIds.includes(decider.id)) {
+        return res.status(403).json({
+          valid: false,
+          message: "Only a Group Admin can decide room proposals.",
+        });
+      }
+
+      if (details.decision === "approved") {
+        if (
+          !group.memberIds.includes(requester.id) ||
+          requester.age < group.minimumAge
+        ) {
+          return res.status(409).json({
+            valid: false,
+            message: "The requester is no longer an eligible group member.",
+          });
+        }
+
+        const nameAlreadyExists = data.rooms.some((room) => {
+          return (
+            room.groupId === group.id &&
+            room.name.toLowerCase() === request.proposedRoom.name.toLowerCase()
+          );
+        });
+
+        if (nameAlreadyExists) {
+          return res.status(409).json({
+            valid: false,
+            message: "A room with that name already exists in this group.",
+          });
+        }
+
+        const room = {
+          id: `room-${randomUUID()}`,
+          groupId: group.id,
+          name: request.proposedRoom.name,
+          description: request.proposedRoom.description,
+          createdBy: requester.id,
+          approvedBy: decider.id,
+          requestId: request.id,
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        data.rooms.push(room);
+        group.roomIds.push(room.id);
+        group.updatedAt = now;
+        request.createdRoomId = room.id;
+      }
+
+      responseMessage = `Room proposal ${details.decision}.`;
     }
 
     request.status = details.decision;
