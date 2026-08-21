@@ -35,17 +35,19 @@ export class RoomManagement implements OnInit {
   protected adminChangingId: string | null = null;
   protected members: any[] = [];
   protected bannedUsers: any[] = [];
+  protected roomsLoading = true;
+  protected canManageRooms = false;
   protected roomMessage = '';
-  protected newRoom = { name: '', description: '' };
-
-  // The room controls use local data until the persistence routes are introduced.
-  protected rooms = [
-    { id: 'general', name: 'General', description: 'Main discussion' },
-    { id: 'reviews', name: 'Reviews', description: 'Book reviews' }
-  ];
+  protected roomError = '';
+  protected roomSaving = false;
+  protected editingRoomId: string | null = null;
+  protected deletingRoomId: string | null = null;
+  protected roomDetails = { name: '', description: '' };
+  protected rooms: any[] = [];
 
   ngOnInit(): void {
     this.loadGroupUsers();
+    this.loadRooms();
   }
 
   protected get administratorCount(): number {
@@ -175,22 +177,118 @@ export class RoomManagement implements OnInit {
       });
   }
 
-  protected createRoom(): void {
-    const roomId = this.newRoom.name.trim().toLowerCase().replaceAll(' ', '-');
+  protected saveRoom(): void {
+    if (!this.groupId || !this.currentUserId) {
+      this.roomError = 'A group and current user are required.';
+      return;
+    }
 
-    this.rooms.push({
-      id: roomId,
-      name: this.newRoom.name.trim(),
-      description: this.newRoom.description.trim()
+    const requestDetails = {
+      actingUserId: this.currentUserId,
+      name: this.roomDetails.name,
+      description: this.roomDetails.description,
+    };
+
+    this.roomMessage = '';
+    this.roomError = '';
+    this.roomSaving = true;
+
+    if (this.editingRoomId) {
+      this.groupService.updateRoom(this.editingRoomId, requestDetails).subscribe({
+        next: (response: any) => {
+          this.roomSaving = false;
+
+          if (!response.valid) {
+            this.roomError = response.message || 'The room could not be updated.';
+            return;
+          }
+
+          this.rooms = this.rooms.map((room) => {
+            return room.id === response.room.id ? response.room : room;
+          });
+          this.roomMessage = response.message;
+          this.cancelRoomEdit();
+        },
+        error: (error) => {
+          this.roomSaving = false;
+          this.roomError =
+            error.error?.message || 'Unable to contact the server.';
+        },
+      });
+      return;
+    }
+
+    this.groupService.createRoom(this.groupId, requestDetails).subscribe({
+      next: (response: any) => {
+        this.roomSaving = false;
+
+        if (!response.valid) {
+          this.roomError = response.message || 'The room could not be created.';
+          return;
+        }
+
+        this.rooms.push(response.room);
+        this.roomMessage = response.message;
+        this.roomDetails = { name: '', description: '' };
+      },
+      error: (error) => {
+        this.roomSaving = false;
+        this.roomError =
+          error.error?.message || 'Unable to contact the server.';
+      },
     });
-    this.roomMessage = `${this.newRoom.name.trim()} was added.`;
-    this.newRoom = { name: '', description: '' };
   }
 
-  protected deleteRoom(roomId: string): void {
-    const room = this.rooms.find((item) => item.id === roomId);
-    this.rooms = this.rooms.filter((item) => item.id !== roomId);
-    this.roomMessage = `${room?.name ?? 'Room'} was deleted.`;
+  protected startRoomEdit(room: any): void {
+    this.editingRoomId = room.id;
+    this.roomDetails = {
+      name: room.name,
+      description: room.description,
+    };
+    this.roomMessage = '';
+    this.roomError = '';
+  }
+
+  protected cancelRoomEdit(): void {
+    this.editingRoomId = null;
+    this.roomDetails = { name: '', description: '' };
+  }
+
+  protected deleteRoom(room: any): void {
+    if (!this.currentUserId) {
+      this.roomError = 'A current user is required.';
+      return;
+    }
+
+    if (!confirm(`Delete the ${room.name} room?`)) {
+      return;
+    }
+
+    this.roomMessage = '';
+    this.roomError = '';
+    this.deletingRoomId = room.id;
+
+    this.groupService.deleteRoom(room.id, this.currentUserId).subscribe({
+      next: (response: any) => {
+        this.deletingRoomId = null;
+
+        if (!response.valid) {
+          this.roomError = response.message || 'The room could not be deleted.';
+          return;
+        }
+
+        this.rooms = this.rooms.filter((item) => item.id !== room.id);
+        if (this.editingRoomId === room.id) {
+          this.cancelRoomEdit();
+        }
+        this.roomMessage = response.message;
+      },
+      error: (error) => {
+        this.deletingRoomId = null;
+        this.roomError =
+          error.error?.message || 'Unable to contact the server.';
+      },
+    });
   }
 
   private loadGroupUsers(): void {
@@ -224,6 +322,40 @@ export class RoomManagement implements OnInit {
         this.usersError =
           error.error?.message || 'Unable to contact the server.';
         this.settingsError = this.usersError;
+      },
+    });
+  }
+
+  private loadRooms(): void {
+    if (!this.groupId || !this.currentUserId) {
+      this.roomsLoading = false;
+      this.roomError = 'A group and current user are required.';
+      return;
+    }
+
+    this.groupService.getGroupRooms(this.groupId, this.currentUserId).subscribe({
+      next: (response: any) => {
+        this.roomsLoading = false;
+
+        if (!response.valid) {
+          this.roomError = response.message || 'Unable to load rooms.';
+          return;
+        }
+
+        this.groupName = response.group.title;
+        this.canManageRooms = response.group.isAdmin;
+
+        if (!this.canManageRooms) {
+          this.roomError = 'Only a Group Admin can manage these rooms.';
+          return;
+        }
+
+        this.rooms = response.rooms;
+      },
+      error: (error) => {
+        this.roomsLoading = false;
+        this.roomError =
+          error.error?.message || 'Unable to contact the server.';
       },
     });
   }

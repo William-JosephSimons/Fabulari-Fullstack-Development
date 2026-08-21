@@ -27,6 +27,32 @@ export class Group {
     );
   }
 
+  getGroupRooms(groupId: string, userId: string) {
+    return this.http.get(`${this.serverUrl}/api/groups/${groupId}/rooms`, {
+      params: { userId },
+    });
+  }
+
+  createRoom(groupId: string, roomDetails: object) {
+    return this.http.post(
+      `${this.serverUrl}/api/groups/${groupId}/rooms`,
+      roomDetails
+    );
+  }
+
+  updateRoom(roomId: string, roomDetails: object) {
+    return this.http.patch(
+      `${this.serverUrl}/api/rooms/${roomId}`,
+      roomDetails
+    );
+  }
+
+  deleteRoom(roomId: string, actingUserId: string) {
+    return this.http.delete(`${this.serverUrl}/api/rooms/${roomId}`, {
+      params: { actingUserId },
+    });
+  }
+
   submitGroupRequest(requestDetails: object) {
     return this.http.post(`${this.serverUrl}/api/group-requests`, requestDetails);
   }
