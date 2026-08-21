@@ -242,6 +242,14 @@ function validateRoomProposal(details) {
   return null;
 }
 
+function getGroupBanReportDetails(body = {}) {
+  return {
+    requesterId: ensureText(body.requesterId),
+    targetUserId: ensureText(body.targetUserId),
+    reason: ensureText(body.reason),
+  };
+}
+
 function getGroupMembershipStatus(data, group, user) {
   if (user.systemRole === "superAdmin") {
     return "readOnly";
@@ -1045,6 +1053,110 @@ function routes(app) {
     });
   });
 
+  app.post("/api/groups/:id/ban-reports", (req, res) => {
+    const details = getGroupBanReportDetails(req.body);
+
+    if (!details.requesterId || !details.targetUserId || !details.reason) {
+      return res.status(400).json({
+        valid: false,
+        message: "A Group Admin, target member and report reason are required.",
+      });
+    }
+
+    if (details.requesterId === details.targetUserId) {
+      return res.status(400).json({
+        valid: false,
+        message: "A Group Admin cannot report themselves.",
+      });
+    }
+
+    const data = loadData();
+    const group = data.groups.find((item) => item.id === req.params.id);
+
+    if (!group) {
+      return res.status(404).json({
+        valid: false,
+        message: "Group was not found.",
+      });
+    }
+
+    const requester = data.users.find((user) => {
+      return user.id === details.requesterId;
+    });
+
+    if (
+      !requester ||
+      requester.systemRole !== "user" ||
+      !group.adminIds.includes(requester.id)
+    ) {
+      return res.status(403).json({
+        valid: false,
+        message: "Only a Group Admin can submit a group-ban report.",
+      });
+    }
+
+    const targetUser = data.users.find((user) => {
+      return user.id === details.targetUserId;
+    });
+
+    if (!targetUser || !group.memberIds.includes(targetUser.id)) {
+      return res.status(409).json({
+        valid: false,
+        message: "Only a current group member can be reported.",
+      });
+    }
+
+    const alreadyBanned = data.groupBans.some((ban) => {
+      return ban.groupId === group.id && ban.bannedUserId === targetUser.id;
+    });
+
+    if (alreadyBanned) {
+      return res.status(409).json({
+        valid: false,
+        message: "That account is already banned from this group.",
+      });
+    }
+
+    const reportAlreadyPending = data.requests.some((request) => {
+      return (
+        request.type === "groupBanReport" &&
+        request.groupId === group.id &&
+        request.targetUserId === targetUser.id &&
+        request.status === "pending"
+      );
+    });
+
+    if (reportAlreadyPending) {
+      return res.status(409).json({
+        valid: false,
+        message: "A group-ban report for that member is already pending.",
+      });
+    }
+
+    const request = {
+      id: `request-${randomUUID()}`,
+      type: "groupBanReport",
+      requesterId: requester.id,
+      groupId: group.id,
+      targetUserId: targetUser.id,
+      reason: details.reason,
+      status: "pending",
+      rejectionReason: null,
+      decidedBy: null,
+      createdAt: new Date().toISOString(),
+      decidedAt: null,
+    };
+
+    data.requests.push(request);
+    saveData(data);
+
+    return res.status(201).json({
+      valid: true,
+      message: "Group-ban report submitted.",
+      request,
+    });
+  });
+
   app.post("/api/groups/:id/join-requests", (req, res) => {
     const details = getMembershipRequestDetails(req.body);
 
@@ -1318,7 +1430,12 @@ function routes(app) {
 
     // Other request types will be added as their workflows are implemented.
     if (
-      !["groupCreation", "membership", "roomProposal"].includes(request.type)
+      ![
+        "groupCreation",
+        "membership",
+        "roomProposal",
+        "groupBanReport",
+      ].includes(request.type)
     ) {
       return res.status(400).json({
         valid: false,
@@ -1510,6 +1627,93 @@ function routes(app) {
       }
 
       responseMessage = `Room proposal ${details.decision}.`;
+    }
+
+    if (request.type === "groupBanReport") {
+      group = data.groups.find((item) => item.id === request.groupId);
+
+      if (!group) {
+        return res.status(409).json({
+          valid: false,
+          message: "The reported group is no longer available.",
+        });
+      }
+
+      if (!group.adminIds.includes(decider.id)) {
+        return res.status(403).json({
+          valid: false,
+          message: "Only a Group Admin can decide group-ban reports.",
+        });
+      }
+
+      if (
+        details.decision === "approved" &&
+        decider.id === request.requesterId
+      ) {
+        return res.status(403).json({
+          valid: false,
+          message: "The report submitter cannot approve their own report.",
+        });
+      }
+
+      if (details.decision === "approved") {
+        const targetUser = data.users.find((user) => {
+          return user.id === request.targetUserId;
+        });
+
+        if (!targetUser || !group.memberIds.includes(targetUser.id)) {
+          return res.status(409).json({
+            valid: false,
+            message: "The reported user is no longer a group member.",
+          });
+        }
+
+        const alreadyBanned = data.groupBans.some((ban) => {
+          return (
+            ban.groupId === group.id && ban.bannedUserId === targetUser.id
+          );
+        });
+
+        if (alreadyBanned) {
+          return res.status(409).json({
+            valid: false,
+            message: "That account is already banned from this group.",
+          });
+        }
+
+        if (
+          group.adminIds.includes(targetUser.id) &&
+          group.adminIds.length === 1
+        ) {
+          return res.status(409).json({
+            valid: false,
+            message: "The final Group Admin cannot be banned.",
+          });
+        }
+
+        const groupBan = {
+          id: `group-ban-${randomUUID()}`,
+          groupId: group.id,
+          bannedUserId: targetUser.id,
+          sourceRequestId: request.id,
+          approvedBy: decider.id,
+          reason: request.reason,
+          bannedAt: now,
+        };
+
+        data.groupBans.push(groupBan);
+        // Removing group membership also removes access to every room in the group.
+        group.memberIds = group.memberIds.filter((userId) => {
+          return userId !== targetUser.id;
+        });
+        group.adminIds = group.adminIds.filter((userId) => {
+          return userId !== targetUser.id;
+        });
+        group.updatedAt = now;
+        request.createdGroupBanId = groupBan.id;
+      }
+
+      responseMessage = `Group-ban report ${details.decision}.`;
     }
 
     request.status = details.decision;
