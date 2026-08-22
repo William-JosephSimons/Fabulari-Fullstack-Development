@@ -250,6 +250,21 @@ function getGroupBanReportDetails(body = {}) {
   };
 }
 
+function getGroupDeletionRequestDetails(body = {}) {
+  return {
+    requesterId: ensureText(body.requesterId),
+    reason: ensureText(body.reason),
+  };
+}
+
+function getSystemBanRequestDetails(body = {}) {
+  return {
+    requesterId: ensureText(body.requesterId),
+    targetUserId: ensureText(body.targetUserId),
+    reason: ensureText(body.reason),
+  };
+}
+
 function getGroupMembershipStatus(data, group, user) {
   if (user.systemRole === "superAdmin") {
     return "readOnly";
@@ -1165,6 +1180,176 @@ function routes(app) {
     return res.status(201).json({
       valid: true,
       message: "Group-ban report submitted.",
+      request,
+    });
+  });
+
+  app.post("/api/groups/:id/delete-request", (req, res) => {
+    const details = getGroupDeletionRequestDetails(req.body);
+
+    if (!details.requesterId || !details.reason) {
+      return res.status(400).json({
+        valid: false,
+        message: "A Group Admin and deletion reason are required.",
+      });
+    }
+
+    const data = loadData();
+    const group = data.groups.find((item) => item.id === req.params.id);
+
+    if (!group) {
+      return res.status(404).json({
+        valid: false,
+        message: "Group was not found.",
+      });
+    }
+
+    const requester = data.users.find((user) => {
+      return user.id === details.requesterId;
+    });
+
+    if (
+      !requester ||
+      requester.systemRole !== "user" ||
+      !group.adminIds.includes(requester.id)
+    ) {
+      return res.status(403).json({
+        valid: false,
+        message: "Only a Group Admin can request group deletion.",
+      });
+    }
+
+    const deletionAlreadyPending = data.requests.some((request) => {
+      return (
+        request.type === "groupDeletion" &&
+        request.groupId === group.id &&
+        request.status === "pending"
+      );
+    });
+
+    if (deletionAlreadyPending) {
+      return res.status(409).json({
+        valid: false,
+        message: "A deletion request for this group is already pending.",
+      });
+    }
+
+    const request = {
+      id: `request-${randomUUID()}`,
+      type: "groupDeletion",
+      requesterId: requester.id,
+      groupId: group.id,
+      reason: details.reason,
+      status: "pending",
+      rejectionReason: null,
+      decidedBy: null,
+      createdAt: new Date().toISOString(),
+      decidedAt: null,
+    };
+
+    data.requests.push(request);
+    saveData(data);
+
+    return res.status(201).json({
+      valid: true,
+      message: "Group deletion request submitted.",
+      request,
+    });
+  });
+
+  app.post("/api/groups/:id/system-ban-requests", (req, res) => {
+    const details = getSystemBanRequestDetails(req.body);
+
+    if (!details.requesterId || !details.targetUserId || !details.reason) {
+      return res.status(400).json({
+        valid: false,
+        message: "A Group Admin, target user and reason are required.",
+      });
+    }
+
+    if (details.requesterId === details.targetUserId) {
+      return res.status(400).json({
+        valid: false,
+        message: "A Group Admin cannot request deletion of their own account.",
+      });
+    }
+
+    const data = loadData();
+    const group = data.groups.find((item) => item.id === req.params.id);
+
+    if (!group) {
+      return res.status(404).json({
+        valid: false,
+        message: "Group was not found.",
+      });
+    }
+
+    const requester = data.users.find((user) => {
+      return user.id === details.requesterId;
+    });
+
+    if (
+      !requester ||
+      requester.systemRole !== "user" ||
+      !group.adminIds.includes(requester.id)
+    ) {
+      return res.status(403).json({
+        valid: false,
+        message: "Only a Group Admin can request a system hard ban.",
+      });
+    }
+
+    const targetUser = data.users.find((user) => {
+      return user.id === details.targetUserId;
+    });
+
+    // Group Admins can only report accounts they are responsible for in this group.
+    if (
+      !targetUser ||
+      targetUser.systemRole !== "user" ||
+      !group.memberIds.includes(targetUser.id)
+    ) {
+      return res.status(409).json({
+        valid: false,
+        message: "Only a current group member can be submitted for a system hard ban.",
+      });
+    }
+
+    const requestAlreadyPending = data.requests.some((request) => {
+      return (
+        request.type === "systemBan" &&
+        request.targetUserId === targetUser.id &&
+        request.status === "pending"
+      );
+    });
+
+    if (requestAlreadyPending) {
+      return res.status(409).json({
+        valid: false,
+        message: "A system hard-ban request for that user is already pending.",
+      });
+    }
+
+    const request = {
+      id: `request-${randomUUID()}`,
+      type: "systemBan",
+      requesterId: requester.id,
+      groupId: group.id,
+      targetUserId: targetUser.id,
+      reason: details.reason,
+      status: "pending",
+      rejectionReason: null,
+      decidedBy: null,
+      createdAt: new Date().toISOString(),
+      decidedAt: null,
+    };
+
+    data.requests.push(request);
+    saveData(data);
+
+    return res.status(201).json({
+      valid: true,
+      message: "System hard-ban request submitted.",
       request,
     });
   });
