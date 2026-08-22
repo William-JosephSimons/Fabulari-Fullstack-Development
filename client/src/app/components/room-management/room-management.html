@@ -134,6 +134,10 @@
       <div class="alert alert-success" role="status">{{ adminMessage }}</div>
     }
 
+    @if (banReportMessage) {
+      <div class="alert alert-success" role="status">{{ banReportMessage }}</div>
+    }
+
     @if (usersError) {
       <div class="alert alert-danger" role="alert">{{ usersError }}</div>
     }
@@ -155,7 +159,7 @@
                       <th scope="col">Username</th>
                       <th scope="col">Age</th>
                       <th scope="col">Role</th>
-                      <th scope="col">Action</th>
+                      <th scope="col">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -166,27 +170,44 @@
                         <td>{{ member.age }}</td>
                         <td>{{ member.isAdmin ? 'Group Admin' : 'Member' }}</td>
                         <td>
-                          @if (!member.isAdmin) {
-                            <button
-                              class="btn btn-outline-dark btn-sm"
-                              type="button"
-                              [disabled]="adminChangingId !== null"
-                              (click)="promoteMember(member)"
-                            >
-                              {{ adminChangingId === member.id ? 'Saving...' : 'Promote' }}
-                            </button>
-                          } @else if (member.id === currentUserId) {
-                            Current user
-                          } @else {
-                            <button
-                              class="btn btn-outline-dark btn-sm"
-                              type="button"
-                              [disabled]="adminChangingId !== null || administratorCount === 1"
-                              (click)="demoteAdmin(member)"
-                            >
-                              {{ adminChangingId === member.id ? 'Saving...' : 'Demote' }}
-                            </button>
-                          }
+                          <div class="d-flex flex-wrap gap-2 align-items-center">
+                            @if (!member.isAdmin) {
+                              <button
+                                class="btn btn-outline-dark btn-sm"
+                                type="button"
+                                [disabled]="adminChangingId !== null || banReportSaving"
+                                (click)="promoteMember(member)"
+                              >
+                                {{ adminChangingId === member.id ? 'Saving...' : 'Promote' }}
+                              </button>
+                            } @else if (member.id === currentUserId) {
+                              Current user
+                            } @else {
+                              <button
+                                class="btn btn-outline-dark btn-sm"
+                                type="button"
+                                [disabled]="
+                                  adminChangingId !== null ||
+                                  banReportSaving ||
+                                  administratorCount === 1
+                                "
+                                (click)="demoteAdmin(member)"
+                              >
+                                {{ adminChangingId === member.id ? 'Saving...' : 'Demote' }}
+                              </button>
+                            }
+
+                            @if (member.id !== currentUserId) {
+                              <button
+                                class="btn btn-outline-dark btn-sm"
+                                type="button"
+                                [disabled]="banReportSaving || adminChangingId !== null"
+                                (click)="beginBanReport(member.id)"
+                              >
+                                Report
+                              </button>
+                            }
+                          </div>
                         </td>
                       </tr>
                     } @empty {
@@ -222,6 +243,50 @@
           </div>
         </section>
       </div>
+
+      @if (banTarget; as member) {
+        <section class="card content-card mt-4" aria-labelledby="ban-report-heading">
+          <div class="card-body">
+            <h2 id="ban-report-heading" class="h4">
+              Report {{ member.firstName }} {{ member.lastName }}
+            </h2>
+
+            @if (banReportError) {
+              <div class="alert alert-danger" role="alert">{{ banReportError }}</div>
+            }
+
+            <form #banReportForm="ngForm" (ngSubmit)="submitBanReport()">
+              <label class="form-label" for="ban-report-reason">Report reason</label>
+              <textarea
+                id="ban-report-reason"
+                class="form-control"
+                name="banReportReason"
+                rows="4"
+                [(ngModel)]="banReason"
+                required
+              ></textarea>
+
+              <div class="d-flex flex-wrap justify-content-end gap-2 mt-3">
+                <button
+                  class="btn btn-outline-dark"
+                  type="button"
+                  [disabled]="banReportSaving"
+                  (click)="closeBanReport()"
+                >
+                  Cancel
+                </button>
+                <button
+                  class="btn btn-outline-dark"
+                  type="submit"
+                  [disabled]="banReportForm.invalid || banReportSaving"
+                >
+                  {{ banReportSaving ? 'Submitting...' : 'Submit report' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+      }
     }
   }
 

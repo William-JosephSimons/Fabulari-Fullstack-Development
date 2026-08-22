@@ -632,7 +632,9 @@ function routes(app) {
     const requests = data.requests
       .filter((request) => {
         return (
-          ["membership", "roomProposal"].includes(request.type) &&
+          ["membership", "roomProposal", "groupBanReport"].includes(
+            request.type,
+          ) &&
           request.groupId === group.id &&
           request.status === "pending"
         );
@@ -644,6 +646,9 @@ function routes(app) {
         const requester = data.users.find(
           (item) => item.id === request.requesterId,
         );
+        const targetUser = data.users.find(
+          (item) => item.id === request.targetUserId,
+        );
 
         return {
           ...request,
@@ -652,6 +657,13 @@ function routes(app) {
               `${requester.firstName} ${requester.lastName}`
             : "Deleted user",
           requesterAge: requester ? requester.age : null,
+          targetName:
+            targetUser ?
+              `${targetUser.firstName} ${targetUser.lastName}`
+            : request.targetUserId ?
+              "Deleted user"
+            : null,
+          targetAge: targetUser ? targetUser.age : null,
         };
       });
 

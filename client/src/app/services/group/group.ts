@@ -71,6 +71,13 @@ export class Group {
     );
   }
 
+  submitGroupBanReport(groupId: string, reportDetails: object) {
+    return this.http.post(
+      `${this.serverUrl}/api/groups/${groupId}/ban-reports`,
+      reportDetails
+    );
+  }
+
   promoteMember(groupId: string, adminDetails: object) {
     return this.http.post(
       `${this.serverUrl}/api/groups/${groupId}/admins`,

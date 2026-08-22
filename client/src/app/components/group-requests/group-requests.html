@@ -40,11 +40,14 @@
                 <tr>
                   <td>{{ request.requesterName }}</td>
                   <td>{{ request.requesterAge }}</td>
+                  <td>{{ getRequestType(request) }}</td>
                   <td>
-                    {{ request.type === 'roomProposal' ? 'Room proposal' : 'Membership' }}
-                  </td>
-                  <td>
-                    @if (request.type === 'roomProposal') {
+                    @if (request.type === 'groupBanReport') {
+                      Report against <strong>{{ request.targetName }}</strong>
+                      @if (request.targetAge !== null) {
+                        <br />Age {{ request.targetAge }}
+                      }
+                    } @else if (request.type === 'roomProposal') {
                       <strong>{{ request.proposedRoom.name }}</strong><br />
                       {{ request.proposedRoom.description }}
                     } @else {
@@ -54,14 +57,19 @@
                   <td>{{ request.reason }}</td>
                   <td>
                     <div class="d-grid gap-2">
-                      <button
-                        class="btn btn-outline-dark btn-sm"
-                        type="button"
-                        [disabled]="requestBeingDecided !== null"
-                        (click)="approveRequest(request.id)"
-                      >
-                        {{ requestBeingDecided === request.id ? 'Saving...' : 'Approve' }}
-                      </button>
+                      @if (
+                        request.type !== 'groupBanReport' ||
+                        request.requesterId !== currentUserId
+                      ) {
+                        <button
+                          class="btn btn-outline-dark btn-sm"
+                          type="button"
+                          [disabled]="requestBeingDecided !== null"
+                          (click)="approveRequest(request.id)"
+                        >
+                          {{ requestBeingDecided === request.id ? 'Saving...' : 'Approve' }}
+                        </button>
+                      }
                       <button
                         class="btn btn-outline-dark btn-sm"
                         type="button"
@@ -91,8 +99,7 @@
         <h2 id="group-rejection-heading" class="h4">Reject request</h2>
         <p>
           <strong>
-            {{ request.type === 'roomProposal' ? 'Room proposal' : 'Membership' }}
-            from {{ request.requesterName }}
+            {{ getRequestType(request) }} from {{ request.requesterName }}
           </strong>
         </p>
 

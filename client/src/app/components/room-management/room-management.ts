@@ -33,6 +33,11 @@ export class RoomManagement implements OnInit {
   };
   protected adminMessage = '';
   protected adminChangingId: string | null = null;
+  protected banTargetId: string | null = null;
+  protected banReason = '';
+  protected banReportMessage = '';
+  protected banReportError = '';
+  protected banReportSaving = false;
   protected members: any[] = [];
   protected bannedUsers: any[] = [];
   protected roomsLoading = true;
@@ -52,6 +57,10 @@ export class RoomManagement implements OnInit {
 
   protected get administratorCount(): number {
     return this.members.filter((member) => member.isAdmin).length;
+  }
+
+  protected get banTarget() {
+    return this.members.find((member) => member.id === this.banTargetId);
   }
 
   protected showSection(section: string): void {
@@ -172,6 +181,60 @@ export class RoomManagement implements OnInit {
         error: (error) => {
           this.adminChangingId = null;
           this.usersError =
+            error.error?.message || 'Unable to contact the server.';
+        },
+      });
+  }
+
+  protected beginBanReport(memberId: string): void {
+    this.banTargetId = memberId;
+    this.banReason = '';
+    this.banReportMessage = '';
+    this.banReportError = '';
+  }
+
+  protected closeBanReport(): void {
+    this.banTargetId = null;
+    this.banReason = '';
+    this.banReportError = '';
+  }
+
+  protected submitBanReport(): void {
+    if (!this.groupId || !this.currentUserId || !this.banTargetId) {
+      this.banReportError = 'A group, Group Admin and target member are required.';
+      return;
+    }
+
+    if (!this.banReason.trim()) {
+      this.banReportError = 'A report reason is required.';
+      return;
+    }
+
+    this.banReportMessage = '';
+    this.banReportError = '';
+    this.banReportSaving = true;
+
+    this.groupService
+      .submitGroupBanReport(this.groupId, {
+        requesterId: this.currentUserId,
+        targetUserId: this.banTargetId,
+        reason: this.banReason,
+      })
+      .subscribe({
+        next: (response: any) => {
+          this.banReportSaving = false;
+
+          if (!response.valid) {
+            this.banReportError = response.message || 'The report could not be submitted.';
+            return;
+          }
+
+          this.closeBanReport();
+          this.banReportMessage = response.message;
+        },
+        error: (error) => {
+          this.banReportSaving = false;
+          this.banReportError =
             error.error?.message || 'Unable to contact the server.';
         },
       });

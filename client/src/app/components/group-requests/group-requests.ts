@@ -17,6 +17,7 @@ export class GroupRequests implements OnInit {
   private readonly requestService = inject(Request);
 
   protected readonly groupId = this.route.snapshot.paramMap.get('groupId');
+  protected readonly currentUserId = this.auth.getCurrentUser()?.id || '';
   protected groupName = 'Group';
   protected rejectionRequestId: string | null = null;
   protected rejectionReason = '';
@@ -33,6 +34,17 @@ export class GroupRequests implements OnInit {
 
   protected get rejectionRequest() {
     return this.requests.find((request) => request.id === this.rejectionRequestId);
+  }
+
+  protected getRequestType(request: any): string {
+    switch (request.type) {
+      case 'roomProposal':
+        return 'Room proposal';
+      case 'groupBanReport':
+        return 'Group-ban report';
+      default:
+        return 'Membership';
+    }
   }
 
   protected approveRequest(requestId: string): void {
