@@ -1625,13 +1625,15 @@ function routes(app) {
       });
     }
 
-    // Other request types will be added as their workflows are implemented.
+    // Reject unknown request types before entering the decision switch.
     if (
       ![
         "groupCreation",
         "membership",
         "roomProposal",
         "groupBanReport",
+        "groupDeletion",
+        "systemBan",
       ].includes(request.type)
     ) {
       return res.status(400).json({
@@ -1916,6 +1918,168 @@ function routes(app) {
         }
 
         responseMessage = `Group-ban report ${details.decision}.`;
+        break;
+      }
+
+      case "groupDeletion": {
+        if (decider.systemRole !== "superAdmin") {
+          return res.status(403).json({
+            valid: false,
+            message: "Only the Super Admin can decide group deletion requests.",
+          });
+        }
+
+        group = data.groups.find((item) => item.id === request.groupId);
+
+        if (!group) {
+          return res.status(409).json({
+            valid: false,
+            message: "The requested group is no longer available.",
+          });
+        }
+
+        if (
+          details.decision === "approved" &&
+          !group.adminIds.includes(requester.id)
+        ) {
+          return res.status(409).json({
+            valid: false,
+            message: "The requester is no longer a Group Admin for this group.",
+          });
+        }
+
+        if (details.decision === "approved") {
+          data.groups = data.groups.filter((item) => item.id !== group.id);
+          data.rooms = data.rooms.filter((room) => room.groupId !== group.id);
+          data.groupBans = data.groupBans.filter((ban) => {
+            return ban.groupId !== group.id;
+          });
+          // Keep this decision for history, but discard other requests that can no longer be actioned.
+          data.requests = data.requests.filter((item) => {
+            return (
+              item.id === request.id ||
+              item.groupId !== group.id ||
+              item.status !== "pending"
+            );
+          });
+        }
+
+        responseMessage = `Group deletion request ${details.decision}.`;
+        break;
+      }
+
+      case "systemBan": {
+        if (decider.systemRole !== "superAdmin") {
+          return res.status(403).json({
+            valid: false,
+            message: "Only the Super Admin can decide system hard-ban requests.",
+          });
+        }
+
+        group = data.groups.find((item) => item.id === request.groupId);
+
+        if (!group) {
+          return res.status(409).json({
+            valid: false,
+            message: "The reporting group is no longer available.",
+          });
+        }
+
+        if (details.decision === "approved") {
+          if (!group.adminIds.includes(requester.id)) {
+            return res.status(409).json({
+              valid: false,
+              message: "The requester is no longer a Group Admin for this group.",
+            });
+          }
+
+          const targetUser = data.users.find((user) => {
+            return user.id === request.targetUserId;
+          });
+
+          if (
+            !targetUser ||
+            targetUser.systemRole !== "user" ||
+            !group.memberIds.includes(targetUser.id)
+          ) {
+            return res.status(409).json({
+              valid: false,
+              message: "The target is no longer an active member of this group.",
+            });
+          }
+
+          if (targetUser.id === requester.id) {
+            return res.status(409).json({
+              valid: false,
+              message: "A Group Admin cannot request deletion of their own account.",
+            });
+          }
+
+          const groupWithoutReplacement = data.groups.find((item) => {
+            return (
+              item.adminIds.includes(targetUser.id) && item.adminIds.length === 1
+            );
+          });
+
+          if (groupWithoutReplacement) {
+            return res.status(409).json({
+              valid: false,
+              message: `${targetUser.firstName} is the final Group Admin of ${groupWithoutReplacement.title}.`,
+            });
+          }
+
+          const alreadySystemBanned = data.systemBans.some((ban) => {
+            return ban.normalizedEmail === targetUser.email.toLowerCase();
+          });
+
+          if (alreadySystemBanned) {
+            return res.status(409).json({
+              valid: false,
+              message: "That email is already permanently banned.",
+            });
+          }
+
+          const systemBan = {
+            id: `system-ban-${randomUUID()}`,
+            normalizedEmail: targetUser.email.toLowerCase(),
+            deletedUserId: targetUser.id,
+            sourceRequestId: request.id,
+            reason: request.reason,
+            bannedAt: now,
+          };
+
+          data.systemBans.push(systemBan);
+          data.users = data.users.filter((user) => user.id !== targetUser.id);
+
+          data.groups.forEach((item) => {
+            const wasMember = item.memberIds.includes(targetUser.id);
+            const wasAdmin = item.adminIds.includes(targetUser.id);
+
+            if (wasMember || wasAdmin) {
+              item.memberIds = item.memberIds.filter((userId) => {
+                return userId !== targetUser.id;
+              });
+              item.adminIds = item.adminIds.filter((userId) => {
+                return userId !== targetUser.id;
+              });
+              item.updatedAt = now;
+            }
+          });
+
+          // Pending requests from or about the deleted account cannot be completed later.
+          data.requests = data.requests.filter((item) => {
+            return (
+              item.id === request.id ||
+              item.status !== "pending" ||
+              (item.requesterId !== targetUser.id &&
+                item.targetUserId !== targetUser.id)
+            );
+          });
+
+          request.createdSystemBanId = systemBan.id;
+        }
+
+        responseMessage = `System hard-ban request ${details.decision}.`;
         break;
       }
     }
