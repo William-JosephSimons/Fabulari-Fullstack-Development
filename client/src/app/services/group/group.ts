@@ -85,6 +85,13 @@ export class Group {
     );
   }
 
+  submitSystemBanRequest(groupId: string, requestDetails: object) {
+    return this.http.post(
+      `${this.serverUrl}/api/groups/${groupId}/system-ban-requests`,
+      requestDetails
+    );
+  }
+
   promoteMember(groupId: string, adminDetails: object) {
     return this.http.post(
       `${this.serverUrl}/api/groups/${groupId}/admins`,

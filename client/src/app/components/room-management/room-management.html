@@ -179,6 +179,10 @@
       <div class="alert alert-success" role="status">{{ banReportMessage }}</div>
     }
 
+    @if (systemBanMessage) {
+      <div class="alert alert-success" role="status">{{ systemBanMessage }}</div>
+    }
+
     @if (usersError) {
       <div class="alert alert-danger" role="alert">{{ usersError }}</div>
     }
@@ -216,7 +220,11 @@
                               <button
                                 class="btn btn-outline-dark btn-sm"
                                 type="button"
-                                [disabled]="adminChangingId !== null || banReportSaving"
+                                [disabled]="
+                                  adminChangingId !== null ||
+                                  banReportSaving ||
+                                  systemBanSaving
+                                "
                                 (click)="promoteMember(member)"
                               >
                                 {{ adminChangingId === member.id ? 'Saving...' : 'Promote' }}
@@ -230,6 +238,7 @@
                                 [disabled]="
                                   adminChangingId !== null ||
                                   banReportSaving ||
+                                  systemBanSaving ||
                                   administratorCount === 1
                                 "
                                 (click)="demoteAdmin(member)"
@@ -242,10 +251,26 @@
                               <button
                                 class="btn btn-outline-dark btn-sm"
                                 type="button"
-                                [disabled]="banReportSaving || adminChangingId !== null"
+                                [disabled]="
+                                  banReportSaving ||
+                                  systemBanSaving ||
+                                  adminChangingId !== null
+                                "
                                 (click)="beginBanReport(member.id)"
                               >
-                                Report
+                                Group ban report
+                              </button>
+                              <button
+                                class="btn btn-outline-dark btn-sm"
+                                type="button"
+                                [disabled]="
+                                  systemBanSaving ||
+                                  banReportSaving ||
+                                  adminChangingId !== null
+                                "
+                                (click)="beginSystemBanRequest(member.id)"
+                              >
+                                System ban request
                               </button>
                             }
                           </div>
@@ -311,7 +336,7 @@
                 <button
                   class="btn btn-outline-dark"
                   type="button"
-                  [disabled]="banReportSaving"
+                  [disabled]="banReportSaving || systemBanSaving"
                   (click)="closeBanReport()"
                 >
                   Cancel
@@ -319,9 +344,60 @@
                 <button
                   class="btn btn-outline-dark"
                   type="submit"
-                  [disabled]="banReportForm.invalid || banReportSaving"
+                  [disabled]="
+                    banReportForm.invalid || banReportSaving || systemBanSaving
+                  "
                 >
                   {{ banReportSaving ? 'Submitting...' : 'Submit report' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+      }
+
+      @if (systemBanTarget; as member) {
+        <section class="card content-card mt-4" aria-labelledby="system-ban-heading">
+          <div class="card-body">
+            <h2 id="system-ban-heading" class="h4">
+              Request system hard ban for {{ member.firstName }} {{ member.lastName }}
+            </h2>
+            <p class="text-muted">
+              Approval deletes this account and permanently blocks its email.
+            </p>
+
+            @if (systemBanError) {
+              <div class="alert alert-danger" role="alert">{{ systemBanError }}</div>
+            }
+
+            <form #systemBanForm="ngForm" (ngSubmit)="submitSystemBanRequest()">
+              <label class="form-label" for="system-ban-reason">Request reason</label>
+              <textarea
+                id="system-ban-reason"
+                class="form-control"
+                name="systemBanReason"
+                rows="4"
+                [(ngModel)]="systemBanReason"
+                required
+              ></textarea>
+
+              <div class="d-flex flex-wrap justify-content-end gap-2 mt-3">
+                <button
+                  class="btn btn-outline-dark"
+                  type="button"
+                  [disabled]="systemBanSaving || banReportSaving"
+                  (click)="closeSystemBanRequest()"
+                >
+                  Cancel
+                </button>
+                <button
+                  class="btn btn-outline-dark"
+                  type="submit"
+                  [disabled]="
+                    systemBanForm.invalid || systemBanSaving || banReportSaving
+                  "
+                >
+                  {{ systemBanSaving ? 'Submitting...' : 'Submit request' }}
                 </button>
               </div>
             </form>

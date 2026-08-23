@@ -42,6 +42,11 @@ export class RoomManagement implements OnInit {
   protected banReportMessage = '';
   protected banReportError = '';
   protected banReportSaving = false;
+  protected systemBanTargetId: string | null = null;
+  protected systemBanReason = '';
+  protected systemBanMessage = '';
+  protected systemBanError = '';
+  protected systemBanSaving = false;
   protected members: any[] = [];
   protected bannedUsers: any[] = [];
   protected roomsLoading = true;
@@ -65,6 +70,10 @@ export class RoomManagement implements OnInit {
 
   protected get banTarget() {
     return this.members.find((member) => member.id === this.banTargetId);
+  }
+
+  protected get systemBanTarget() {
+    return this.members.find((member) => member.id === this.systemBanTargetId);
   }
 
   protected showSection(section: string): void {
@@ -232,6 +241,8 @@ export class RoomManagement implements OnInit {
   }
 
   protected beginBanReport(memberId: string): void {
+    this.closeSystemBanRequest();
+    this.systemBanMessage = '';
     this.banTargetId = memberId;
     this.banReason = '';
     this.banReportMessage = '';
@@ -280,6 +291,63 @@ export class RoomManagement implements OnInit {
         error: (error) => {
           this.banReportSaving = false;
           this.banReportError =
+            error.error?.message || 'Unable to contact the server.';
+        },
+      });
+  }
+
+  protected beginSystemBanRequest(memberId: string): void {
+    this.closeBanReport();
+    this.banReportMessage = '';
+    this.systemBanTargetId = memberId;
+    this.systemBanReason = '';
+    this.systemBanMessage = '';
+    this.systemBanError = '';
+  }
+
+  protected closeSystemBanRequest(): void {
+    this.systemBanTargetId = null;
+    this.systemBanReason = '';
+    this.systemBanError = '';
+  }
+
+  protected submitSystemBanRequest(): void {
+    if (!this.groupId || !this.currentUserId || !this.systemBanTargetId) {
+      this.systemBanError = 'A group, Group Admin and target member are required.';
+      return;
+    }
+
+    if (!this.systemBanReason.trim()) {
+      this.systemBanError = 'A system hard-ban reason is required.';
+      return;
+    }
+
+    this.systemBanMessage = '';
+    this.systemBanError = '';
+    this.systemBanSaving = true;
+
+    this.groupService
+      .submitSystemBanRequest(this.groupId, {
+        requesterId: this.currentUserId,
+        targetUserId: this.systemBanTargetId,
+        reason: this.systemBanReason,
+      })
+      .subscribe({
+        next: (response: any) => {
+          this.systemBanSaving = false;
+
+          if (!response.valid) {
+            this.systemBanError =
+              response.message || 'The system hard-ban request could not be submitted.';
+            return;
+          }
+
+          this.closeSystemBanRequest();
+          this.systemBanMessage = response.message;
+        },
+        error: (error) => {
+          this.systemBanSaving = false;
+          this.systemBanError =
             error.error?.message || 'Unable to contact the server.';
         },
       });
