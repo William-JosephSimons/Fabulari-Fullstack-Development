@@ -683,6 +683,81 @@ function routes(app) {
     });
   });
 
+  app.get("/api/audit-logs", (req, res) => {
+    const data = loadData();
+    const userId = ensureText(req.query.userId);
+    const actionType = ensureText(req.query.actionType);
+    const startDate = ensureText(req.query.startDate);
+    const endDate = ensureText(req.query.endDate);
+    const user = data.users.find((item) => item.id === userId);
+
+    if (!user || user.systemRole !== "superAdmin") {
+      return res.status(403).json({
+        valid: false,
+        message: "Only the Super Admin can view audit logs.",
+      });
+    }
+
+    const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+    if (
+      (startDate && !datePattern.test(startDate)) ||
+      (endDate && !datePattern.test(endDate))
+    ) {
+      return res.status(400).json({
+        valid: false,
+        message: "Audit dates must use the YYYY-MM-DD format.",
+      });
+    }
+
+    if (startDate && endDate && startDate > endDate) {
+      return res.status(400).json({
+        valid: false,
+        message: "The start date cannot be after the end date.",
+      });
+    }
+
+    const auditLogs = data.auditLogs
+      .filter((log) => {
+        const logDate = log.createdAt.slice(0, 10);
+        const matchesType =
+          !actionType || actionType === "all" || log.actionType === actionType;
+        const afterStart = !startDate || logDate >= startDate;
+        const beforeEnd = !endDate || logDate <= endDate;
+
+        return matchesType && afterStart && beforeEnd;
+      })
+      .sort((first, second) => {
+        return new Date(second.createdAt) - new Date(first.createdAt);
+      })
+      .map((log) => {
+        const actor = data.users.find((item) => item.id === log.actorId);
+        const group = data.groups.find((item) => item.id === log.groupId);
+        let groupName = null;
+
+        if (group) {
+          groupName = group.title;
+        } else if (log.groupId) {
+          groupName = "Deleted group";
+        }
+
+        return {
+          ...log,
+          actorUsername: actor ? actor.username : "Deleted user",
+          groupName,
+        };
+      });
+
+    const actionTypes = [
+      ...new Set(data.auditLogs.map((log) => log.actionType)),
+    ].sort();
+
+    return res.status(200).json({
+      valid: true,
+      auditLogs,
+      actionTypes,
+    });
+  });
+
   app.get("/api/groups/:id/requests", (req, res) => {
     const data = loadData();
     const userId = ensureText(req.query.userId);
