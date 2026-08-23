@@ -17,10 +17,9 @@
             [(ngModel)]="selectedActionType"
           >
             <option value="all">All actions</option>
-            <option value="groupApproved">Group approved</option>
-            <option value="roomCreated">Room created</option>
-            <option value="groupChanged">Group changed</option>
-            <option value="requestRejected">Request rejected</option>
+            @for (actionType of actionTypes; track actionType) {
+              <option [value]="actionType">{{ formatActionType(actionType) }}</option>
+            }
           </select>
         </div>
 
@@ -47,36 +46,48 @@
         </div>
 
         <div class="col-md-2 d-grid">
-          <button class="btn btn-outline-dark" type="submit">Apply filters</button>
+          <button class="btn btn-outline-dark" type="submit" [disabled]="isLoading">
+            {{ isLoading ? 'Loading...' : 'Apply filters' }}
+          </button>
         </div>
       </form>
 
-      <div class="table-responsive">
-        <table class="table table-bordered align-middle mb-0">
-          <thead class="table-light">
-            <tr>
-              <th scope="col">Date and time</th>
-              <th scope="col">Actor</th>
-              <th scope="col">Action</th>
-              <th scope="col">Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (log of filteredAuditLogs; track log.dateTime) {
+      @if (auditError) {
+        <div class="alert alert-danger" role="alert">{{ auditError }}</div>
+      }
+
+      @if (isLoading) {
+        <p class="mb-0">Loading audit logs...</p>
+      } @else {
+        <div class="table-responsive">
+          <table class="table table-bordered align-middle mb-0">
+            <thead class="table-light">
               <tr>
-                <td>{{ log.dateTime }}</td>
-                <td>{{ log.actor }}</td>
-                <td>{{ log.action }}</td>
-                <td>{{ log.details }}</td>
+                <th scope="col">Date and time</th>
+                <th scope="col">Actor</th>
+                <th scope="col">Action</th>
+                <th scope="col">Group</th>
+                <th scope="col">Details</th>
               </tr>
-            } @empty {
-              <tr>
-                <td colspan="4">No audit logs match the selected filters.</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              @for (log of auditLogs; track log.id) {
+                <tr>
+                  <td>{{ formatDateTime(log.createdAt) }}</td>
+                  <td>{{ log.actorUsername }}</td>
+                  <td>{{ formatActionType(log.actionType) }}</td>
+                  <td>{{ log.groupName || 'System' }}</td>
+                  <td>{{ log.summary }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="5">No audit logs match the selected filters.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
     </div>
   </section>
 </main>
