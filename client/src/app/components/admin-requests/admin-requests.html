@@ -23,8 +23,8 @@
             <thead class="table-light">
               <tr>
                 <th scope="col">Requester</th>
-                <th scope="col">Proposed group</th>
-                <th scope="col">Request details</th>
+                <th scope="col">Type</th>
+                <th scope="col">Request</th>
                 <th scope="col">Reason</th>
                 <th scope="col">Action</th>
               </tr>
@@ -33,14 +33,25 @@
               @for (request of requests; track request.id) {
                 <tr>
                   <td>{{ request.requesterName }}</td>
+                  <td>{{ getRequestType(request) }}</td>
                   <td>
-                    <strong>{{ request.proposedGroup.title }}</strong><br />
-                    Group creation
-                  </td>
-                  <td>
-                    <p>{{ request.proposedGroup.description }}</p>
-                    <span>Minimum age: {{ request.proposedGroup.minimumAge }}</span><br />
-                    <span>Colour: {{ request.proposedGroup.colour }}</span>
+                    @if (request.type === 'groupCreation') {
+                      <strong>{{ request.proposedGroup.title }}</strong
+                      ><br />
+                      <span>{{ request.proposedGroup.description }}</span
+                      ><br />
+                      <span>Minimum age: {{ request.proposedGroup.minimumAge }}</span
+                      ><br />
+                      <span>Colour: {{ request.proposedGroup.colour }}</span>
+                    } @else if (request.type === 'groupDeletion') {
+                      <strong>{{ request.groupName }}</strong>
+                    } @else {
+                      <strong>{{ request.targetName }}</strong>
+                      @if (request.targetUsername) {
+                        <br /><span>{{ request.targetUsername }}</span>
+                      }
+                      <br /><span>Group: {{ request.groupName }}</span>
+                    }
                   </td>
                   <td>{{ request.reason }}</td>
                   <td>
@@ -81,9 +92,8 @@
       <div class="card-body">
         <h2 id="admin-rejection-heading" class="h4">Reject request</h2>
         <p>
-          <strong>
-            Group creation - {{ request.proposedGroup.title }} - {{ request.requesterName }}
-          </strong>
+          <strong> {{ getRequestType(request) }} for {{ getRequestTarget(request) }} </strong>
+          <br />Requested by {{ request.requesterName }}
         </p>
 
         <form (ngSubmit)="confirmRejection()">

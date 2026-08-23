@@ -31,9 +31,45 @@ export class AdminRequests implements OnInit {
     return this.requests.find((request) => request.id === this.rejectionRequestId);
   }
 
+  protected getRequestType(request: any): string {
+    switch (request.type) {
+      case 'groupDeletion':
+        return 'Group deletion';
+      case 'systemBan':
+        return 'System hard ban';
+      default:
+        return 'Group creation';
+    }
+  }
+
+  protected getRequestTarget(request: any): string {
+    switch (request.type) {
+      case 'groupDeletion':
+        return request.groupName || 'Deleted group';
+      case 'systemBan':
+        return request.targetName || 'Deleted user';
+      default:
+        return request.proposedGroup?.title || 'Unnamed group';
+    }
+  }
+
   protected approveRequest(requestId: string): void {
     const request = this.requests.find((item) => item.id === requestId);
     if (!request) {
+      return;
+    }
+
+    if (
+      request.type === 'groupDeletion' &&
+      !confirm(`Permanently delete ${this.getRequestTarget(request)}?`)
+    ) {
+      return;
+    }
+
+    if (
+      request.type === 'systemBan' &&
+      !confirm(`Permanently delete ${this.getRequestTarget(request)} and ban their email?`)
+    ) {
       return;
     }
 
@@ -74,6 +110,8 @@ export class AdminRequests implements OnInit {
       this.requestError = 'You must be logged in to view requests.';
       return;
     }
+
+    this.isLoading = true;
 
     this.requestService.getAdminRequests(currentUser.id).subscribe({
       next: (response: any) => {
@@ -121,18 +159,15 @@ export class AdminRequests implements OnInit {
             return;
           }
 
-          this.removeRequest(request.id);
           this.closeRejection();
           this.decisionMessage = response.message;
+          // A destructive decision may remove other requests that are no longer valid.
+          this.loadRequests();
         },
         error: (error) => {
           this.requestBeingDecided = null;
           this.requestError = error.error?.message || 'Unable to contact the server.';
         },
       });
-  }
-
-  private removeRequest(requestId: string): void {
-    this.requests = this.requests.filter((request) => request.id !== requestId);
   }
 }

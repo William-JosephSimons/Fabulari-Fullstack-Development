@@ -597,7 +597,11 @@ function routes(app) {
 
     const requests = data.requests
       .filter((request) => {
-        return request.type === "groupCreation" && request.status === "pending";
+        return (
+          ["groupCreation", "groupDeletion", "systemBan"].includes(
+            request.type,
+          ) && request.status === "pending"
+        );
       })
       .sort((first, second) => {
         return new Date(second.createdAt) - new Date(first.createdAt);
@@ -606,14 +610,26 @@ function routes(app) {
         const requester = data.users.find(
           (item) => item.id === request.requesterId,
         );
+        const group = data.groups.find((item) => item.id === request.groupId);
+        const targetUser = data.users.find(
+          (item) => item.id === request.targetUserId,
+        );
 
-        // The inbox needs a display name, not the requester's private account details.
+        // The inbox only receives the safe names needed to identify each request.
         return {
           ...request,
           requesterName:
             requester ?
               `${requester.firstName} ${requester.lastName}`
             : "Deleted user",
+          groupName: group ? group.title : null,
+          targetName:
+            targetUser ?
+              `${targetUser.firstName} ${targetUser.lastName}`
+            : request.targetUserId ?
+              "Deleted user"
+            : null,
+          targetUsername: targetUser ? targetUser.username : null,
         };
       });
 
