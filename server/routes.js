@@ -627,6 +627,60 @@ function routes(app) {
     });
   });
 
+  app.get("/api/requests/mine", (req, res) => {
+    const data = loadData();
+    const userId = ensureText(req.query.userId);
+    const user = data.users.find((item) => item.id === userId);
+
+    if (!user) {
+      return res.status(404).json({
+        valid: false,
+        message: "Current user was not found.",
+      });
+    }
+
+    const requests = data.requests
+      .filter((request) => {
+        // The assignment requires users to see pending and rejected requests.
+        return (
+          request.requesterId === user.id &&
+          ["pending", "rejected"].includes(request.status)
+        );
+      })
+      .sort((first, second) => {
+        return new Date(second.createdAt) - new Date(first.createdAt);
+      })
+      .map((request) => {
+        const group = data.groups.find((item) => item.id === request.groupId);
+        const targetUser = data.users.find(
+          (item) => item.id === request.targetUserId,
+        );
+        let groupName = request.proposedGroup?.title || null;
+
+        if (group) {
+          groupName = group.title;
+        } else if (request.groupId) {
+          groupName = "Deleted group";
+        }
+
+        return {
+          ...request,
+          groupName,
+          targetName:
+            targetUser ?
+              `${targetUser.firstName} ${targetUser.lastName}`
+            : request.targetUserId ?
+              "Deleted user"
+            : null,
+        };
+      });
+
+    return res.status(200).json({
+      valid: true,
+      requests,
+    });
+  });
+
   app.get("/api/admin/requests", (req, res) => {
     const data = loadData();
     const userId = ensureText(req.query.userId);
