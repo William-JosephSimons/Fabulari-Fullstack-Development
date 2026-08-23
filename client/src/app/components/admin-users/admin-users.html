@@ -15,34 +15,45 @@
         name="userSearch"
         placeholder="Username, email or name"
         [(ngModel)]="searchTerm"
+        [disabled]="usersLoading"
       />
 
-      <div class="table-responsive">
-        <table class="table table-bordered align-middle mb-0">
-          <thead class="table-light">
-            <tr>
-              <th scope="col">Username</th>
-              <th scope="col">Name</th>
-              <th scope="col">Age</th>
-              <th scope="col">System role</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (user of filteredUsers; track user.username) {
+      @if (usersError) {
+        <div class="alert alert-danger" role="alert">{{ usersError }}</div>
+      }
+
+      @if (usersLoading) {
+        <p class="mb-0">Loading users...</p>
+      } @else {
+        <div class="table-responsive">
+          <table class="table table-bordered align-middle mb-0">
+            <thead class="table-light">
               <tr>
-                <td>{{ user.username }}</td>
-                <td>{{ user.name }}</td>
-                <td>{{ user.age }}</td>
-                <td>{{ user.systemRole }}</td>
+                <th scope="col">Username</th>
+                <th scope="col">Email</th>
+                <th scope="col">Name</th>
+                <th scope="col">Age</th>
+                <th scope="col">System role</th>
               </tr>
-            } @empty {
-              <tr>
-                <td colspan="4">No users match your search.</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              @for (user of filteredUsers; track user.id) {
+                <tr>
+                  <td>{{ user.username }}</td>
+                  <td>{{ user.email }}</td>
+                  <td>{{ user.firstName }} {{ user.lastName }}</td>
+                  <td>{{ user.age }}</td>
+                  <td>{{ formatSystemRole(user.systemRole) }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="5">No users match your search.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
     </div>
   </section>
 
@@ -50,26 +61,38 @@
     <div class="card-body">
       <h2 id="system-bans-heading" class="h4">Permanent system bans</h2>
 
-      <div class="table-responsive">
-        <table class="table table-bordered align-middle mb-0">
-          <thead class="table-light">
-            <tr>
-              <th scope="col">Blocked email</th>
-              <th scope="col">Date</th>
-              <th scope="col">Reason</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (ban of systemBans; track ban.email) {
+      @if (bansError) {
+        <div class="alert alert-danger" role="alert">{{ bansError }}</div>
+      }
+
+      @if (bansLoading) {
+        <p class="mb-0">Loading permanent system bans...</p>
+      } @else {
+        <div class="table-responsive">
+          <table class="table table-bordered align-middle mb-0">
+            <thead class="table-light">
               <tr>
-                <td>{{ ban.email }}</td>
-                <td>{{ ban.date }}</td>
-                <td>{{ ban.reason }}</td>
+                <th scope="col">Blocked email</th>
+                <th scope="col">Date</th>
+                <th scope="col">Reason</th>
               </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              @for (ban of systemBans; track ban.id) {
+                <tr>
+                  <td>{{ ban.normalizedEmail }}</td>
+                  <td>{{ formatDate(ban.bannedAt) }}</td>
+                  <td>{{ ban.reason }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="3">No permanent system bans have been recorded.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
     </div>
   </section>
 </main>
