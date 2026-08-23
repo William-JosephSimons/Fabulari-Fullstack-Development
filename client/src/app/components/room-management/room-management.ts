@@ -25,6 +25,10 @@ export class RoomManagement implements OnInit {
   protected settingsMessage = '';
   protected settingsError = '';
   protected settingsSaving = false;
+  protected groupDeletionReason = '';
+  protected groupDeletionMessage = '';
+  protected groupDeletionError = '';
+  protected groupDeletionSaving = false;
   protected groupSettings = {
     title: '',
     description: '',
@@ -114,6 +118,47 @@ export class RoomManagement implements OnInit {
         error: (error) => {
           this.settingsSaving = false;
           this.settingsError =
+            error.error?.message || 'Unable to contact the server.';
+        },
+      });
+  }
+
+  protected submitGroupDeletionRequest(): void {
+    if (!this.groupId || !this.currentUserId) {
+      this.groupDeletionError = 'A group and current user are required.';
+      return;
+    }
+
+    if (!this.groupDeletionReason.trim()) {
+      this.groupDeletionError = 'A deletion reason is required.';
+      return;
+    }
+
+    this.groupDeletionMessage = '';
+    this.groupDeletionError = '';
+    this.groupDeletionSaving = true;
+
+    this.groupService
+      .submitGroupDeletionRequest(this.groupId, {
+        requesterId: this.currentUserId,
+        reason: this.groupDeletionReason,
+      })
+      .subscribe({
+        next: (response: any) => {
+          this.groupDeletionSaving = false;
+
+          if (!response.valid) {
+            this.groupDeletionError =
+              response.message || 'The deletion request could not be submitted.';
+            return;
+          }
+
+          this.groupDeletionReason = '';
+          this.groupDeletionMessage = response.message;
+        },
+        error: (error) => {
+          this.groupDeletionSaving = false;
+          this.groupDeletionError =
             error.error?.message || 'Unable to contact the server.';
         },
       });

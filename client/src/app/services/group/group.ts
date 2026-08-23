@@ -78,6 +78,13 @@ export class Group {
     );
   }
 
+  submitGroupDeletionRequest(groupId: string, requestDetails: object) {
+    return this.http.post(
+      `${this.serverUrl}/api/groups/${groupId}/delete-request`,
+      requestDetails
+    );
+  }
+
   promoteMember(groupId: string, adminDetails: object) {
     return this.http.post(
       `${this.serverUrl}/api/groups/${groupId}/admins`,

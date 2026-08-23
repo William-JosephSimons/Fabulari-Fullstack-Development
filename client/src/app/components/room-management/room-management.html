@@ -119,9 +119,50 @@
             <button
               class="btn btn-outline-dark"
               type="submit"
-              [disabled]="settingsForm.invalid || settingsSaving"
+              [disabled]="settingsForm.invalid || settingsSaving || groupDeletionSaving"
             >
               {{ settingsSaving ? 'Saving...' : 'Save settings' }}
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <section class="card content-card mt-4" aria-labelledby="group-deletion-heading">
+        <div class="card-body">
+          <h2 id="group-deletion-heading" class="h4">Request group deletion</h2>
+          <p class="text-muted">The group remains available until the Super Admin approves.</p>
+
+          @if (groupDeletionMessage) {
+            <div class="alert alert-success" role="status">
+              {{ groupDeletionMessage }}
+            </div>
+          }
+
+          @if (groupDeletionError) {
+            <div class="alert alert-danger" role="alert">
+              {{ groupDeletionError }}
+            </div>
+          }
+
+          <form #groupDeletionForm="ngForm" (ngSubmit)="submitGroupDeletionRequest()">
+            <label class="form-label" for="group-deletion-reason">Deletion reason</label>
+            <textarea
+              id="group-deletion-reason"
+              class="form-control"
+              name="groupDeletionReason"
+              rows="4"
+              [(ngModel)]="groupDeletionReason"
+              required
+            ></textarea>
+
+            <button
+              class="btn btn-outline-dark mt-3"
+              type="submit"
+              [disabled]="
+                groupDeletionForm.invalid || groupDeletionSaving || settingsSaving
+              "
+            >
+              {{ groupDeletionSaving ? 'Submitting...' : 'Submit deletion request' }}
             </button>
           </form>
         </div>
