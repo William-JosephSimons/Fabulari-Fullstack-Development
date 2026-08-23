@@ -110,6 +110,19 @@ function safeGroupUser(user, isAdmin = false) {
   };
 }
 
+function addAuditLog(data, details) {
+  data.auditLogs.push({
+    id: `audit-${randomUUID()}`,
+    actorId: details.actorId,
+    actionType: details.actionType,
+    entityType: details.entityType,
+    entityId: details.entityId,
+    groupId: details.groupId || null,
+    summary: details.summary,
+    createdAt: details.createdAt || new Date().toISOString(),
+  });
+}
+
 function getGroupRequestDetails(body = {}) {
   return {
     requesterId: ensureText(body.requesterId),
@@ -340,6 +353,13 @@ function routes(app) {
 
     const user = await createUser(details, "superAdmin");
     data.users.push(user);
+    addAuditLog(data, {
+      actorId: user.id,
+      actionType: "accountCreated",
+      entityType: "user",
+      entityId: user.id,
+      summary: "Created the first Super Admin account.",
+    });
     saveData(data);
 
     return res.status(201).json({
@@ -373,6 +393,13 @@ function routes(app) {
 
     const user = await createUser(details, "user");
     data.users.push(user);
+    addAuditLog(data, {
+      actorId: user.id,
+      actionType: "accountCreated",
+      entityType: "user",
+      entityId: user.id,
+      summary: `Created the ${user.username} account.`,
+    });
     saveData(data);
 
     return res.status(201).json({
@@ -518,6 +545,15 @@ function routes(app) {
     });
     group.adminIds = remainingAdminIds;
     group.updatedAt = new Date().toISOString();
+    addAuditLog(data, {
+      actorId: actingUser.id,
+      actionType: "groupUpdated",
+      entityType: "group",
+      entityId: group.id,
+      groupId: group.id,
+      summary: `Updated ${group.title}.`,
+      createdAt: group.updatedAt,
+    });
     saveData(data);
 
     return res.status(200).json({
@@ -574,6 +610,14 @@ function routes(app) {
     };
 
     data.requests.push(request);
+    addAuditLog(data, {
+      actorId: requester.id,
+      actionType: "groupCreationRequested",
+      entityType: "request",
+      entityId: request.id,
+      summary: `Requested a new group named ${request.proposedGroup.title}.`,
+      createdAt: request.createdAt,
+    });
     saveData(data);
 
     return res.status(201).json({
@@ -885,6 +929,15 @@ function routes(app) {
     data.rooms.push(room);
     group.roomIds.push(room.id);
     group.updatedAt = now;
+    addAuditLog(data, {
+      actorId: actingUser.id,
+      actionType: "roomCreated",
+      entityType: "room",
+      entityId: room.id,
+      groupId: group.id,
+      summary: `Created ${room.name} in ${group.title}.`,
+      createdAt: now,
+    });
     saveData(data);
 
     return res.status(201).json({
@@ -948,6 +1001,15 @@ function routes(app) {
     room.description = details.description;
     room.updatedAt = new Date().toISOString();
     group.updatedAt = room.updatedAt;
+    addAuditLog(data, {
+      actorId: actingUser.id,
+      actionType: "roomUpdated",
+      entityType: "room",
+      entityId: room.id,
+      groupId: group.id,
+      summary: `Updated ${room.name} in ${group.title}.`,
+      createdAt: room.updatedAt,
+    });
     saveData(data);
 
     return res.status(200).json({
@@ -996,6 +1058,15 @@ function routes(app) {
     data.rooms = data.rooms.filter((item) => item.id !== room.id);
     group.roomIds = group.roomIds.filter((roomId) => roomId !== room.id);
     group.updatedAt = new Date().toISOString();
+    addAuditLog(data, {
+      actorId: actingUser.id,
+      actionType: "roomDeleted",
+      entityType: "room",
+      entityId: room.id,
+      groupId: group.id,
+      summary: `Deleted ${room.name} from ${group.title}.`,
+      createdAt: group.updatedAt,
+    });
     saveData(data);
 
     return res.status(200).json({
@@ -1087,6 +1158,15 @@ function routes(app) {
     };
 
     data.requests.push(request);
+    addAuditLog(data, {
+      actorId: requester.id,
+      actionType: "roomProposalSubmitted",
+      entityType: "request",
+      entityId: request.id,
+      groupId: group.id,
+      summary: `Proposed ${request.proposedRoom.name} for ${group.title}.`,
+      createdAt: request.createdAt,
+    });
     saveData(data);
 
     return res.status(201).json({
@@ -1191,6 +1271,15 @@ function routes(app) {
     };
 
     data.requests.push(request);
+    addAuditLog(data, {
+      actorId: requester.id,
+      actionType: "groupBanReported",
+      entityType: "request",
+      entityId: request.id,
+      groupId: group.id,
+      summary: `Reported ${targetUser.username} for a group ban in ${group.title}.`,
+      createdAt: request.createdAt,
+    });
     saveData(data);
 
     return res.status(201).json({
@@ -1264,6 +1353,15 @@ function routes(app) {
     };
 
     data.requests.push(request);
+    addAuditLog(data, {
+      actorId: requester.id,
+      actionType: "groupDeletionRequested",
+      entityType: "request",
+      entityId: request.id,
+      groupId: group.id,
+      summary: `Requested deletion of ${group.title}.`,
+      createdAt: request.createdAt,
+    });
     saveData(data);
 
     return res.status(201).json({
@@ -1361,6 +1459,15 @@ function routes(app) {
     };
 
     data.requests.push(request);
+    addAuditLog(data, {
+      actorId: requester.id,
+      actionType: "systemBanRequested",
+      entityType: "request",
+      entityId: request.id,
+      groupId: group.id,
+      summary: `Requested a system hard ban for ${targetUser.username}.`,
+      createdAt: request.createdAt,
+    });
     saveData(data);
 
     return res.status(201).json({
@@ -1461,6 +1568,15 @@ function routes(app) {
     };
 
     data.requests.push(request);
+    addAuditLog(data, {
+      actorId: requester.id,
+      actionType: "membershipRequested",
+      entityType: "request",
+      entityId: request.id,
+      groupId: group.id,
+      summary: `Requested membership of ${group.title}.`,
+      createdAt: request.createdAt,
+    });
     saveData(data);
 
     return res.status(201).json({
@@ -1532,6 +1648,15 @@ function routes(app) {
 
     group.adminIds.push(targetUser.id);
     group.updatedAt = new Date().toISOString();
+    addAuditLog(data, {
+      actorId: actingUser.id,
+      actionType: "groupAdminPromoted",
+      entityType: "user",
+      entityId: targetUser.id,
+      groupId: group.id,
+      summary: `Promoted ${targetUser.username} in ${group.title}.`,
+      createdAt: group.updatedAt,
+    });
     saveData(data);
 
     return res.status(200).json({
@@ -1601,6 +1726,15 @@ function routes(app) {
 
     group.adminIds = group.adminIds.filter((userId) => userId !== targetUser.id);
     group.updatedAt = new Date().toISOString();
+    addAuditLog(data, {
+      actorId: actingUser.id,
+      actionType: "groupAdminDemoted",
+      entityType: "user",
+      entityId: targetUser.id,
+      groupId: group.id,
+      summary: `Demoted ${targetUser.username} in ${group.title}.`,
+      createdAt: group.updatedAt,
+    });
     saveData(data);
 
     return res.status(200).json({
@@ -2105,6 +2239,60 @@ function routes(app) {
       details.decision === "rejected" ? details.rejectionReason : null;
     request.decidedBy = decider.id;
     request.decidedAt = now;
+
+    const approvedActionTypes = {
+      groupCreation: "groupCreationApproved",
+      membership: "membershipApproved",
+      roomProposal: "roomProposalApproved",
+      groupBanReport: "groupBanApproved",
+      groupDeletion: "groupDeletionApproved",
+      systemBan: "systemBanApproved",
+    };
+
+    let auditEntityType = "request";
+    let auditEntityId = request.id;
+
+    if (details.decision === "approved") {
+      switch (request.type) {
+        case "groupCreation":
+          auditEntityType = "group";
+          auditEntityId = request.createdGroupId;
+          break;
+        case "membership":
+          auditEntityType = "user";
+          auditEntityId = requester.id;
+          break;
+        case "roomProposal":
+          auditEntityType = "room";
+          auditEntityId = request.createdRoomId;
+          break;
+        case "groupBanReport":
+          auditEntityType = "groupBan";
+          auditEntityId = request.createdGroupBanId;
+          break;
+        case "groupDeletion":
+          auditEntityType = "group";
+          auditEntityId = request.groupId;
+          break;
+        case "systemBan":
+          auditEntityType = "systemBan";
+          auditEntityId = request.createdSystemBanId;
+          break;
+      }
+    }
+
+    addAuditLog(data, {
+      actorId: decider.id,
+      actionType:
+        details.decision === "approved" ?
+          approvedActionTypes[request.type]
+        : "requestRejected",
+      entityType: auditEntityType,
+      entityId: auditEntityId,
+      groupId: request.groupId || (group ? group.id : null),
+      summary: responseMessage,
+      createdAt: now,
+    });
 
     saveData(data);
 
