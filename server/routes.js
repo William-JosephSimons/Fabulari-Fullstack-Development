@@ -683,6 +683,63 @@ function routes(app) {
     });
   });
 
+  app.get("/api/admin/users", (req, res) => {
+    const data = loadData();
+    const userId = ensureText(req.query.userId);
+    const user = data.users.find((item) => item.id === userId);
+
+    if (!user || user.systemRole !== "superAdmin") {
+      return res.status(403).json({
+        valid: false,
+        message: "Only the Super Admin can view the system user list.",
+      });
+    }
+
+    const users = data.users
+      .map((item) => {
+        return {
+          id: item.id,
+          username: item.username,
+          email: item.email,
+          firstName: item.firstName,
+          lastName: item.lastName,
+          age: item.age,
+          avatarUrl: item.avatarUrl,
+          systemRole: item.systemRole,
+        };
+      })
+      .sort((first, second) => {
+        return first.username.localeCompare(second.username);
+      });
+
+    return res.status(200).json({
+      valid: true,
+      users,
+    });
+  });
+
+  app.get("/api/admin/system-bans", (req, res) => {
+    const data = loadData();
+    const userId = ensureText(req.query.userId);
+    const user = data.users.find((item) => item.id === userId);
+
+    if (!user || user.systemRole !== "superAdmin") {
+      return res.status(403).json({
+        valid: false,
+        message: "Only the Super Admin can view permanent system bans.",
+      });
+    }
+
+    const systemBans = [...data.systemBans].sort((first, second) => {
+      return new Date(second.bannedAt) - new Date(first.bannedAt);
+    });
+
+    return res.status(200).json({
+      valid: true,
+      systemBans,
+    });
+  });
+
   app.get("/api/audit-logs", (req, res) => {
     const data = loadData();
     const userId = ensureText(req.query.userId);
