@@ -641,7 +641,7 @@ function routes(app) {
 
     const requests = data.requests
       .filter((request) => {
-        // The assignment requires users to see pending and rejected requests.
+        // Allow the user to see pending and rejected requests.
         return (
           request.requesterId === user.id &&
           ["pending", "rejected"].includes(request.status)
@@ -667,10 +667,8 @@ function routes(app) {
           ...request,
           groupName,
           targetName:
-            targetUser ?
-              `${targetUser.firstName} ${targetUser.lastName}`
-            : request.targetUserId ?
-              "Deleted user"
+            targetUser ? `${targetUser.firstName} ${targetUser.lastName}`
+            : request.targetUserId ? "Deleted user"
             : null,
         };
       });
@@ -722,10 +720,8 @@ function routes(app) {
             : "Deleted user",
           groupName: group ? group.title : null,
           targetName:
-            targetUser ?
-              `${targetUser.firstName} ${targetUser.lastName}`
-            : request.targetUserId ?
-              "Deleted user"
+            targetUser ? `${targetUser.firstName} ${targetUser.lastName}`
+            : request.targetUserId ? "Deleted user"
             : null,
           targetUsername: targetUser ? targetUser.username : null,
         };
@@ -919,10 +915,8 @@ function routes(app) {
             : "Deleted user",
           requesterAge: requester ? requester.age : null,
           targetName:
-            targetUser ?
-              `${targetUser.firstName} ${targetUser.lastName}`
-            : request.targetUserId ?
-              "Deleted user"
+            targetUser ? `${targetUser.firstName} ${targetUser.lastName}`
+            : request.targetUserId ? "Deleted user"
             : null,
           targetAge: targetUser ? targetUser.age : null,
         };
@@ -1611,7 +1605,8 @@ function routes(app) {
     ) {
       return res.status(409).json({
         valid: false,
-        message: "Only a current group member can be submitted for a system hard ban.",
+        message:
+          "Only a current group member can be submitted for a system hard ban.",
       });
     }
 
@@ -1683,7 +1678,9 @@ function routes(app) {
       });
     }
 
-    const requester = data.users.find((user) => user.id === details.requesterId);
+    const requester = data.users.find(
+      (user) => user.id === details.requesterId,
+    );
 
     if (!requester) {
       return res.status(404).json({
@@ -1736,7 +1733,8 @@ function routes(app) {
     if (existingRequest) {
       return res.status(409).json({
         valid: false,
-        message: "You already have a pending membership request for this group.",
+        message:
+          "You already have a pending membership request for this group.",
       });
     }
 
@@ -1910,7 +1908,9 @@ function routes(app) {
       });
     }
 
-    group.adminIds = group.adminIds.filter((userId) => userId !== targetUser.id);
+    group.adminIds = group.adminIds.filter(
+      (userId) => userId !== targetUser.id,
+    );
     group.updatedAt = new Date().toISOString();
     addAuditLog(data, {
       actorId: actingUser.id,
@@ -2080,7 +2080,9 @@ function routes(app) {
           }
 
           const isGroupBanned = data.groupBans.some((ban) => {
-            return ban.groupId === group.id && ban.bannedUserId === requester.id;
+            return (
+              ban.groupId === group.id && ban.bannedUserId === requester.id
+            );
           });
 
           if (isGroupBanned) {
@@ -2136,7 +2138,8 @@ function routes(app) {
           const nameAlreadyExists = data.rooms.some((room) => {
             return (
               room.groupId === group.id &&
-              room.name.toLowerCase() === request.proposedRoom.name.toLowerCase()
+              room.name.toLowerCase() ===
+                request.proposedRoom.name.toLowerCase()
             );
           });
 
@@ -2308,7 +2311,8 @@ function routes(app) {
         if (decider.systemRole !== "superAdmin") {
           return res.status(403).json({
             valid: false,
-            message: "Only the Super Admin can decide system hard-ban requests.",
+            message:
+              "Only the Super Admin can decide system hard-ban requests.",
           });
         }
 
@@ -2325,7 +2329,8 @@ function routes(app) {
           if (!group.adminIds.includes(requester.id)) {
             return res.status(409).json({
               valid: false,
-              message: "The requester is no longer a Group Admin for this group.",
+              message:
+                "The requester is no longer a Group Admin for this group.",
             });
           }
 
@@ -2340,20 +2345,23 @@ function routes(app) {
           ) {
             return res.status(409).json({
               valid: false,
-              message: "The target is no longer an active member of this group.",
+              message:
+                "The target is no longer an active member of this group.",
             });
           }
 
           if (targetUser.id === requester.id) {
             return res.status(409).json({
               valid: false,
-              message: "A Group Admin cannot request deletion of their own account.",
+              message:
+                "A Group Admin cannot request deletion of their own account.",
             });
           }
 
           const groupWithoutReplacement = data.groups.find((item) => {
             return (
-              item.adminIds.includes(targetUser.id) && item.adminIds.length === 1
+              item.adminIds.includes(targetUser.id) &&
+              item.adminIds.length === 1
             );
           });
 

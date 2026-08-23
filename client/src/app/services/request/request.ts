@@ -8,6 +8,12 @@ export class Request {
   private readonly http = inject(HttpClient);
   private readonly serverUrl = 'http://localhost:3000';
 
+  getMyRequests(userId: string) {
+    return this.http.get(`${this.serverUrl}/api/requests/mine`, {
+      params: { userId },
+    });
+  }
+
   getAdminRequests(userId: string) {
     return this.http.get(`${this.serverUrl}/api/admin/requests`, {
       params: { userId },
