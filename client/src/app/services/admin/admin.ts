@@ -8,6 +8,12 @@ export class Admin {
   private readonly http = inject(HttpClient);
   private readonly serverUrl = 'http://localhost:3000';
 
+  getDashboardSummary(userId: string) {
+    return this.http.get(`${this.serverUrl}/api/admin/dashboard`, {
+      params: { userId },
+    });
+  }
+
   getUsers(userId: string) {
     return this.http.get(`${this.serverUrl}/api/admin/users`, {
       params: { userId },
