@@ -1,7 +1,9 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { MainNavigation } from '../main-navigation/main-navigation';
 import { Auth } from '../../services/auth/auth';
+import { Group } from '../../services/group/group';
+import { Request } from '../../services/request/request';
+import { MainNavigation } from '../main-navigation/main-navigation';
 
 @Component({
   selector: 'app-user-dashboard',
@@ -9,18 +11,97 @@ import { Auth } from '../../services/auth/auth';
   templateUrl: './user-dashboard.html',
   styleUrl: './user-dashboard.css',
 })
-export class UserDashboard {
+export class UserDashboard implements OnInit {
   private readonly auth = inject(Auth);
+  private readonly groupService = inject(Group);
+  private readonly requestService = inject(Request);
 
   protected readonly userName = this.auth.getCurrentUser()?.firstName || 'User';
+  protected groupsLoading = true;
+  protected requestsLoading = true;
+  protected groupsError = '';
+  protected requestsError = '';
+  protected groups: any[] = [];
+  protected recentRequests: any[] = [];
 
-  // Temporary display data will be replaced by the HTTP services introduced in Week 5.
-  protected readonly groups = [
-    { id: 'book-club', name: 'Book Club', access: 'Member' }
-  ];
+  ngOnInit(): void {
+    const currentUser = this.auth.getCurrentUser();
 
-  protected readonly recentRequests = [
-    { description: 'Music Makers membership', status: 'Pending' },
-    { description: 'Writers Hub membership', status: 'Rejected' }
-  ];
+    if (!currentUser) {
+      this.groupsLoading = false;
+      this.requestsLoading = false;
+      this.groupsError = 'You must be logged in to view your groups.';
+      this.requestsError = 'You must be logged in to view your requests.';
+      return;
+    }
+
+    this.loadGroups(currentUser.id);
+    this.loadRecentRequests(currentUser.id);
+  }
+
+  protected getRequestDescription(request: any): string {
+    let requestType = 'membership';
+
+    switch (request.type) {
+      case 'groupCreation':
+        requestType = 'group creation';
+        break;
+      case 'roomProposal':
+        requestType = 'room proposal';
+        break;
+      case 'groupBanReport':
+        requestType = 'group-ban report';
+        break;
+      case 'groupDeletion':
+        requestType = 'group deletion';
+        break;
+      case 'systemBan':
+        requestType = 'system hard ban';
+        break;
+    }
+
+    return `${request.groupName || 'Group'} ${requestType}`;
+  }
+
+  protected formatStatus(status: string): string {
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  }
+
+  private loadGroups(userId: string): void {
+    this.groupService.getGroups(userId).subscribe({
+      next: (response: any) => {
+        this.groupsLoading = false;
+
+        if (!response.valid) {
+          this.groupsError = response.message || 'Unable to load your groups.';
+          return;
+        }
+
+        this.groups = response.groups.filter((group: any) => group.status === 'member');
+      },
+      error: (error) => {
+        this.groupsLoading = false;
+        this.groupsError = error.error?.message || 'Unable to contact the server.';
+      },
+    });
+  }
+
+  private loadRecentRequests(userId: string): void {
+    this.requestService.getMyRequests(userId).subscribe({
+      next: (response: any) => {
+        this.requestsLoading = false;
+
+        if (!response.valid) {
+          this.requestsError = response.message || 'Unable to load your requests.';
+          return;
+        }
+
+        this.recentRequests = response.requests.slice(0, 3);
+      },
+      error: (error) => {
+        this.requestsLoading = false;
+        this.requestsError = error.error?.message || 'Unable to contact the server.';
+      },
+    });
+  }
 }
