@@ -704,6 +704,47 @@ function routes(app) {
     });
   });
 
+  app.get("/api/admin/dashboard", (req, res) => {
+    const data = loadData();
+    const userId = ensureText(req.query.userId);
+    const user = data.users.find((item) => item.id === userId);
+
+    if (!user || user.systemRole !== "superAdmin") {
+      return res.status(403).json({
+        valid: false,
+        message: "Only the Super Admin can view the system dashboard.",
+      });
+    }
+
+    // These are the three request types decided by the Super Admin.
+    const pendingRequests = data.requests.filter((request) => {
+      return (
+        ["groupCreation", "groupDeletion", "systemBan"].includes(
+          request.type,
+        ) && request.status === "pending"
+      );
+    });
+
+    return res.status(200).json({
+      valid: true,
+      summary: {
+        userCount: data.users.length,
+        groupCount: data.groups.length,
+        pendingRequestCount: pendingRequests.length,
+        systemBanCount: data.systemBans.length,
+        groupCreationRequestCount: pendingRequests.filter((request) => {
+          return request.type === "groupCreation";
+        }).length,
+        groupDeletionRequestCount: pendingRequests.filter((request) => {
+          return request.type === "groupDeletion";
+        }).length,
+        systemBanRequestCount: pendingRequests.filter((request) => {
+          return request.type === "systemBan";
+        }).length,
+      },
+    });
+  });
+
   app.get("/api/admin/requests", (req, res) => {
     const data = loadData();
     const userId = ensureText(req.query.userId);
