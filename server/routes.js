@@ -453,7 +453,6 @@ function routes(app) {
       });
     }
 
-    // Membership state is derived from current data rather than stored twice.
     const groups = data.groups.map((group) => {
       const isAdmin = group.adminIds.includes(user.id);
       let adminSummary = null;

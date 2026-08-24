@@ -10,49 +10,70 @@
         <div class="card-body">
           <h2 class="h4 card-title">Groups I administer</h2>
 
-          <div class="table-responsive mb-3">
-            <table class="table table-bordered align-middle mb-0">
-              <thead class="table-light">
-                <tr>
-                  <th scope="col">Select</th>
-                  <th scope="col">Group</th>
-                  <th scope="col">Members</th>
-                  <th scope="col">Rooms</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (group of administeredGroups; track group.id) {
-                  <tr>
-                    <td>
-                      <input
-                        class="form-check-input"
-                        type="radio"
-                        name="administeredGroup"
-                        [value]="group.id"
-                        [(ngModel)]="selectedGroupId"
-                        aria-label="Select {{ group.name }}"
-                      />
-                    </td>
-                    <td>{{ group.name }}</td>
-                    <td>{{ group.members }}</td>
-                    <td>{{ group.rooms }}</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
+          @if (groupsError) {
+            <div class="alert alert-danger" role="alert">{{ groupsError }}</div>
+          }
 
-          <div class="dashboard-actions">
-            <a class="btn btn-outline-dark" [routerLink]="['/groups', selectedGroupId, 'admin']">
-              Manage selected group
-            </a>
-            <a
-              class="btn btn-outline-dark"
-              [routerLink]="['/groups', selectedGroupId, 'rooms', 'general']"
-            >
-              Open group chat
-            </a>
-          </div>
+          @if (isLoading) {
+            <p class="mb-0">Loading administered groups...</p>
+          } @else {
+            <div class="table-responsive mb-3">
+              <table class="table table-bordered align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th scope="col">Select</th>
+                    <th scope="col">Group</th>
+                    <th scope="col">Members</th>
+                    <th scope="col">Rooms</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (group of administeredGroups; track group.id) {
+                    <tr>
+                      <td>
+                        <input
+                          class="form-check-input"
+                          type="radio"
+                          name="administeredGroup"
+                          [value]="group.id"
+                          [(ngModel)]="selectedGroupId"
+                          aria-label="Select {{ group.title }}"
+                        />
+                      </td>
+                      <td>{{ group.title }}</td>
+                      <td>{{ group.adminSummary.memberCount }}</td>
+                      <td>{{ group.adminSummary.roomCount }}</td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="4">You do not administer any groups.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+
+          @if (selectedGroup; as group) {
+            <div class="dashboard-actions">
+              <a class="btn btn-outline-dark" [routerLink]="['/groups', group.id, 'admin']">
+                Manage selected group
+              </a>
+              @if (group.adminSummary.firstRoomId) {
+                <a
+                  class="btn btn-outline-dark"
+                  [routerLink]="[
+                    '/groups',
+                    group.id,
+                    'rooms',
+                    group.adminSummary.firstRoomId
+                  ]"
+                >
+                  Open group chat
+                </a>
+              }
+            </div>
+          }
         </div>
       </div>
     </section>
@@ -60,21 +81,27 @@
     <section class="col-lg-4">
       <div class="card dashboard-card">
         <div class="card-body">
-          <h2 class="h4 card-title">Waiting for a decision: Book Club</h2>
+          <h2 class="h4 card-title">
+            Waiting for a decision: {{ selectedGroup?.title || 'No group selected' }}
+          </h2>
 
-          <dl class="dashboard-count-list mb-3">
-            @for (item of pendingItems; track item.label) {
-              <dt>{{ item.label }}</dt>
-              <dd>{{ item.count }}</dd>
-            }
-          </dl>
+          @if (selectedGroup) {
+            <dl class="dashboard-count-list mb-3">
+              @for (item of pendingItems; track item.label) {
+                <dt>{{ item.label }}</dt>
+                <dd>{{ item.count }}</dd>
+              }
+            </dl>
 
-          <a
-            class="btn btn-outline-dark"
-            [routerLink]="['/groups', selectedGroupId, 'requests']"
-          >
-            Open request inbox
-          </a>
+            <a
+              class="btn btn-outline-dark"
+              [routerLink]="['/groups', selectedGroupId, 'requests']"
+            >
+              Open request inbox
+            </a>
+          } @else if (!isLoading) {
+            <p class="mb-0">Select an administered group to view its requests.</p>
+          }
         </div>
       </div>
     </section>

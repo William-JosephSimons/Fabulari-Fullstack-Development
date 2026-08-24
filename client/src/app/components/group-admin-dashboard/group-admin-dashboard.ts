@@ -1,8 +1,9 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { MainNavigation } from '../main-navigation/main-navigation';
 import { Auth } from '../../services/auth/auth';
+import { Group } from '../../services/group/group';
+import { MainNavigation } from '../main-navigation/main-navigation';
 
 @Component({
   selector: 'app-group-admin-dashboard',
@@ -10,21 +11,59 @@ import { Auth } from '../../services/auth/auth';
   templateUrl: './group-admin-dashboard.html',
   styleUrl: './group-admin-dashboard.css',
 })
-export class GroupAdminDashboard {
+export class GroupAdminDashboard implements OnInit {
   private readonly auth = inject(Auth);
+  private readonly groupService = inject(Group);
 
   protected readonly userName = this.auth.getCurrentUser()?.firstName || 'User';
-  protected selectedGroupId = 'book-club';
+  protected selectedGroupId: string | null = null;
+  protected isLoading = true;
+  protected groupsError = '';
+  protected administeredGroups: any[] = [];
 
-  // These values let the selection and summary layout work before services are connected.
-  protected readonly administeredGroups = [
-    { id: 'book-club', name: 'Book Club', members: 24, rooms: 3 },
-    { id: 'writers-hub', name: 'Writers Hub', members: 15, rooms: 2 }
-  ];
+  ngOnInit(): void {
+    this.loadGroups();
+  }
 
-  protected readonly pendingItems = [
-    { label: 'Membership requests', count: 3 },
-    { label: 'Room proposals', count: 1 },
-    { label: 'Group-ban reports', count: 1 }
-  ];
+  protected get selectedGroup() {
+    return this.administeredGroups.find((group) => group.id === this.selectedGroupId);
+  }
+
+  protected get pendingItems() {
+    const summary = this.selectedGroup?.adminSummary;
+
+    return [
+      { label: 'Membership requests', count: summary?.membershipRequestCount || 0 },
+      { label: 'Room proposals', count: summary?.roomProposalCount || 0 },
+      { label: 'Group-ban reports', count: summary?.groupBanReportCount || 0 },
+    ];
+  }
+
+  private loadGroups(): void {
+    const currentUser = this.auth.getCurrentUser();
+
+    if (!currentUser) {
+      this.isLoading = false;
+      this.groupsError = 'You must be logged in to view administered groups.';
+      return;
+    }
+
+    this.groupService.getGroups(currentUser.id).subscribe({
+      next: (response: any) => {
+        this.isLoading = false;
+
+        if (!response.valid) {
+          this.groupsError = response.message || 'Unable to load administered groups.';
+          return;
+        }
+
+        this.administeredGroups = response.groups.filter((group: any) => group.isAdmin);
+        this.selectedGroupId = this.administeredGroups[0]?.id || null;
+      },
+      error: (error) => {
+        this.isLoading = false;
+        this.groupsError = error.error?.message || 'Unable to contact the server.';
+      },
+    });
+  }
 }
