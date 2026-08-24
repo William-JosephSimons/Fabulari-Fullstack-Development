@@ -455,6 +455,31 @@ function routes(app) {
 
     // Membership state is derived from current data rather than stored twice.
     const groups = data.groups.map((group) => {
+      const isAdmin = group.adminIds.includes(user.id);
+      let adminSummary = null;
+
+      if (isAdmin) {
+        const pendingRequests = data.requests.filter((request) => {
+          return request.groupId === group.id && request.status === "pending";
+        });
+
+        // Workload details are only returned for groups this user administers.
+        adminSummary = {
+          memberCount: group.memberIds.length,
+          roomCount: group.roomIds.length,
+          firstRoomId: group.roomIds[0] || null,
+          membershipRequestCount: pendingRequests.filter((request) => {
+            return request.type === "membership";
+          }).length,
+          roomProposalCount: pendingRequests.filter((request) => {
+            return request.type === "roomProposal";
+          }).length,
+          groupBanReportCount: pendingRequests.filter((request) => {
+            return request.type === "groupBanReport";
+          }).length,
+        };
+      }
+
       return {
         id: group.id,
         title: group.title,
@@ -462,7 +487,8 @@ function routes(app) {
         minimumAge: group.minimumAge,
         colour: group.colour,
         status: getGroupMembershipStatus(data, group, user),
-        isAdmin: group.adminIds.includes(user.id),
+        isAdmin,
+        adminSummary,
       };
     });
 
