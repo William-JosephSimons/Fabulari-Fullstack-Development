@@ -1,7 +1,7 @@
 <app-main-navigation />
 
 <main class="container py-4 content-page">
-  <h1 class="mb-4">Browse Groups</h1>
+  <h1 class="visually-hidden">Browse Groups</h1>
 
   <div class="row g-4">
     <section class="col-lg-7" aria-labelledby="available-groups-heading">
@@ -32,7 +32,7 @@
           } @else {
             <div class="group-list">
               @for (group of filteredGroups; track group.id) {
-                <article class="border rounded p-3">
+                <article class="group-summary p-3" [style.border-left-color]="group.colour">
                   <div class="d-flex flex-wrap justify-content-between gap-2">
                     <div>
                       <h3 class="h5 mb-1">{{ group.title }}</h3>

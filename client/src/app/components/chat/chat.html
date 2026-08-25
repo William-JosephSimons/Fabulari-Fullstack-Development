@@ -1,7 +1,7 @@
 <app-main-navigation />
 
 <main class="container-fluid py-4 chat-page">
-  <h1 class="h2 mb-3">{{ groupName }} / {{ roomName }}</h1>
+  <h1 class="visually-hidden">{{ groupName }} / {{ roomName }}</h1>
 
   @if (loadError) {
     <div class="alert alert-danger" role="alert">{{ loadError }}</div>

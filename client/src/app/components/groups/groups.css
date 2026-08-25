@@ -3,6 +3,13 @@
   gap: 0.75rem;
 }
 
+.group-summary {
+  background-color: #ffffff;
+  border: 1px solid var(--fabulari-border);
+  border-left-width: 0.4rem;
+  border-radius: 0.5rem;
+}
+
 .form-control-color {
   width: 100%;
 }

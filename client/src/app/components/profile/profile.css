@@ -13,12 +13,14 @@
   width: 110px;
   height: 110px;
   place-items: center;
-  background-color: #e8e9ee;
-  border: 1px solid var(--fabulari-navy);
+  background-color: var(--fabulari-blue-soft);
+  border: 3px solid var(--fabulari-blue);
   border-radius: 50%;
+  color: var(--fabulari-navy);
   font-size: 2.5rem;
+  font-weight: 700;
 }
 
 .read-only-field {
-  background-color: #e8e9ee;
+  background-color: #eef1f6;
 }

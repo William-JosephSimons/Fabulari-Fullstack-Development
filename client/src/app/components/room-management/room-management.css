@@ -5,6 +5,7 @@
 }
 
 .active-tab {
+  background-color: var(--fabulari-yellow-soft);
+  border-color: var(--fabulari-blue);
   font-weight: 600;
-  border-width: 2px;
 }

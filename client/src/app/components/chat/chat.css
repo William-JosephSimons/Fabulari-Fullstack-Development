@@ -12,7 +12,9 @@
 .chat-panel {
   min-height: 0;
   overflow: hidden;
-  border-color: var(--fabulari-border);
+  border: 1px solid var(--fabulari-border);
+  border-radius: 0.5rem;
+  box-shadow: var(--fabulari-shadow);
 }
 
 .chat-panel > .card-body {
@@ -20,8 +22,9 @@
 }
 
 .current-room {
+  background-color: var(--fabulari-yellow-soft);
+  border-color: var(--fabulari-blue);
   font-weight: 600;
-  border-width: 2px;
 }
 
 .chat-main > .chat-main-body {
@@ -58,12 +61,19 @@
   height: 2rem;
   place-items: center;
   flex: 0 0 auto;
-  border: 1px solid var(--fabulari-navy);
+  background-color: var(--fabulari-blue-soft);
+  border: 2px solid var(--fabulari-blue);
   border-radius: 50%;
+  color: var(--fabulari-navy);
+  font-weight: 700;
 }
 
 .admin-badge {
-  color: #9a6500;
+  padding: 0.1rem 0.45rem;
+  background-color: var(--fabulari-yellow-soft);
+  border-radius: 1rem;
+  color: #72520a;
+  font-size: 0.8rem;
 }
 
 .message-image-placeholder {
@@ -80,6 +90,7 @@
   display: grid;
   gap: 0.75rem;
   padding-top: 1rem;
+  border-top: 1px solid var(--fabulari-border);
 }
 
 @media (max-width: 992px) {

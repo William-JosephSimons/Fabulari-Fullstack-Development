@@ -6,6 +6,10 @@
   --fabulari-red: #ff6366;
   --fabulari-background: #f5f6fa;
   --fabulari-border: #d8dbe6;
+  --fabulari-blue-soft: #eaf5ff;
+  --fabulari-yellow-soft: #fff6dd;
+  --fabulari-red-soft: #fff0f1;
+  --fabulari-shadow: 0 0.15rem 0.55rem rgba(43, 51, 79, 0.07);
 }
 
 html,
@@ -17,12 +21,14 @@ body {
   margin: 0;
   background-color: var(--fabulari-background);
   color: var(--fabulari-navy);
+  font-family: "Segoe UI", Arial, sans-serif;
 }
 
 /* All three navigation variants share the same structure and responsive behaviour. */
 .fabulari-header {
   background-color: #ffffff;
   border-bottom: 1px solid var(--fabulari-border);
+  box-shadow: 0 0.1rem 0.4rem rgba(43, 51, 79, 0.06);
 }
 
 .fabulari-brand {
@@ -32,7 +38,7 @@ body {
 }
 
 .fabulari-brand img {
-  width: 150px;
+  width: 160px;
   height: auto;
 }
 
@@ -40,12 +46,14 @@ body {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
+  background-color: #ffffff;
   border-top: 1px solid var(--fabulari-border);
 }
 
 .fabulari-nav a,
 .fabulari-nav button {
   border: 0;
+  border-bottom: 0.15rem solid transparent;
   background-color: transparent;
   padding: 0.75rem 1rem;
   color: var(--fabulari-navy);
@@ -53,20 +61,95 @@ body {
   text-decoration: none;
 }
 
-.fabulari-nav a:hover,
-.fabulari-nav a.active,
-.fabulari-nav button:hover {
-  background-color: #fff4d6;
+.fabulari-nav a:hover {
+  background-color: var(--fabulari-blue-soft);
 }
 
 .fabulari-nav a.active {
+  border-bottom-color: var(--fabulari-blue);
   font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 0.25rem;
+}
+
+.fabulari-nav button:hover {
+  background-color: var(--fabulari-red-soft);
+  color: #a52d35;
 }
 
 .fabulari-nav button {
   cursor: pointer;
+}
+
+.btn-outline-dark {
+  --bs-btn-color: var(--fabulari-navy);
+  --bs-btn-border-color: var(--fabulari-blue);
+  --bs-btn-hover-color: var(--fabulari-navy);
+  --bs-btn-hover-bg: var(--fabulari-blue-soft);
+  --bs-btn-hover-border-color: var(--fabulari-blue);
+  --bs-btn-focus-shadow-rgb: 77, 163, 245;
+  --bs-btn-active-color: #ffffff;
+  --bs-btn-active-bg: var(--fabulari-navy);
+  --bs-btn-active-border-color: var(--fabulari-navy);
+  --bs-btn-disabled-color: #73798c;
+  --bs-btn-disabled-border-color: #bfc8d7;
+  border-width: 1px;
+  font-weight: 600;
+}
+
+.form-label {
+  color: var(--fabulari-navy);
+  font-weight: 600;
+}
+
+.form-control,
+.form-select {
+  border-color: #bfc8d7;
+}
+
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+  border-color: var(--fabulari-blue);
+  box-shadow: 0 0 0 0.2rem rgba(77, 163, 245, 0.22);
+}
+
+.form-check-input:checked {
+  background-color: var(--fabulari-blue);
+  border-color: var(--fabulari-blue);
+}
+
+.table {
+  --bs-table-border-color: #d7e2ef;
+}
+
+.table-light {
+  --bs-table-bg: var(--fabulari-blue-soft);
+  --bs-table-color: var(--fabulari-navy);
+}
+
+.table tbody tr:hover > * {
+  --bs-table-bg-state: #f5faff;
+}
+
+.alert-success {
+  --bs-alert-color: #174f7c;
+  --bs-alert-bg: var(--fabulari-blue-soft);
+  --bs-alert-border-color: #a9d5fa;
+}
+
+.alert-danger {
+  --bs-alert-color: #84252c;
+  --bs-alert-bg: var(--fabulari-red-soft);
+  --bs-alert-border-color: #ffc3c5;
+}
+
+.alert-secondary {
+  --bs-alert-color: #72520a;
+  --bs-alert-bg: var(--fabulari-yellow-soft);
+  --bs-alert-border-color: #ffe09a;
+}
+
+.list-group-item {
+  border-color: #d7e2ef;
 }
 
 @media (max-width: 768px) {
@@ -85,6 +168,8 @@ body {
   height: 100%;
   background-color: #ffffff;
   border: 1px solid var(--fabulari-border);
+  border-radius: 0.5rem;
+  box-shadow: var(--fabulari-shadow);
 }
 
 .dashboard-actions {
@@ -105,6 +190,16 @@ body {
   margin: 0;
 }
 
+.dashboard-count-list dd {
+  min-width: 2rem;
+  padding: 0.1rem 0.45rem;
+  background-color: var(--fabulari-yellow-soft);
+  border-radius: 1rem;
+  color: #72520a;
+  font-weight: 700;
+  text-align: center;
+}
+
 .content-page {
   max-width: 1200px;
 }
@@ -112,7 +207,9 @@ body {
 .content-card {
   height: 100%;
   background-color: #ffffff;
-  border-color: var(--fabulari-border);
+  border: 1px solid var(--fabulari-border);
+  border-radius: 0.5rem;
+  box-shadow: var(--fabulari-shadow);
 }
 
 .auth-page {
@@ -121,5 +218,7 @@ body {
 
 .auth-card {
   background-color: #ffffff;
-  border-color: var(--fabulari-border);
+  border: 1px solid var(--fabulari-border);
+  border-radius: 0.5rem;
+  box-shadow: var(--fabulari-shadow);
 }
