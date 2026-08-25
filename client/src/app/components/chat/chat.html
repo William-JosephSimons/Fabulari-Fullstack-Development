@@ -71,7 +71,7 @@
 
                   <footer class="d-flex justify-content-between align-items-center gap-2">
                     <small>Message ID: {{ message.id }}</small>
-                    @if (message.ownMessage) {
+                    @if (message.userId === currentUserId) {
                       <button
                         class="btn btn-outline-dark btn-sm"
                         type="button"

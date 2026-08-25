@@ -24,11 +24,15 @@ export class Chat implements OnInit, AfterViewInit {
   protected loadError = '';
   protected messageText = '';
   protected rooms: any[] = [];
+  protected currentUserId = '';
+  protected currentUserName = 'User';
+  protected currentUserInitial = '?';
+  protected currentUserIsAdmin = false;
 
   protected readonly participants = [
-    { name: 'Jordan', initial: 'J', isAdmin: true },
-    { name: 'Billy', initial: 'B', isAdmin: false },
-    { name: 'Sam', initial: 'S', isAdmin: false },
+    { userId: 'user-2', name: 'Jordan', initial: 'J', isAdmin: true },
+    { userId: 'user-4', name: 'Billy', initial: 'B', isAdmin: false },
+    { userId: 'user-6', name: 'Sam', initial: 'S', isAdmin: false },
   ];
 
   // Every object has the same fields to keep the mock template easy to follow.
@@ -41,7 +45,7 @@ export class Chat implements OnInit, AfterViewInit {
       time: '',
       text: 'Jordan joined the room.',
       id: '',
-      ownMessage: false,
+      userId: '',
     },
     {
       type: 'text',
@@ -51,7 +55,7 @@ export class Chat implements OnInit, AfterViewInit {
       time: '10:31',
       text: 'Welcome! What is everyone reading?',
       id: 'msg-104',
-      ownMessage: false,
+      userId: 'user-2',
     },
     {
       type: 'text',
@@ -61,7 +65,7 @@ export class Chat implements OnInit, AfterViewInit {
       time: '10:33',
       text: 'I just started The Hobbit.',
       id: 'msg-105',
-      ownMessage: true,
+      userId: 'user-4',
     },
     {
       type: 'image',
@@ -71,7 +75,7 @@ export class Chat implements OnInit, AfterViewInit {
       time: '10:35',
       text: '',
       id: 'msg-106',
-      ownMessage: false,
+      userId: 'user-6',
     },
     {
       type: 'notice',
@@ -81,7 +85,7 @@ export class Chat implements OnInit, AfterViewInit {
       time: '',
       text: 'Casey left the room.',
       id: '',
-      ownMessage: false,
+      userId: '',
     },
   ];
 
@@ -108,13 +112,13 @@ export class Chat implements OnInit, AfterViewInit {
     // Socket.IO will replace this local update during Phase 2.
     this.messages.push({
       type: 'text',
-      userName: 'Billy',
-      initial: 'B',
-      isAdmin: false,
+      userName: this.currentUserName,
+      initial: this.currentUserInitial,
+      isAdmin: this.currentUserIsAdmin,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       text,
       id: `msg-${this.messages.length + 104}`,
-      ownMessage: true,
+      userId: this.currentUserId,
     });
     this.messageText = '';
 
@@ -134,6 +138,9 @@ export class Chat implements OnInit, AfterViewInit {
       return;
     }
 
+    this.currentUserId = currentUser.id;
+    this.currentUserName = currentUser.firstName;
+    this.currentUserInitial = currentUser.firstName.charAt(0).toUpperCase() || '?';
     this.loadError = '';
 
     this.groupService.getGroupRooms(this.groupId, currentUser.id).subscribe({
@@ -145,7 +152,26 @@ export class Chat implements OnInit, AfterViewInit {
 
         this.groupName = response.group.title;
         this.groupColour = response.group.colour;
+        this.currentUserIsAdmin = response.group.isAdmin;
         this.rooms = response.rooms;
+
+        const currentParticipant = this.participants.find(
+          (participant) => participant.userId === currentUser.id,
+        );
+
+        if (currentParticipant) {
+          currentParticipant.name = currentUser.firstName;
+          currentParticipant.initial = this.currentUserInitial;
+          currentParticipant.isAdmin = response.group.isAdmin;
+        } else {
+          // Presence is mocked in Phase 1, but the signed-in user should still be shown.
+          this.participants.push({
+            userId: currentUser.id,
+            name: currentUser.firstName,
+            initial: currentUser.firstName.charAt(0).toUpperCase() || '?',
+            isAdmin: response.group.isAdmin,
+          });
+        }
 
         const selectedRoom = this.rooms.find((room) => room.id === this.roomId);
 
