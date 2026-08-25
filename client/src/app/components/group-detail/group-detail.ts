@@ -19,6 +19,7 @@ export class GroupDetail implements OnInit {
   protected readonly groupId = this.route.snapshot.paramMap.get('groupId');
   protected readonly currentUserId = this.auth.getCurrentUser()?.id || '';
   protected groupName = 'Group';
+  protected groupColour = '#D8DBE6';
   protected isGroupAdmin = false;
   protected isLoading = true;
   protected roomError = '';
@@ -89,6 +90,7 @@ export class GroupDetail implements OnInit {
         }
 
         this.groupName = response.group.title;
+        this.groupColour = response.group.colour;
         this.isGroupAdmin = response.group.isAdmin;
         this.rooms = response.rooms;
       },

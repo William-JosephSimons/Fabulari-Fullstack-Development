@@ -40,7 +40,16 @@
                           aria-label="Select {{ group.title }}"
                         />
                       </td>
-                      <td>{{ group.title }}</td>
+                      <td>
+                        <span class="group-name">
+                          <span
+                            class="group-colour-dot"
+                            [style.background-color]="group.colour"
+                            aria-hidden="true"
+                          ></span>
+                          {{ group.title }}
+                        </span>
+                      </td>
                       <td>{{ group.adminSummary.memberCount }}</td>
                       <td>{{ group.adminSummary.roomCount }}</td>
                     </tr>

@@ -152,6 +152,28 @@ body {
   border-color: #d7e2ef;
 }
 
+.group-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.group-colour-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  flex: 0 0 auto;
+  border: 1px solid rgba(43, 51, 79, 0.4);
+  border-radius: 50%;
+}
+
+.group-context {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--fabulari-navy);
+  font-weight: 600;
+}
+
 @media (max-width: 768px) {
   .fabulari-nav a,
   .fabulari-nav button {

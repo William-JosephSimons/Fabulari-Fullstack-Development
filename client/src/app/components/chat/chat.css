@@ -24,6 +24,7 @@
 .current-room {
   background-color: var(--fabulari-yellow-soft);
   border-color: var(--fabulari-blue);
+  border-left-width: 0.25rem;
   font-weight: 600;
 }
 
@@ -61,8 +62,8 @@
   height: 2rem;
   place-items: center;
   flex: 0 0 auto;
-  background-color: var(--fabulari-blue-soft);
-  border: 2px solid var(--fabulari-blue);
+  background-color: color-mix(in srgb, var(--group-colour) 20%, white);
+  border: 2px solid var(--group-colour);
   border-radius: 50%;
   color: var(--fabulari-navy);
   font-weight: 700;

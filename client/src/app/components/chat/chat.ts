@@ -19,6 +19,7 @@ export class Chat implements OnInit, AfterViewInit {
   protected groupId = '';
   protected roomId = '';
   protected groupName = 'Group';
+  protected groupColour = '#D8DBE6';
   protected roomName = 'Room';
   protected loadError = '';
   protected messageText = '';
@@ -143,6 +144,7 @@ export class Chat implements OnInit, AfterViewInit {
         }
 
         this.groupName = response.group.title;
+        this.groupColour = response.group.colour;
         this.rooms = response.rooms;
 
         const selectedRoom = this.rooms.find((room) => room.id === this.roomId);

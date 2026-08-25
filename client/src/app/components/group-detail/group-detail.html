@@ -4,7 +4,14 @@
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
       <h1 class="visually-hidden">{{ groupName }}</h1>
-      <p class="lead mb-0">Rooms available to members</p>
+      <p class="group-context mb-1">
+        <span
+          class="group-colour-dot"
+          [style.background-color]="groupColour"
+          aria-hidden="true"
+        ></span>
+        {{ groupName }}
+      </p>
     </div>
     <a class="btn btn-outline-dark" routerLink="/groups">Return to all groups</a>
   </div>

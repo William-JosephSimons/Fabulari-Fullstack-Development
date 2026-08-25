@@ -29,7 +29,16 @@
                 <tbody>
                   @for (group of groups; track group.id) {
                     <tr>
-                      <td>{{ group.title }}</td>
+                      <td>
+                        <span class="group-name">
+                          <span
+                            class="group-colour-dot"
+                            [style.background-color]="group.colour"
+                            aria-hidden="true"
+                          ></span>
+                          {{ group.title }}
+                        </span>
+                      </td>
                       <td>{{ group.isAdmin ? 'Group Admin' : 'Member' }}</td>
                       <td>
                         <a
