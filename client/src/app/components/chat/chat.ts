@@ -1,6 +1,8 @@
-import { AfterViewInit, Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { Auth } from '../../services/auth/auth';
+import { Group } from '../../services/group/group';
 import { MainNavigation } from '../main-navigation/main-navigation';
 
 @Component({
@@ -9,18 +11,19 @@ import { MainNavigation } from '../main-navigation/main-navigation';
   templateUrl: './chat.html',
   styleUrl: './chat.css',
 })
-export class Chat implements AfterViewInit {
+export class Chat implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly auth = inject(Auth);
+  private readonly groupService = inject(Group);
 
-  protected readonly groupId = this.route.snapshot.paramMap.get('groupId');
-  protected readonly roomId = this.route.snapshot.paramMap.get('roomId');
+  protected groupId = '';
+  protected roomId = '';
+  protected groupName = 'Group';
+  protected roomName = 'Room';
+  protected isLoading = true;
+  protected loadError = '';
   protected messageText = '';
-
-  protected readonly rooms = [
-    { id: 'general', name: 'General' },
-    { id: 'reviews', name: 'Reviews' },
-    { id: 'events', name: 'Events' }
-  ];
+  protected rooms: any[] = [];
 
   protected readonly participants = [
     { name: 'Jordan', initial: 'J', isAdmin: true },
@@ -82,8 +85,13 @@ export class Chat implements AfterViewInit {
     }
   ];
 
-  ngAfterViewInit(): void {
-    this.scrollToBottom();
+  ngOnInit(): void {
+    // Angular reuses this component when a user moves between rooms in the same group.
+    this.route.paramMap.subscribe((params) => {
+      this.groupId = params.get('groupId') || '';
+      this.roomId = params.get('roomId') || '';
+      this.loadRoomShell();
+    });
   }
 
   protected sendMessage(): void {
@@ -112,6 +120,49 @@ export class Chat implements AfterViewInit {
 
   protected deleteMessage(messageId: string): void {
     this.messages = this.messages.filter((message) => message.id !== messageId);
+  }
+
+  private loadRoomShell(): void {
+    const currentUser = this.auth.getCurrentUser();
+
+    if (!this.groupId || !this.roomId || !currentUser) {
+      this.isLoading = false;
+      this.loadError = 'A group, room and current user are required.';
+      return;
+    }
+
+    this.isLoading = true;
+    this.loadError = '';
+
+    this.groupService.getGroupRooms(this.groupId, currentUser.id).subscribe({
+      next: (response: any) => {
+        this.isLoading = false;
+
+        if (!response.valid) {
+          this.loadError = response.message || 'Unable to load this chat room.';
+          return;
+        }
+
+        this.groupName = response.group.title;
+        this.rooms = response.rooms;
+
+        const selectedRoom = this.rooms.find((room) => room.id === this.roomId);
+
+        if (!selectedRoom) {
+          this.loadError = 'That room does not belong to this group.';
+          return;
+        }
+
+        this.roomName = selectedRoom.name;
+
+        // Phase 1 shows one mock conversation while the room shell uses saved data.
+        setTimeout(() => this.scrollToBottom());
+      },
+      error: (error) => {
+        this.isLoading = false;
+        this.loadError = error.error?.message || 'Unable to contact the server.';
+      },
+    });
   }
 
   private scrollToBottom(): void {
