@@ -100,11 +100,10 @@ The repository keeps a clear history of small, understandable changes.
 - Short feature branches handle risky changes such as the MongoDB migration or Socket.IO chat.
 - Each commit covers one logical change and uses a direct message such as
   `add group creation requests`.
-- I push code, documentation and tests at the end of each study session.
+- I push code and documentation and the end of each study session.
 - The storyboards appear in the history before the matching Angular pages.
 
 The top-level structure is:
-
 ```text
 Fabulari-Fullstack-Development/
   client/               Angular application
