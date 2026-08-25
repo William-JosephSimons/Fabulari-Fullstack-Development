@@ -1,0 +1,341 @@
+import { randomUUID } from "node:crypto";
+import bcrypt from "bcryptjs";
+
+function ensureText(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function getUserDetails(body = {}) {
+  return {
+    username: ensureText(body.username),
+    email: ensureText(body.email).toLowerCase(),
+    firstName: ensureText(body.firstName),
+    lastName: ensureText(body.lastName),
+    age: Number(body.age),
+    // Passwords are not trimmed because leading/trailing spaces may be intentionally included.
+    password: typeof body.password === "string" ? body.password : "",
+  };
+}
+
+function validateUserDetails(details) {
+  if (
+    !details.username ||
+    !details.email ||
+    !details.firstName ||
+    !details.lastName ||
+    !details.password
+  ) {
+    return "All account fields are required.";
+  }
+
+  if (details.username.length < 3 || details.username.length > 30) {
+    return "Username must be between 3 and 30 characters.";
+  }
+
+  if (!details.email.includes("@") || !details.email.includes(".")) {
+    return "Enter a valid email address.";
+  }
+
+  if (!Number.isInteger(details.age) || details.age < 1 || details.age > 120) {
+    return "Age must be a whole number between 1 and 120.";
+  }
+
+  if (details.password.length < 8) {
+    return "Password must contain at least 8 characters.";
+  }
+
+  return null;
+}
+
+function findAccountConflict(data, details) {
+  const usernameTaken = data.users.some((user) => {
+    return user.username.toLowerCase() === details.username.toLowerCase();
+  });
+
+  if (usernameTaken) {
+    return "That username is already in use.";
+  }
+
+  const emailTaken = data.users.some((user) => user.email === details.email);
+  if (emailTaken) {
+    return "That email is already registered.";
+  }
+
+  const emailBanned = data.systemBans.some((ban) => {
+    return ban.normalizedEmail === details.email;
+  });
+
+  if (emailBanned) {
+    return "That email cannot be used to register.";
+  }
+
+  return null;
+}
+
+async function createUser(details, systemRole) {
+  const now = new Date().toISOString();
+
+  return {
+    // A UUID remains unique even when earlier user accounts have been deleted.
+    id: `user-${randomUUID()}`,
+    username: details.username,
+    email: details.email,
+    firstName: details.firstName,
+    lastName: details.lastName,
+    age: details.age,
+    passwordHash: await bcrypt.hash(details.password, 10),
+    avatarUrl: null,
+    systemRole,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+function safeUser(user) {
+  // Password hashes are never sent over the network
+  const { passwordHash, ...userSafe } = user;
+  return userSafe;
+}
+
+function safeGroupUser(user, isAdmin = false) {
+  return {
+    id: user.id,
+    username: user.username,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    age: user.age,
+    avatarUrl: user.avatarUrl,
+    isAdmin,
+  };
+}
+
+function addAuditLog(data, details) {
+  data.auditLogs.push({
+    id: `audit-${randomUUID()}`,
+    actorId: details.actorId,
+    actionType: details.actionType,
+    entityType: details.entityType,
+    entityId: details.entityId,
+    groupId: details.groupId || null,
+    summary: details.summary,
+    createdAt: details.createdAt || new Date().toISOString(),
+  });
+}
+
+function getGroupRequestDetails(body = {}) {
+  return {
+    requesterId: ensureText(body.requesterId),
+    title: ensureText(body.title),
+    description: ensureText(body.description),
+    minimumAge: Number(body.minimumAge),
+    colour: ensureText(body.colour).toUpperCase(),
+    reason: ensureText(body.reason),
+  };
+}
+
+function validateGroupRequest(details) {
+  if (
+    !details.requesterId ||
+    !details.title ||
+    !details.description ||
+    !details.colour ||
+    !details.reason
+  ) {
+    return "All group request fields are required.";
+  }
+
+  if (
+    !Number.isInteger(details.minimumAge) ||
+    details.minimumAge < 0 ||
+    details.minimumAge > 120
+  ) {
+    return "Minimum age must be a whole number between 0 and 120.";
+  }
+
+  if (!/^#[0-9A-F]{6}$/.test(details.colour)) {
+    return "Choose a valid group colour.";
+  }
+
+  return null;
+}
+
+function getGroupSettingsDetails(body = {}) {
+  return {
+    actingUserId: ensureText(body.actingUserId),
+    title: ensureText(body.title),
+    description: ensureText(body.description),
+    minimumAge: Number(body.minimumAge),
+    colour: ensureText(body.colour).toUpperCase(),
+  };
+}
+
+function validateGroupSettings(details) {
+  if (
+    !details.actingUserId ||
+    !details.title ||
+    !details.description ||
+    !details.colour
+  ) {
+    return "All group settings are required.";
+  }
+
+  if (
+    !Number.isInteger(details.minimumAge) ||
+    details.minimumAge < 0 ||
+    details.minimumAge > 120
+  ) {
+    return "Minimum age must be a whole number between 0 and 120.";
+  }
+
+  if (!/^#[0-9A-F]{6}$/.test(details.colour)) {
+    return "Choose a valid group colour.";
+  }
+
+  return null;
+}
+
+function getRequestDecisionDetails(body = {}) {
+  return {
+    deciderId: ensureText(body.deciderId),
+    decision: ensureText(body.decision).toLowerCase(),
+    rejectionReason: ensureText(body.rejectionReason),
+  };
+}
+
+function getMembershipRequestDetails(body = {}) {
+  return {
+    requesterId: ensureText(body.requesterId),
+    reason: ensureText(body.reason),
+  };
+}
+
+function getAdminChangeDetails(body = {}) {
+  return {
+    actingUserId: ensureText(body.actingUserId),
+    targetUserId: ensureText(body.targetUserId),
+  };
+}
+
+function getRoomDetails(body = {}) {
+  return {
+    actingUserId: ensureText(body.actingUserId),
+    name: ensureText(body.name),
+    description: ensureText(body.description),
+  };
+}
+
+function validateRoomDetails(details) {
+  if (!details.actingUserId || !details.name || !details.description) {
+    return "A Group Admin, room name and description are required.";
+  }
+
+  return null;
+}
+
+function getRoomProposalDetails(body = {}) {
+  return {
+    requesterId: ensureText(body.requesterId),
+    name: ensureText(body.name),
+    description: ensureText(body.description),
+    reason: ensureText(body.reason),
+  };
+}
+
+function validateRoomProposal(details) {
+  if (
+    !details.requesterId ||
+    !details.name ||
+    !details.description ||
+    !details.reason
+  ) {
+    return "A member, room name, description and reason are required.";
+  }
+
+  return null;
+}
+
+function getGroupBanReportDetails(body = {}) {
+  return {
+    requesterId: ensureText(body.requesterId),
+    targetUserId: ensureText(body.targetUserId),
+    reason: ensureText(body.reason),
+  };
+}
+
+function getGroupDeletionRequestDetails(body = {}) {
+  return {
+    requesterId: ensureText(body.requesterId),
+    reason: ensureText(body.reason),
+  };
+}
+
+function getSystemBanRequestDetails(body = {}) {
+  return {
+    requesterId: ensureText(body.requesterId),
+    targetUserId: ensureText(body.targetUserId),
+    reason: ensureText(body.reason),
+  };
+}
+
+function getGroupMembershipStatus(data, group, user) {
+  if (user.systemRole === "superAdmin") {
+    return "readOnly";
+  }
+
+  const isGroupBanned = data.groupBans.some((ban) => {
+    return ban.groupId === group.id && ban.bannedUserId === user.id;
+  });
+
+  if (isGroupBanned) {
+    return "banned";
+  }
+
+  if (group.memberIds.includes(user.id)) {
+    return "member";
+  }
+
+  const hasPendingRequest = data.requests.some((request) => {
+    return (
+      request.type === "membership" &&
+      request.groupId === group.id &&
+      request.requesterId === user.id &&
+      request.status === "pending"
+    );
+  });
+
+  if (hasPendingRequest) {
+    return "pending";
+  }
+
+  if (user.age < group.minimumAge) {
+    return "underAge";
+  }
+
+  return "available";
+}
+
+export {
+  ensureText,
+  getUserDetails,
+  validateUserDetails,
+  findAccountConflict,
+  createUser,
+  safeUser,
+  safeGroupUser,
+  addAuditLog,
+  getGroupRequestDetails,
+  validateGroupRequest,
+  getGroupSettingsDetails,
+  validateGroupSettings,
+  getRequestDecisionDetails,
+  getMembershipRequestDetails,
+  getAdminChangeDetails,
+  getRoomDetails,
+  validateRoomDetails,
+  getRoomProposalDetails,
+  validateRoomProposal,
+  getGroupBanReportDetails,
+  getGroupDeletionRequestDetails,
+  getSystemBanRequestDetails,
+  getGroupMembershipStatus,
+};
