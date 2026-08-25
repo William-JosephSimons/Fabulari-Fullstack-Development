@@ -1,18 +1,14 @@
 <app-main-navigation />
 
 <main class="container-fluid py-4 chat-page">
-  @if (isLoading) {
-    <h1 class="h2 mb-3">Chat room</h1>
-    <p>Loading room...</p>
-  } @else if (loadError) {
-    <h1 class="h2 mb-3">Chat room</h1>
+  <h1 class="h2 mb-3">{{ groupName }} / {{ roomName }}</h1>
+
+  @if (loadError) {
     <div class="alert alert-danger" role="alert">{{ loadError }}</div>
     <a class="btn btn-outline-dark" [routerLink]="['/groups', groupId]">
       Return to group details
     </a>
   } @else {
-    <h1 class="h2 mb-3">{{ groupName }} / {{ roomName }}</h1>
-
     <div class="chat-layout">
       <aside class="card chat-panel" aria-labelledby="room-list-heading">
         <div class="card-body">

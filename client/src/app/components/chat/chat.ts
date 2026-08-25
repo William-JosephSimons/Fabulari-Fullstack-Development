@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { AfterViewInit, Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Auth } from '../../services/auth/auth';
@@ -11,7 +11,7 @@ import { MainNavigation } from '../main-navigation/main-navigation';
   templateUrl: './chat.html',
   styleUrl: './chat.css',
 })
-export class Chat implements OnInit {
+export class Chat implements OnInit, AfterViewInit {
   private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(Auth);
   private readonly groupService = inject(Group);
@@ -20,7 +20,6 @@ export class Chat implements OnInit {
   protected roomId = '';
   protected groupName = 'Group';
   protected roomName = 'Room';
-  protected isLoading = true;
   protected loadError = '';
   protected messageText = '';
   protected rooms: any[] = [];
@@ -28,7 +27,7 @@ export class Chat implements OnInit {
   protected readonly participants = [
     { name: 'Jordan', initial: 'J', isAdmin: true },
     { name: 'Billy', initial: 'B', isAdmin: false },
-    { name: 'Sam', initial: 'S', isAdmin: false }
+    { name: 'Sam', initial: 'S', isAdmin: false },
   ];
 
   // Every object has the same fields to keep the mock template easy to follow.
@@ -41,7 +40,7 @@ export class Chat implements OnInit {
       time: '',
       text: 'Jordan joined the room.',
       id: '',
-      ownMessage: false
+      ownMessage: false,
     },
     {
       type: 'text',
@@ -51,7 +50,7 @@ export class Chat implements OnInit {
       time: '10:31',
       text: 'Welcome! What is everyone reading?',
       id: 'msg-104',
-      ownMessage: false
+      ownMessage: false,
     },
     {
       type: 'text',
@@ -61,7 +60,7 @@ export class Chat implements OnInit {
       time: '10:33',
       text: 'I just started The Hobbit.',
       id: 'msg-105',
-      ownMessage: true
+      ownMessage: true,
     },
     {
       type: 'image',
@@ -71,7 +70,7 @@ export class Chat implements OnInit {
       time: '10:35',
       text: '',
       id: 'msg-106',
-      ownMessage: false
+      ownMessage: false,
     },
     {
       type: 'notice',
@@ -81,8 +80,8 @@ export class Chat implements OnInit {
       time: '',
       text: 'Casey left the room.',
       id: '',
-      ownMessage: false
-    }
+      ownMessage: false,
+    },
   ];
 
   ngOnInit(): void {
@@ -92,6 +91,10 @@ export class Chat implements OnInit {
       this.roomId = params.get('roomId') || '';
       this.loadRoomShell();
     });
+  }
+
+  ngAfterViewInit(): void {
+    this.scrollToBottom();
   }
 
   protected sendMessage(): void {
@@ -110,7 +113,7 @@ export class Chat implements OnInit {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       text,
       id: `msg-${this.messages.length + 104}`,
-      ownMessage: true
+      ownMessage: true,
     });
     this.messageText = '';
 
@@ -126,18 +129,14 @@ export class Chat implements OnInit {
     const currentUser = this.auth.getCurrentUser();
 
     if (!this.groupId || !this.roomId || !currentUser) {
-      this.isLoading = false;
       this.loadError = 'A group, room and current user are required.';
       return;
     }
 
-    this.isLoading = true;
     this.loadError = '';
 
     this.groupService.getGroupRooms(this.groupId, currentUser.id).subscribe({
       next: (response: any) => {
-        this.isLoading = false;
-
         if (!response.valid) {
           this.loadError = response.message || 'Unable to load this chat room.';
           return;
@@ -154,12 +153,10 @@ export class Chat implements OnInit {
         }
 
         this.roomName = selectedRoom.name;
-
-        // Phase 1 shows one mock conversation while the room shell uses saved data.
+        // Wait for Angular to add the new message before measuring the scroll height.
         setTimeout(() => this.scrollToBottom());
       },
       error: (error) => {
-        this.isLoading = false;
         this.loadError = error.error?.message || 'Unable to contact the server.';
       },
     });
