@@ -316,10 +316,6 @@ function getGroupMembershipStatus(data, group, user) {
 }
 
 function routes(app) {
-  app.get("/api/health", (req, res) => {
-    res.status(200).json({ status: "ok" });
-  });
-
   app.get("/api/bootstrap-status", (req, res) => {
     const data = loadData();
 
@@ -372,7 +368,7 @@ function routes(app) {
   app.post("/api/register", async (req, res) => {
     const data = loadData();
 
-    // A normal user cannot take the place of the required first Super Admin.
+    // A user account cannot take the place of the required first Super Admin.
     if (data.users.length === 0) {
       return res.status(409).json({
         valid: false,
@@ -1663,7 +1659,7 @@ function routes(app) {
       return user.id === details.targetUserId;
     });
 
-    // Group Admins can only report accounts they are responsible for in this group.
+    // A Group Admin user can only report accounts from their own group.
     if (
       !targetUser ||
       targetUser.systemRole !== "user" ||
