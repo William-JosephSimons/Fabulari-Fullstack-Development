@@ -1,14 +1,10 @@
 <app-main-navigation />
 
 <main class="container py-4 content-page">
-  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center">
     <div>
       <h1 class="visually-hidden">{{ groupName }} Administration</h1>
-      <p class="lead mb-0">Group management</p>
     </div>
-    <a class="btn btn-outline-dark" routerLink="/group-admin-dashboard">
-      Return to dashboard
-    </a>
   </div>
 
   <nav class="admin-tabs mb-4" aria-label="Group administration sections">
@@ -39,8 +35,9 @@
     >
       Rooms
     </button>
-    <a class="btn btn-outline-dark" [routerLink]="['/groups', groupId, 'requests']">
-      Requests
+    <a class="btn btn-outline-dark" [routerLink]="['/groups', groupId, 'requests']"> Requests </a>
+    <a class="btn btn-outline-dark ms-auto" routerLink="/group-admin-dashboard">
+      Return to dashboard
     </a>
   </nav>
 
@@ -112,9 +109,7 @@
               </div>
             </div>
 
-            <p class="text-muted">
-              Raising the minimum age removes members who no longer meet it.
-            </p>
+            <p class="text-muted">Raising the minimum age removes members who no longer meet it.</p>
 
             <button
               class="btn btn-outline-dark"
@@ -158,9 +153,7 @@
             <button
               class="btn btn-outline-dark mt-3"
               type="submit"
-              [disabled]="
-                groupDeletionForm.invalid || groupDeletionSaving || settingsSaving
-              "
+              [disabled]="groupDeletionForm.invalid || groupDeletionSaving || settingsSaving"
             >
               {{ groupDeletionSaving ? 'Submitting...' : 'Submit deletion request' }}
             </button>
@@ -221,9 +214,7 @@
                                 class="btn btn-outline-dark btn-sm"
                                 type="button"
                                 [disabled]="
-                                  adminChangingId !== null ||
-                                  banReportSaving ||
-                                  systemBanSaving
+                                  adminChangingId !== null || banReportSaving || systemBanSaving
                                 "
                                 (click)="promoteMember(member)"
                               >
@@ -252,9 +243,7 @@
                                 class="btn btn-outline-dark btn-sm"
                                 type="button"
                                 [disabled]="
-                                  banReportSaving ||
-                                  systemBanSaving ||
-                                  adminChangingId !== null
+                                  banReportSaving || systemBanSaving || adminChangingId !== null
                                 "
                                 (click)="beginBanReport(member.id)"
                               >
@@ -264,9 +253,7 @@
                                 class="btn btn-outline-dark btn-sm"
                                 type="button"
                                 [disabled]="
-                                  systemBanSaving ||
-                                  banReportSaving ||
-                                  adminChangingId !== null
+                                  systemBanSaving || banReportSaving || adminChangingId !== null
                                 "
                                 (click)="beginSystemBanRequest(member.id)"
                               >
@@ -344,9 +331,7 @@
                 <button
                   class="btn btn-outline-dark"
                   type="submit"
-                  [disabled]="
-                    banReportForm.invalid || banReportSaving || systemBanSaving
-                  "
+                  [disabled]="banReportForm.invalid || banReportSaving || systemBanSaving"
                 >
                   {{ banReportSaving ? 'Submitting...' : 'Submit report' }}
                 </button>
@@ -393,9 +378,7 @@
                 <button
                   class="btn btn-outline-dark"
                   type="submit"
-                  [disabled]="
-                    systemBanForm.invalid || systemBanSaving || banReportSaving
-                  "
+                  [disabled]="systemBanForm.invalid || systemBanSaving || banReportSaving"
                 >
                   {{ systemBanSaving ? 'Submitting...' : 'Submit request' }}
                 </button>
