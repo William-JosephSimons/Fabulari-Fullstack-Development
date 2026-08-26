@@ -1,8 +1,9 @@
-import { AfterViewInit, Component, inject, OnInit } from '@angular/core';
+import { AfterViewInit, Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Auth } from '../../services/auth/auth';
 import { Group } from '../../services/group/group';
+import { Socket } from '../../services/socket/socket';
 import { MainNavigation } from '../main-navigation/main-navigation';
 
 @Component({
@@ -11,10 +12,11 @@ import { MainNavigation } from '../main-navigation/main-navigation';
   templateUrl: './chat.html',
   styleUrl: './chat.css',
 })
-export class Chat implements OnInit, AfterViewInit {
+export class Chat implements OnInit, AfterViewInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(Auth);
   private readonly groupService = inject(Group);
+  private readonly socketService = inject(Socket);
 
   protected groupId = '';
   protected roomId = '';
@@ -90,8 +92,15 @@ export class Chat implements OnInit, AfterViewInit {
   ];
 
   ngOnInit(): void {
+    this.socketService.connect();
+
     // Angular reuses this component when a user moves between rooms in the same group.
     this.route.paramMap.subscribe((params) => {
+      // Leave the previously selected room before loading the new route
+      if (this.roomId) {
+        this.socketService.leaveRoom(this.roomId);
+      }
+
       this.groupId = params.get('groupId') || '';
       this.roomId = params.get('roomId') || '';
       this.loadRoomShell();
@@ -100,6 +109,14 @@ export class Chat implements OnInit, AfterViewInit {
 
   ngAfterViewInit(): void {
     this.scrollToBottom();
+  }
+
+  ngOnDestroy(): void {
+    if (this.roomId) {
+      this.socketService.leaveRoom(this.roomId);
+    }
+
+    this.socketService.disconnect();
   }
 
   protected sendMessage(): void {
@@ -181,6 +198,7 @@ export class Chat implements OnInit, AfterViewInit {
         }
 
         this.roomName = selectedRoom.name;
+        this.socketService.joinRoom(this.roomId, currentUser.id);
         // Wait for Angular to add the new message before measuring the scroll height.
         setTimeout(() => this.scrollToBottom());
       },
