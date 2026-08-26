@@ -27,9 +27,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
   protected messageText = '';
   protected rooms: any[] = [];
   protected currentUserId = '';
-  protected currentUserName = 'User';
   protected currentUserInitial = '?';
-  protected currentUserIsAdmin = false;
 
   protected readonly participants = [
     { userId: 'user-2', name: 'Jordan', initial: 'J', isAdmin: true },
@@ -93,6 +91,22 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.socketService.connect();
+    this.socketService.onNewMessage().subscribe((message: any) => {
+      if (message.roomId !== this.roomId) {
+        return;
+      }
+
+      this.messages.push({
+        ...message,
+        time: new Date(message.createdAt).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      });
+
+      // Wait for Angular to display the message before updating the scroll position.
+      setTimeout(() => this.scrollToBottom());
+    });
 
     // Angular reuses this component when a user moves between rooms in the same group.
     this.route.paramMap.subscribe((params) => {
@@ -126,21 +140,8 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    // Socket.IO will replace this local update during Phase 2.
-    this.messages.push({
-      type: 'text',
-      userName: this.currentUserName,
-      initial: this.currentUserInitial,
-      isAdmin: this.currentUserIsAdmin,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      text,
-      id: `msg-${this.messages.length + 104}`,
-      userId: this.currentUserId,
-    });
+    this.socketService.sendMessage(this.roomId, text);
     this.messageText = '';
-
-    // Wait for Angular to add the new message before measuring the scroll height.
-    setTimeout(() => this.scrollToBottom());
   }
 
   protected deleteMessage(messageId: string): void {
@@ -156,7 +157,6 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.currentUserId = currentUser.id;
-    this.currentUserName = currentUser.firstName;
     this.currentUserInitial = currentUser.firstName.charAt(0).toUpperCase() || '?';
     this.loadError = '';
 
@@ -169,7 +169,6 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
 
         this.groupName = response.group.title;
         this.groupColour = response.group.colour;
-        this.currentUserIsAdmin = response.group.isAdmin;
         this.rooms = response.rooms;
 
         const currentParticipant = this.participants.find(
