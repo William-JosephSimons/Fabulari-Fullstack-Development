@@ -9,6 +9,10 @@
       Return to group details
     </a>
   } @else {
+    @if (socketError) {
+      <div class="alert alert-danger" role="alert">{{ socketError }}</div>
+    }
+
     <div class="chat-layout">
       <aside class="card chat-panel" aria-labelledby="room-list-heading">
         <div class="card-body">

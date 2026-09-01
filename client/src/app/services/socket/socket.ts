@@ -58,6 +58,18 @@ export class Socket {
     return this.listen('socket:error');
   }
 
+  onConnected() {
+    return this.listen('connect');
+  }
+
+  onDisconnected() {
+    return this.listen('disconnect');
+  }
+
+  onConnectionError() {
+    return this.listen('connect_error');
+  }
+
   private listen(eventName: string) {
     return new Observable((observer) => {
       if (!this.socket) {

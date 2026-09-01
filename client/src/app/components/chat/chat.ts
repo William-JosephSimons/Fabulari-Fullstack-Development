@@ -1,6 +1,7 @@
 import { AfterViewInit, Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { Auth } from '../../services/auth/auth';
 import { Group } from '../../services/group/group';
 import { Socket } from '../../services/socket/socket';
@@ -17,6 +18,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
   private readonly auth = inject(Auth);
   private readonly groupService = inject(Group);
   private readonly socketService = inject(Socket);
+  private readonly socketSubscriptions: Subscription[] = [];
 
   protected groupId = '';
   protected roomId = '';
@@ -24,6 +26,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
   protected groupColour = '#D8DBE6';
   protected roomName = 'Room';
   protected loadError = '';
+  protected socketError = '';
   protected messageText = '';
   protected rooms: any[] = [];
   protected currentUserId = '';
@@ -65,37 +68,71 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.socketService.connect();
-    this.socketService.onNewMessage().subscribe((message: any) => {
-      if (message.roomId !== this.roomId) {
-        return;
-      }
+    this.socketSubscriptions.push(
+      this.socketService.onNewMessage().subscribe((message: any) => {
+        if (message.roomId !== this.roomId) {
+          return;
+        }
 
-      this.messages.push({
-        ...message,
-        time: new Date(message.createdAt).toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
-      });
+        this.messages.push({
+          ...message,
+          time: new Date(message.createdAt).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+        });
 
-      // Wait for Angular to display the message before updating the scroll position.
-      setTimeout(() => this.scrollToBottom());
-    });
-    this.socketService.onPresenceState().subscribe((details: any) => {
-      if (details.roomId === this.roomId) {
-        this.participants = details.participants;
-      }
-    });
-    this.socketService.onPresenceJoined().subscribe((details: any) => {
-      if (details.roomId === this.roomId) {
-        this.addPresenceNotice(`${details.participant.name} joined the room.`);
-      }
-    });
-    this.socketService.onPresenceLeft().subscribe((details: any) => {
-      if (details.roomId === this.roomId) {
-        this.addPresenceNotice(`${details.participant.name} left the room.`);
-      }
-    });
+        // Wait for Angular to display the message before updating the scroll position.
+        setTimeout(() => this.scrollToBottom());
+      }),
+    );
+    this.socketSubscriptions.push(
+      this.socketService.onPresenceState().subscribe((details: any) => {
+        if (details.roomId === this.roomId) {
+          this.socketError = '';
+          this.participants = details.participants;
+        }
+      }),
+    );
+    this.socketSubscriptions.push(
+      this.socketService.onPresenceJoined().subscribe((details: any) => {
+        if (details.roomId === this.roomId) {
+          this.addPresenceNotice(`${details.participant.name} joined the room.`);
+        }
+      }),
+    );
+    this.socketSubscriptions.push(
+      this.socketService.onPresenceLeft().subscribe((details: any) => {
+        if (details.roomId === this.roomId) {
+          this.addPresenceNotice(`${details.participant.name} left the room.`);
+        }
+      }),
+    );
+    this.socketSubscriptions.push(
+      this.socketService.onSocketError().subscribe((error: any) => {
+        this.socketError = error.message || 'The live chat request could not be completed.';
+      }),
+    );
+    this.socketSubscriptions.push(
+      this.socketService.onConnectionError().subscribe(() => {
+        this.socketError = 'Unable to connect to live chat. The server may be offline.';
+      }),
+    );
+    this.socketSubscriptions.push(
+      this.socketService.onDisconnected().subscribe(() => {
+        this.socketError = 'The live chat connection was lost. Trying to reconnect.';
+        this.participants = [];
+      }),
+    );
+    this.socketSubscriptions.push(
+      this.socketService.onConnected().subscribe(() => {
+        this.socketError = '';
+
+        if (this.roomId && this.currentUserId) {
+          this.socketService.joinRoom(this.roomId, this.currentUserId);
+        }
+      }),
+    );
 
     // Angular reuses this component when a user moves between rooms in the same group.
     this.route.paramMap.subscribe((params) => {
@@ -106,6 +143,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
 
       this.groupId = params.get('groupId') || '';
       this.roomId = params.get('roomId') || '';
+      this.socketError = '';
       this.participants = [];
       this.loadRoomShell();
     });
@@ -116,6 +154,10 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    for (const subscription of this.socketSubscriptions) {
+      subscription.unsubscribe();
+    }
+
     if (this.roomId) {
       this.socketService.leaveRoom(this.roomId);
     }
@@ -130,6 +172,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    this.socketError = '';
     this.socketService.sendMessage(this.roomId, text);
     this.messageText = '';
   }
