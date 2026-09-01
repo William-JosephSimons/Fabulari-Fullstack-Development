@@ -23,7 +23,6 @@ export class Socket {
   }
 
   joinRoom(roomId: string, userId: string): void {
-    // The user ID is temporary until MongoDB login sessions are added.
     this.socket?.emit('room:join', { roomId, userId });
   }
 

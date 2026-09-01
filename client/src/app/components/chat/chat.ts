@@ -27,26 +27,10 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
   protected messageText = '';
   protected rooms: any[] = [];
   protected currentUserId = '';
-  protected currentUserInitial = '?';
-
-  protected readonly participants = [
-    { userId: 'user-2', name: 'Jordan', initial: 'J', isAdmin: true },
-    { userId: 'user-4', name: 'Billy', initial: 'B', isAdmin: false },
-    { userId: 'user-6', name: 'Sam', initial: 'S', isAdmin: false },
-  ];
+  protected participants: any[] = [];
 
   // Every object has the same fields to keep the mock template easy to follow.
   protected messages = [
-    {
-      type: 'notice',
-      userName: '',
-      initial: '',
-      isAdmin: false,
-      time: '',
-      text: 'Jordan joined the room.',
-      id: '',
-      userId: '',
-    },
     {
       type: 'text',
       userName: 'Jordan',
@@ -77,16 +61,6 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
       id: 'msg-106',
       userId: 'user-6',
     },
-    {
-      type: 'notice',
-      userName: '',
-      initial: '',
-      isAdmin: false,
-      time: '',
-      text: 'Casey left the room.',
-      id: '',
-      userId: '',
-    },
   ];
 
   ngOnInit(): void {
@@ -107,6 +81,21 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
       // Wait for Angular to display the message before updating the scroll position.
       setTimeout(() => this.scrollToBottom());
     });
+    this.socketService.onPresenceState().subscribe((details: any) => {
+      if (details.roomId === this.roomId) {
+        this.participants = details.participants;
+      }
+    });
+    this.socketService.onPresenceJoined().subscribe((details: any) => {
+      if (details.roomId === this.roomId) {
+        this.addPresenceNotice(`${details.participant.name} joined the room.`);
+      }
+    });
+    this.socketService.onPresenceLeft().subscribe((details: any) => {
+      if (details.roomId === this.roomId) {
+        this.addPresenceNotice(`${details.participant.name} left the room.`);
+      }
+    });
 
     // Angular reuses this component when a user moves between rooms in the same group.
     this.route.paramMap.subscribe((params) => {
@@ -117,6 +106,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
 
       this.groupId = params.get('groupId') || '';
       this.roomId = params.get('roomId') || '';
+      this.participants = [];
       this.loadRoomShell();
     });
   }
@@ -157,7 +147,6 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.currentUserId = currentUser.id;
-    this.currentUserInitial = currentUser.firstName.charAt(0).toUpperCase() || '?';
     this.loadError = '';
 
     this.groupService.getGroupRooms(this.groupId, currentUser.id).subscribe({
@@ -170,24 +159,6 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
         this.groupName = response.group.title;
         this.groupColour = response.group.colour;
         this.rooms = response.rooms;
-
-        const currentParticipant = this.participants.find(
-          (participant) => participant.userId === currentUser.id,
-        );
-
-        if (currentParticipant) {
-          currentParticipant.name = currentUser.firstName;
-          currentParticipant.initial = this.currentUserInitial;
-          currentParticipant.isAdmin = response.group.isAdmin;
-        } else {
-          // Presence is mocked in Phase 1, but the signed-in user should still be shown.
-          this.participants.push({
-            userId: currentUser.id,
-            name: currentUser.firstName,
-            initial: currentUser.firstName.charAt(0).toUpperCase() || '?',
-            isAdmin: response.group.isAdmin,
-          });
-        }
 
         const selectedRoom = this.rooms.find((room) => room.id === this.roomId);
 
@@ -205,6 +176,21 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
         this.loadError = error.error?.message || 'Unable to contact the server.';
       },
     });
+  }
+
+  private addPresenceNotice(text: string): void {
+    this.messages.push({
+      type: 'notice',
+      userName: '',
+      initial: '',
+      isAdmin: false,
+      time: '',
+      text,
+      id: '',
+      userId: '',
+    });
+
+    setTimeout(() => this.scrollToBottom());
   }
 
   private scrollToBottom(): void {
