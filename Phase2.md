@@ -25,6 +25,9 @@ features and replaces prototype behaviour with the final MEAN application.
 | P2-08 | Group members can send PNG, JPEG and GIF images smaller than 2 MB.                                     |
 | P2-09 | Entering a room loads the latest five stored messages.                                                 |
 | P2-10 | Only the creator of a message can delete it, and connected room members see that deletion immediately. |
+| P2-11 | User accounts store a birthdate, and the server calculates the current age when applying age rules.     |
+
+
 
 ## 2. Server API
 
