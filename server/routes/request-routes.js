@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { loadData, saveData } from "../data.js";
 import {
   ensureText,
+  calculateAge,
+  meetsMinimumAge,
   addAuditLog,
   getGroupRequestDetails,
   validateGroupRequest,
@@ -177,12 +179,12 @@ function requestRoutes(app) {
             requester ?
               `${requester.firstName} ${requester.lastName}`
             : "Deleted user",
-          requesterAge: requester ? requester.age : null,
+          requesterAge: requester ? calculateAge(requester.birthdate) : null,
           targetName:
             targetUser ? `${targetUser.firstName} ${targetUser.lastName}`
             : request.targetUserId ? "Deleted user"
             : null,
-          targetAge: targetUser ? targetUser.age : null,
+          targetAge: targetUser ? calculateAge(targetUser.birthdate) : null,
         };
       });
 
@@ -222,7 +224,7 @@ function requestRoutes(app) {
       !requester ||
       requester.systemRole !== "user" ||
       !group.memberIds.includes(requester.id) ||
-      requester.age < group.minimumAge
+      !meetsMinimumAge(requester, group.minimumAge)
     ) {
       return res.status(403).json({
         valid: false,
@@ -739,7 +741,7 @@ function requestRoutes(app) {
         }
 
         if (details.decision === "approved") {
-          if (requester.age < group.minimumAge) {
+          if (!meetsMinimumAge(requester, group.minimumAge)) {
             return res.status(409).json({
               valid: false,
               message: "The requester no longer meets the group's minimum age.",
@@ -794,7 +796,7 @@ function requestRoutes(app) {
         if (details.decision === "approved") {
           if (
             !group.memberIds.includes(requester.id) ||
-            requester.age < group.minimumAge
+            !meetsMinimumAge(requester, group.minimumAge)
           ) {
             return res.status(409).json({
               valid: false,

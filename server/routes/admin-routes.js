@@ -1,5 +1,5 @@
 import { loadData } from "../data.js";
-import { ensureText } from "./route-helpers.js";
+import { calculateAge, ensureText } from "./route-helpers.js";
 
 function adminRoutes(app) {
   app.get("/api/admin/dashboard", (req, res) => {
@@ -117,7 +117,7 @@ function adminRoutes(app) {
           email: item.email,
           firstName: item.firstName,
           lastName: item.lastName,
-          age: item.age,
+          age: calculateAge(item.birthdate),
           avatarUrl: item.avatarUrl,
           systemRole: item.systemRole,
         };

@@ -13,12 +13,13 @@ export class Profile implements OnInit {
   private readonly auth = inject(Auth);
 
   protected profileMessage = '';
+  protected profileError = '';
   protected email = '';
   protected profile = {
     firstName: '',
     lastName: '',
     username: '',
-    age: 18,
+    birthdate: '',
   };
 
   protected get profileInitial(): string {
@@ -34,15 +35,33 @@ export class Profile implements OnInit {
         firstName: currentUser.firstName,
         lastName: currentUser.lastName,
         username: currentUser.username,
-        age: currentUser.age,
+        birthdate: currentUser.birthdate,
       };
     }
   }
 
   protected saveProfile(): void {
     const currentUser = this.auth.getCurrentUser();
+    this.profileMessage = '';
+    this.profileError = '';
 
     if (!currentUser) {
+      return;
+    }
+
+    const birthdate = new Date(`${this.profile.birthdate}T00:00:00`);
+    const today = new Date();
+    let age = today.getFullYear() - birthdate.getFullYear();
+
+    if (
+      today.getMonth() < birthdate.getMonth() ||
+      (today.getMonth() === birthdate.getMonth() && today.getDate() < birthdate.getDate())
+    ) {
+      age--;
+    }
+
+    if (Number.isNaN(birthdate.getTime()) || age < 1 || age > 120) {
+      this.profileError = 'Enter a valid birthdate for an age between 1 and 120.';
       return;
     }
 
@@ -58,6 +77,7 @@ export class Profile implements OnInit {
   }
 
   protected showLaterFeature(feature: string): void {
+    this.profileError = '';
     this.profileMessage = `${feature} will be connected in Phase 2.`;
   }
 }

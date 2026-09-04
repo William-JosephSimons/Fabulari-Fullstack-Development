@@ -53,14 +53,13 @@
           </div>
 
           <div class="col-12">
-            <label class="form-label" for="register-age">Age</label>
+            <label class="form-label" for="register-birthdate">Birthdate</label>
             <input
-              id="register-age"
+              id="register-birthdate"
               class="form-control"
-              type="number"
-              name="age"
-              min="1"
-              [(ngModel)]="registrationDetails.age"
+              type="date"
+              name="birthdate"
+              [(ngModel)]="registrationDetails.birthdate"
               required
             />
           </div>

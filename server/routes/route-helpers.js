@@ -5,13 +5,48 @@ function ensureText(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function calculateAge(birthdate) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(birthdate)) {
+    return null;
+  }
+
+  const [year, month, day] = birthdate.split("-").map(Number);
+  const birthDate = new Date(year, month - 1, day);
+
+  // JavaScript adjusts invalid dates such as 31 February, so compare each part again.
+  if (
+    birthDate.getFullYear() !== year ||
+    birthDate.getMonth() !== month - 1 ||
+    birthDate.getDate() !== day
+  ) {
+    return null;
+  }
+
+  const today = new Date();
+  let age = today.getFullYear() - year;
+  const birthdayHasPassed =
+    today.getMonth() > month - 1 ||
+    (today.getMonth() === month - 1 && today.getDate() >= day);
+
+  if (!birthdayHasPassed) {
+    age--;
+  }
+
+  return age;
+}
+
+function meetsMinimumAge(user, minimumAge) {
+  const age = calculateAge(user.birthdate);
+  return age !== null && age >= minimumAge;
+}
+
 function getUserDetails(body = {}) {
   return {
     username: ensureText(body.username),
     email: ensureText(body.email).toLowerCase(),
     firstName: ensureText(body.firstName),
     lastName: ensureText(body.lastName),
-    age: Number(body.age),
+    birthdate: ensureText(body.birthdate),
     // Passwords are not trimmed because leading/trailing spaces may be intentionally included.
     password: typeof body.password === "string" ? body.password : "",
   };
@@ -23,6 +58,7 @@ function validateUserDetails(details) {
     !details.email ||
     !details.firstName ||
     !details.lastName ||
+    !details.birthdate ||
     !details.password
   ) {
     return "All account fields are required.";
@@ -36,8 +72,9 @@ function validateUserDetails(details) {
     return "Enter a valid email address.";
   }
 
-  if (!Number.isInteger(details.age) || details.age < 1 || details.age > 120) {
-    return "Age must be a whole number between 1 and 120.";
+  const age = calculateAge(details.birthdate);
+  if (age === null || age < 1 || age > 120) {
+    return "Enter a valid birthdate for an age between 1 and 120.";
   }
 
   if (details.password.length < 8) {
@@ -82,7 +119,7 @@ async function createUser(details, systemRole) {
     email: details.email,
     firstName: details.firstName,
     lastName: details.lastName,
-    age: details.age,
+    birthdate: details.birthdate,
     passwordHash: await bcrypt.hash(details.password, 10),
     avatarUrl: null,
     systemRole,
@@ -103,7 +140,7 @@ function safeGroupUser(user, isAdmin = false) {
     username: user.username,
     firstName: user.firstName,
     lastName: user.lastName,
-    age: user.age,
+    age: calculateAge(user.birthdate),
     avatarUrl: user.avatarUrl,
     isAdmin,
   };
@@ -307,7 +344,7 @@ function getGroupMembershipStatus(data, group, user) {
     return "pending";
   }
 
-  if (user.age < group.minimumAge) {
+  if (!meetsMinimumAge(user, group.minimumAge)) {
     return "underAge";
   }
 
@@ -316,6 +353,8 @@ function getGroupMembershipStatus(data, group, user) {
 
 export {
   ensureText,
+  calculateAge,
+  meetsMinimumAge,
   getUserDetails,
   validateUserDetails,
   findAccountConflict,

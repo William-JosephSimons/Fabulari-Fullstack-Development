@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { loadData } from "./data.js";
-import { ensureText } from "./routes/route-helpers.js";
+import { ensureText, meetsMinimumAge } from "./routes/route-helpers.js";
 
 function getParticipantDetails(connection) {
   return {
@@ -116,7 +116,10 @@ function connectSockets(io) {
         return;
       }
 
-      if (!group.memberIds.includes(user.id) || user.age < group.minimumAge) {
+      if (
+        !group.memberIds.includes(user.id) ||
+        !meetsMinimumAge(user, group.minimumAge)
+      ) {
         socket.emit("socket:error", {
           message: "You are not eligible to enter this chat room.",
         });
@@ -213,7 +216,7 @@ function connectSockets(io) {
         !group ||
         user.systemRole !== "user" ||
         !group.memberIds.includes(user.id) ||
-        user.age < group.minimumAge
+        !meetsMinimumAge(user, group.minimumAge)
       ) {
         socket.emit("socket:error", {
           message: "You are no longer eligible to send messages in this room.",

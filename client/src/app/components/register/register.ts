@@ -20,7 +20,7 @@ export class Register {
     lastName: '',
     username: '',
     email: '',
-    age: 18,
+    birthdate: '',
     password: '',
     confirmPassword: ''
   };

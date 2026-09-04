@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { loadData, saveData } from "../data.js";
 import {
   ensureText,
+  calculateAge,
+  meetsMinimumAge,
   safeGroupUser,
   addAuditLog,
   getGroupSettingsDetails,
@@ -119,7 +121,7 @@ function groupRoutes(app) {
 
     const underAgeMemberIds = group.memberIds.filter((memberId) => {
       const member = data.users.find((user) => user.id === memberId);
-      return member && member.age < details.minimumAge;
+      return member && !meetsMinimumAge(member, details.minimumAge);
     });
 
     const remainingAdminIds = group.adminIds.filter((adminId) => {
@@ -209,7 +211,7 @@ function groupRoutes(app) {
           username: bannedUser ? bannedUser.username : "Deleted user",
           firstName: bannedUser ? bannedUser.firstName : "Deleted",
           lastName: bannedUser ? bannedUser.lastName : "user",
-          age: bannedUser ? bannedUser.age : null,
+          age: bannedUser ? calculateAge(bannedUser.birthdate) : null,
           avatarUrl: bannedUser ? bannedUser.avatarUrl : null,
           reason: ban.reason,
           bannedAt: ban.bannedAt,
@@ -251,7 +253,7 @@ function groupRoutes(app) {
       !user ||
       user.systemRole !== "user" ||
       !group.memberIds.includes(user.id) ||
-      user.age < group.minimumAge
+      !meetsMinimumAge(user, group.minimumAge)
     ) {
       return res.status(403).json({
         valid: false,
@@ -524,7 +526,7 @@ function groupRoutes(app) {
       });
     }
 
-    if (requester.age < group.minimumAge) {
+    if (!meetsMinimumAge(requester, group.minimumAge)) {
       return res.status(403).json({
         valid: false,
         message: "You do not meet this group's minimum age.",

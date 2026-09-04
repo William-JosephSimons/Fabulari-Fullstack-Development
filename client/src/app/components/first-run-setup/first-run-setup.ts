@@ -22,7 +22,7 @@ export class FirstRunSetup implements OnInit {
     lastName: '',
     username: '',
     email: '',
-    age: 18,
+    birthdate: '',
     password: '',
     confirmPassword: '',
   };
