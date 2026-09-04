@@ -27,7 +27,33 @@ features and replaces prototype behaviour with the final MEAN application.
 | P2-10 | Only the creator of a message can delete it, and connected room members see that deletion immediately. |
 | P2-11 | User accounts store a birthdate, and the server calculates the current age when applying age rules.     |
 
+### 1.1 MongoDB design
 
+Phase 2 stores application data in a MongoDB database named `fabulari`. The
+existing JSON arrays map to separate collections so the current relationships
+and route behaviour do not need to be redesigned during the change.
+
+| Collection     | Main fields                                                                                                      | Purpose                                                                         |
+| -------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `users`        | `id`, `username`, `email`, names, `birthdate`, `passwordHash`, `avatarUrl`, `systemRole`, timestamps             | Stores active accounts.                               |
+| `groups`       | `id`, `title`, `description`, `minimumAge`, `colour`, `memberIds`, `adminIds`, `roomIds`, timestamps             | Stores group details and the IDs used for membership and Group Admin access.    |
+| `rooms`        | `id`, `groupId`, `name`, `description`, `createdBy`, timestamps                                                  | Stores rooms separately while inheriting age and colour from the group.         |
+| `requests`     | `id`, `type`, requester and target IDs, proposed data, reason, status, decision details, timestamps             | Stores actions that require an administrator's decision.                        |
+| `groupBans`    | `id`, `groupId`, `bannedUserId`, `sourceRequestId`, `approvedBy`, `reason`, `bannedAt`                           | Prevents a banned account from rejoining the same group.                        |
+| `systemBans`   | `id`, `normalizedEmail`, `deletedUserId`, `sourceRequestId`, `reason`, `bannedAt`                                | Keeps the email required to block registration after deleting an account.       |
+| `auditLogs`    | `id`, `actorId`, `actionType`, entity details, optional `groupId`, `summary`, `createdAt`                        | Records administrative and data-changing actions.                              |
+| `messages`     | `id`, `roomId`, `userId`, `type`, text or image path, `createdAt`                                                | Stores the latest five text or image messages for each room.                    |
+| `authSessions` | `token`, `userId`, `createdAt`                                                                                   | Connects a login token to an account so login survives a server restart. |
+
+MongoDB creates its own `_id` for each document, but I keep the
+existing string `id` fields for routes and relationships. Groups, 
+rooms, requests and messages refer to related records by these string 
+IDs. Proposed group and room details stay inside their request 
+because they belong only to that request until approval.
+
+The current JSON file remains as the source of the demonstration data while
+MongoDB is introduced. After every route uses MongoDB, the server stops reading
+and writing from the JSON file.
 
 ## 2. Server API
 
