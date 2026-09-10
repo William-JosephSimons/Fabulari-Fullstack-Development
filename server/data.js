@@ -15,6 +15,8 @@ function createEmptyData() {
     groupBans: [],
     systemBans: [],
     auditLogs: [],
+    messages: [],
+    authSessions: [],
   };
 }
 

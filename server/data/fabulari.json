@@ -478,5 +478,48 @@
       "summary": "Created the tester account.",
       "createdAt": "2026-09-04T03:07:17.193Z"
     }
-  ]
+  ],
+  "messages": [
+    {
+      "id": "message-1",
+      "roomId": "room-1",
+      "userId": "user-2",
+      "type": "text",
+      "text": "Welcome! What is everyone reading?",
+      "createdAt": "2026-09-01T00:31:00.000Z"
+    },
+    {
+      "id": "message-2",
+      "roomId": "room-1",
+      "userId": "user-4",
+      "type": "text",
+      "text": "I just started The Hobbit.",
+      "createdAt": "2026-09-01T00:33:00.000Z"
+    },
+    {
+      "id": "message-3",
+      "roomId": "room-1",
+      "userId": "user-6",
+      "type": "text",
+      "text": "I am reading Dune again.",
+      "createdAt": "2026-09-01T00:35:00.000Z"
+    },
+    {
+      "id": "message-4",
+      "roomId": "room-1",
+      "userId": "user-3",
+      "type": "text",
+      "text": "The next group discussion is on Friday.",
+      "createdAt": "2026-09-01T00:37:00.000Z"
+    },
+    {
+      "id": "message-5",
+      "roomId": "room-1",
+      "userId": "user-5",
+      "type": "text",
+      "text": "I will bring a few suggestions.",
+      "createdAt": "2026-09-01T00:39:00.000Z"
+    }
+  ],
+  "authSessions": []
 }
