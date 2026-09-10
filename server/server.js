@@ -2,6 +2,7 @@ import http from "node:http";
 import cors from "cors";
 import express from "express";
 import { Server as SocketIOServer } from "socket.io";
+import { connectDatabase } from "./database.js";
 import { routes } from "./routes.js";
 import { connectSockets } from "./socket.js";
 
@@ -22,6 +23,18 @@ app.use(express.json());
 routes(app);
 connectSockets(io);
 
-server.listen(port, () => {
-  console.log(`Fabulari server listening on port ${port}`);
-});
+async function startServer() {
+  try {
+    // Do not accept requests until MongoDB is ready.
+    await connectDatabase();
+
+    server.listen(port, () => {
+      console.log(`Fabulari server listening on port ${port}`);
+    });
+  } catch (error) {
+    console.error("Unable to connect to MongoDB:", error.message);
+    process.exitCode = 1;
+  }
+}
+
+startServer();
