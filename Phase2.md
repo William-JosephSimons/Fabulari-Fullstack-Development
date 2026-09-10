@@ -55,6 +55,12 @@ The current JSON file remains as the source of the demonstration data while
 MongoDB is introduced. After every route uses MongoDB, the server stops reading
 and writing from the JSON file.
 
+The database uses indexes for the fields that the server searches often. Public
+IDs, usernames, emails, group titles, group room names, ban records and session
+tokens are unique where required by the application rules. Other indexes support
+request inboxes, audit-log filtering and room message history. Username, group
+title and room-name indexes ignore differences in uppercase and lowercase text.
+
 ## 2. Server API
 
 The existing REST endpoints are documented in `Phase1.md`.
