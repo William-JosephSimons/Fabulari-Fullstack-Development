@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { getDatabase } from "../database.js";
 import {
@@ -9,6 +10,16 @@ import {
   safeUser,
   createAuditLog,
 } from "./route-helpers.js";
+
+function getBearerToken(req) {
+  const authorization = ensureText(req.headers.authorization);
+
+  if (!authorization.startsWith("Bearer ")) {
+    return "";
+  }
+
+  return ensureText(authorization.slice(7));
+}
 
 function accountRoutes(app) {
   app.get("/api/bootstrap-status", async (req, res) => {
@@ -131,9 +142,85 @@ function accountRoutes(app) {
       });
     }
 
+    const token = randomBytes(32).toString("hex");
+    await database.collection("authSessions").insertOne({
+      token,
+      userId: user.id,
+      createdAt: new Date().toISOString(),
+    });
+
     return res.status(200).json({
       valid: true,
       message: "Login successful.",
+      user: safeUser(user),
+      token,
+    });
+  });
+
+  app.post("/api/logout", async (req, res) => {
+    const token = getBearerToken(req);
+
+    if (!token) {
+      return res.status(401).json({
+        valid: false,
+        message: "A login session is required.",
+      });
+    }
+
+    const database = getDatabase();
+    const result = await database
+      .collection("authSessions")
+      .deleteOne({ token });
+
+    if (result.deletedCount === 0) {
+      return res.status(401).json({
+        valid: false,
+        message: "That login session is no longer valid.",
+      });
+    }
+
+    return res.status(200).json({
+      valid: true,
+      message: "Logout successful.",
+    });
+  });
+
+  app.get("/api/session", async (req, res) => {
+    const token = getBearerToken(req);
+
+    if (!token) {
+      return res.status(401).json({
+        valid: false,
+        message: "A login session is required.",
+      });
+    }
+
+    const database = getDatabase();
+    const sessions = database.collection("authSessions");
+    const session = await sessions.findOne({ token });
+
+    if (!session) {
+      return res.status(401).json({
+        valid: false,
+        message: "That login session is no longer valid.",
+      });
+    }
+
+    const user = await database
+      .collection("users")
+      .findOne({ id: session.userId });
+
+    if (!user) {
+      // Remove a session if its account no longer exists.
+      await sessions.deleteOne({ token });
+      return res.status(401).json({
+        valid: false,
+        message: "That login session is no longer valid.",
+      });
+    }
+
+    return res.status(200).json({
+      valid: true,
       user: safeUser(user),
     });
   });
