@@ -1,5 +1,4 @@
 import { getDatabase } from "../database.js";
-import { loadData } from "../data.js";
 import { calculateAge, ensureText } from "./route-helpers.js";
 
 function adminRoutes(app) {
@@ -15,14 +14,13 @@ function adminRoutes(app) {
       });
     }
 
-    // Requests remain in JSON until their read and decision routes move together.
-    const pendingRequests = loadData().requests.filter((request) => {
-      return (
-        ["groupCreation", "groupDeletion", "systemBan"].includes(
-          request.type,
-        ) && request.status === "pending"
-      );
-    });
+    const pendingRequests = await database
+      .collection("requests")
+      .find({
+        type: { $in: ["groupCreation", "groupDeletion", "systemBan"] },
+        status: "pending",
+      })
+      .toArray();
     const userCount = await database.collection("users").countDocuments();
     const groupCount = await database.collection("groups").countDocuments();
     const systemBanCount = await database
@@ -49,10 +47,10 @@ function adminRoutes(app) {
     });
   });
 
-  app.get("/api/admin/requests", (req, res) => {
-    const data = loadData();
+  app.get("/api/admin/requests", async (req, res) => {
+    const database = getDatabase();
     const userId = ensureText(req.query.userId);
-    const user = data.users.find((item) => item.id === userId);
+    const user = await database.collection("users").findOne({ id: userId });
 
     if (!user || user.systemRole !== "superAdmin") {
       return res.status(403).json({
@@ -61,41 +59,40 @@ function adminRoutes(app) {
       });
     }
 
-    const requests = data.requests
-      .filter((request) => {
-        return (
-          ["groupCreation", "groupDeletion", "systemBan"].includes(
-            request.type,
-          ) && request.status === "pending"
-        );
-      })
-      .sort((first, second) => {
-        return new Date(second.createdAt) - new Date(first.createdAt);
-      })
-      .map((request) => {
-        const requester = data.users.find(
-          (item) => item.id === request.requesterId,
-        );
-        const group = data.groups.find((item) => item.id === request.groupId);
-        const targetUser = data.users.find(
-          (item) => item.id === request.targetUserId,
-        );
+    const pendingRequests = await database
+      .collection("requests")
+      .find(
+        {
+          type: { $in: ["groupCreation", "groupDeletion", "systemBan"] },
+          status: "pending",
+        },
+        { projection: { _id: 0 } },
+      )
+      .sort({ createdAt: -1 })
+      .toArray();
+    const users = await database.collection("users").find({}).toArray();
+    const groups = await database.collection("groups").find({}).toArray();
 
-        // The inbox only receives the safe names needed to identify each request.
-        return {
-          ...request,
-          requesterName:
-            requester ?
-              `${requester.firstName} ${requester.lastName}`
-            : "Deleted user",
-          groupName: group ? group.title : null,
-          targetName:
-            targetUser ? `${targetUser.firstName} ${targetUser.lastName}`
-            : request.targetUserId ? "Deleted user"
-            : null,
-          targetUsername: targetUser ? targetUser.username : null,
-        };
-      });
+    const requests = pendingRequests.map((request) => {
+      const requester = users.find((item) => item.id === request.requesterId);
+      const group = groups.find((item) => item.id === request.groupId);
+      const targetUser = users.find((item) => item.id === request.targetUserId);
+
+      // The inbox only receives the safe names needed to identify each request.
+      return {
+        ...request,
+        requesterName:
+          requester ?
+            `${requester.firstName} ${requester.lastName}`
+          : "Deleted user",
+        groupName: group ? group.title : null,
+        targetName:
+          targetUser ? `${targetUser.firstName} ${targetUser.lastName}`
+          : request.targetUserId ? "Deleted user"
+          : null,
+        targetUsername: targetUser ? targetUser.username : null,
+      };
+    });
 
     return res.status(200).json({
       valid: true,

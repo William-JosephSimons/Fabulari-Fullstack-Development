@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { loadData, saveData } from "../data.js";
+import { getDatabase } from "../database.js";
 import {
   ensureText,
   calculateAge,
   meetsMinimumAge,
-  addAuditLog,
+  createAuditLog,
   getGroupRequestDetails,
   validateGroupRequest,
   getRequestDecisionDetails,
@@ -16,8 +16,7 @@ import {
 } from "./route-helpers.js";
 
 function requestRoutes(app) {
-  app.post("/api/group-requests", (req, res) => {
-    const data = loadData();
+  app.post("/api/group-requests", async (req, res) => {
     const details = getGroupRequestDetails(req.body);
     const validationError = validateGroupRequest(details);
 
@@ -25,9 +24,10 @@ function requestRoutes(app) {
       return res.status(400).json({ valid: false, message: validationError });
     }
 
-    const requester = data.users.find(
-      (user) => user.id === details.requesterId,
-    );
+    const database = getDatabase();
+    const requester = await database
+      .collection("users")
+      .findOne({ id: details.requesterId });
 
     if (!requester) {
       return res.status(404).json({
@@ -61,16 +61,17 @@ function requestRoutes(app) {
       decidedAt: null,
     };
 
-    data.requests.push(request);
-    addAuditLog(data, {
-      actorId: requester.id,
-      actionType: "groupCreationRequested",
-      entityType: "request",
-      entityId: request.id,
-      summary: `Requested a new group named ${request.proposedGroup.title}.`,
-      createdAt: request.createdAt,
-    });
-    saveData(data);
+    await database.collection("requests").insertOne({ ...request });
+    await database.collection("auditLogs").insertOne(
+      createAuditLog({
+        actorId: requester.id,
+        actionType: "groupCreationRequested",
+        entityType: "request",
+        entityId: request.id,
+        summary: `Requested a new group named ${request.proposedGroup.title}.`,
+        createdAt: request.createdAt,
+      }),
+    );
 
     return res.status(201).json({
       valid: true,
@@ -79,10 +80,10 @@ function requestRoutes(app) {
     });
   });
 
-  app.get("/api/requests/mine", (req, res) => {
-    const data = loadData();
+  app.get("/api/requests/mine", async (req, res) => {
+    const database = getDatabase();
     const userId = ensureText(req.query.userId);
-    const user = data.users.find((item) => item.id === userId);
+    const user = await database.collection("users").findOne({ id: userId });
 
     if (!user) {
       return res.status(404).json({
@@ -91,39 +92,41 @@ function requestRoutes(app) {
       });
     }
 
-    const requests = data.requests
-      .filter((request) => {
-        // Allow the user to see pending and rejected requests.
-        return (
-          request.requesterId === user.id &&
-          ["pending", "rejected"].includes(request.status)
-        );
-      })
-      .sort((first, second) => {
-        return new Date(second.createdAt) - new Date(first.createdAt);
-      })
-      .map((request) => {
-        const group = data.groups.find((item) => item.id === request.groupId);
-        const targetUser = data.users.find(
-          (item) => item.id === request.targetUserId,
-        );
-        let groupName = request.proposedGroup?.title || null;
+    // Allow the user to see pending and rejected requests.
+    const storedRequests = await database
+      .collection("requests")
+      .find(
+        {
+          requesterId: user.id,
+          status: { $in: ["pending", "rejected"] },
+        },
+        { projection: { _id: 0 } },
+      )
+      .sort({ createdAt: -1 })
+      .toArray();
+    const groups = await database.collection("groups").find({}).toArray();
+    const users = await database.collection("users").find({}).toArray();
 
-        if (group) {
-          groupName = group.title;
-        } else if (request.groupId) {
-          groupName = "Deleted group";
-        }
+    const requests = storedRequests.map((request) => {
+      const group = groups.find((item) => item.id === request.groupId);
+      const targetUser = users.find((item) => item.id === request.targetUserId);
+      let groupName = request.proposedGroup?.title || null;
 
-        return {
-          ...request,
-          groupName,
-          targetName:
-            targetUser ? `${targetUser.firstName} ${targetUser.lastName}`
-            : request.targetUserId ? "Deleted user"
-            : null,
-        };
-      });
+      if (group) {
+        groupName = group.title;
+      } else if (request.groupId) {
+        groupName = "Deleted group";
+      }
+
+      return {
+        ...request,
+        groupName,
+        targetName:
+          targetUser ? `${targetUser.firstName} ${targetUser.lastName}`
+          : request.targetUserId ? "Deleted user"
+          : null,
+      };
+    });
 
     return res.status(200).json({
       valid: true,
@@ -131,10 +134,12 @@ function requestRoutes(app) {
     });
   });
 
-  app.get("/api/groups/:id/requests", (req, res) => {
-    const data = loadData();
+  app.get("/api/groups/:id/requests", async (req, res) => {
+    const database = getDatabase();
     const userId = ensureText(req.query.userId);
-    const group = data.groups.find((item) => item.id === req.params.id);
+    const group = await database
+      .collection("groups")
+      .findOne({ id: req.params.id }, { projection: { _id: 0 } });
 
     if (!group) {
       return res.status(404).json({
@@ -143,7 +148,7 @@ function requestRoutes(app) {
       });
     }
 
-    const user = data.users.find((item) => item.id === userId);
+    const user = await database.collection("users").findOne({ id: userId });
 
     if (!user || !group.adminIds.includes(user.id)) {
       return res.status(403).json({
@@ -152,41 +157,38 @@ function requestRoutes(app) {
       });
     }
 
-    const requests = data.requests
-      .filter((request) => {
-        return (
-          ["membership", "roomProposal", "groupBanReport"].includes(
-            request.type,
-          ) &&
-          request.groupId === group.id &&
-          request.status === "pending"
-        );
-      })
-      .sort((first, second) => {
-        return new Date(second.createdAt) - new Date(first.createdAt);
-      })
-      .map((request) => {
-        const requester = data.users.find(
-          (item) => item.id === request.requesterId,
-        );
-        const targetUser = data.users.find(
-          (item) => item.id === request.targetUserId,
-        );
+    const storedRequests = await database
+      .collection("requests")
+      .find(
+        {
+          type: { $in: ["membership", "roomProposal", "groupBanReport"] },
+          groupId: group.id,
+          status: "pending",
+        },
+        { projection: { _id: 0 } },
+      )
+      .sort({ createdAt: -1 })
+      .toArray();
+    const users = await database.collection("users").find({}).toArray();
 
-        return {
-          ...request,
-          requesterName:
-            requester ?
-              `${requester.firstName} ${requester.lastName}`
-            : "Deleted user",
-          requesterAge: requester ? calculateAge(requester.birthdate) : null,
-          targetName:
-            targetUser ? `${targetUser.firstName} ${targetUser.lastName}`
-            : request.targetUserId ? "Deleted user"
-            : null,
-          targetAge: targetUser ? calculateAge(targetUser.birthdate) : null,
-        };
-      });
+    const requests = storedRequests.map((request) => {
+      const requester = users.find((item) => item.id === request.requesterId);
+      const targetUser = users.find((item) => item.id === request.targetUserId);
+
+      return {
+        ...request,
+        requesterName:
+          requester ?
+            `${requester.firstName} ${requester.lastName}`
+          : "Deleted user",
+        requesterAge: requester ? calculateAge(requester.birthdate) : null,
+        targetName:
+          targetUser ? `${targetUser.firstName} ${targetUser.lastName}`
+          : request.targetUserId ? "Deleted user"
+          : null,
+        targetAge: targetUser ? calculateAge(targetUser.birthdate) : null,
+      };
+    });
 
     return res.status(200).json({
       valid: true,
@@ -198,7 +200,7 @@ function requestRoutes(app) {
     });
   });
 
-  app.post("/api/groups/:id/room-requests", (req, res) => {
+  app.post("/api/groups/:id/room-requests", async (req, res) => {
     const details = getRoomProposalDetails(req.body);
     const validationError = validateRoomProposal(details);
 
@@ -206,8 +208,10 @@ function requestRoutes(app) {
       return res.status(400).json({ valid: false, message: validationError });
     }
 
-    const data = loadData();
-    const group = data.groups.find((item) => item.id === req.params.id);
+    const database = getDatabase();
+    const group = await database
+      .collection("groups")
+      .findOne({ id: req.params.id }, { projection: { _id: 0 } });
 
     if (!group) {
       return res.status(404).json({
@@ -216,9 +220,9 @@ function requestRoutes(app) {
       });
     }
 
-    const requester = data.users.find((user) => {
-      return user.id === details.requesterId;
-    });
+    const requester = await database
+      .collection("users")
+      .findOne({ id: details.requesterId });
 
     if (
       !requester ||
@@ -232,12 +236,12 @@ function requestRoutes(app) {
       });
     }
 
-    const roomAlreadyExists = data.rooms.some((room) => {
-      return (
-        room.groupId === group.id &&
-        room.name.toLowerCase() === details.name.toLowerCase()
+    const roomAlreadyExists = await database
+      .collection("rooms")
+      .findOne(
+        { groupId: group.id, name: details.name },
+        { collation: { locale: "en", strength: 2 } },
       );
-    });
 
     if (roomAlreadyExists) {
       return res.status(409).json({
@@ -246,14 +250,15 @@ function requestRoutes(app) {
       });
     }
 
-    const matchingProposal = data.requests.some((request) => {
-      return (
-        request.type === "roomProposal" &&
-        request.groupId === group.id &&
-        request.status === "pending" &&
-        request.proposedRoom.name.toLowerCase() === details.name.toLowerCase()
-      );
-    });
+    const matchingProposal = await database.collection("requests").findOne(
+      {
+        type: "roomProposal",
+        groupId: group.id,
+        status: "pending",
+        "proposedRoom.name": details.name,
+      },
+      { collation: { locale: "en", strength: 2 } },
+    );
 
     if (matchingProposal) {
       return res.status(409).json({
@@ -279,17 +284,18 @@ function requestRoutes(app) {
       decidedAt: null,
     };
 
-    data.requests.push(request);
-    addAuditLog(data, {
-      actorId: requester.id,
-      actionType: "roomProposalSubmitted",
-      entityType: "request",
-      entityId: request.id,
-      groupId: group.id,
-      summary: `Proposed ${request.proposedRoom.name} for ${group.title}.`,
-      createdAt: request.createdAt,
-    });
-    saveData(data);
+    await database.collection("requests").insertOne({ ...request });
+    await database.collection("auditLogs").insertOne(
+      createAuditLog({
+        actorId: requester.id,
+        actionType: "roomProposalSubmitted",
+        entityType: "request",
+        entityId: request.id,
+        groupId: group.id,
+        summary: `Proposed ${request.proposedRoom.name} for ${group.title}.`,
+        createdAt: request.createdAt,
+      }),
+    );
 
     return res.status(201).json({
       valid: true,
@@ -298,7 +304,7 @@ function requestRoutes(app) {
     });
   });
 
-  app.post("/api/groups/:id/ban-reports", (req, res) => {
+  app.post("/api/groups/:id/ban-reports", async (req, res) => {
     const details = getGroupBanReportDetails(req.body);
 
     if (!details.requesterId || !details.targetUserId || !details.reason) {
@@ -315,8 +321,10 @@ function requestRoutes(app) {
       });
     }
 
-    const data = loadData();
-    const group = data.groups.find((item) => item.id === req.params.id);
+    const database = getDatabase();
+    const group = await database
+      .collection("groups")
+      .findOne({ id: req.params.id }, { projection: { _id: 0 } });
 
     if (!group) {
       return res.status(404).json({
@@ -325,9 +333,9 @@ function requestRoutes(app) {
       });
     }
 
-    const requester = data.users.find((user) => {
-      return user.id === details.requesterId;
-    });
+    const requester = await database
+      .collection("users")
+      .findOne({ id: details.requesterId });
 
     if (
       !requester ||
@@ -340,9 +348,9 @@ function requestRoutes(app) {
       });
     }
 
-    const targetUser = data.users.find((user) => {
-      return user.id === details.targetUserId;
-    });
+    const targetUser = await database
+      .collection("users")
+      .findOne({ id: details.targetUserId });
 
     if (!targetUser || !group.memberIds.includes(targetUser.id)) {
       return res.status(409).json({
@@ -351,8 +359,9 @@ function requestRoutes(app) {
       });
     }
 
-    const alreadyBanned = data.groupBans.some((ban) => {
-      return ban.groupId === group.id && ban.bannedUserId === targetUser.id;
+    const alreadyBanned = await database.collection("groupBans").findOne({
+      groupId: group.id,
+      bannedUserId: targetUser.id,
     });
 
     if (alreadyBanned) {
@@ -362,13 +371,11 @@ function requestRoutes(app) {
       });
     }
 
-    const reportAlreadyPending = data.requests.some((request) => {
-      return (
-        request.type === "groupBanReport" &&
-        request.groupId === group.id &&
-        request.targetUserId === targetUser.id &&
-        request.status === "pending"
-      );
+    const reportAlreadyPending = await database.collection("requests").findOne({
+      type: "groupBanReport",
+      groupId: group.id,
+      targetUserId: targetUser.id,
+      status: "pending",
     });
 
     if (reportAlreadyPending) {
@@ -392,17 +399,18 @@ function requestRoutes(app) {
       decidedAt: null,
     };
 
-    data.requests.push(request);
-    addAuditLog(data, {
-      actorId: requester.id,
-      actionType: "groupBanReported",
-      entityType: "request",
-      entityId: request.id,
-      groupId: group.id,
-      summary: `Reported ${targetUser.username} for a group ban in ${group.title}.`,
-      createdAt: request.createdAt,
-    });
-    saveData(data);
+    await database.collection("requests").insertOne({ ...request });
+    await database.collection("auditLogs").insertOne(
+      createAuditLog({
+        actorId: requester.id,
+        actionType: "groupBanReported",
+        entityType: "request",
+        entityId: request.id,
+        groupId: group.id,
+        summary: `Reported ${targetUser.username} for a group ban in ${group.title}.`,
+        createdAt: request.createdAt,
+      }),
+    );
 
     return res.status(201).json({
       valid: true,
@@ -411,7 +419,7 @@ function requestRoutes(app) {
     });
   });
 
-  app.post("/api/groups/:id/delete-request", (req, res) => {
+  app.post("/api/groups/:id/delete-request", async (req, res) => {
     const details = getGroupDeletionRequestDetails(req.body);
 
     if (!details.requesterId || !details.reason) {
@@ -421,8 +429,10 @@ function requestRoutes(app) {
       });
     }
 
-    const data = loadData();
-    const group = data.groups.find((item) => item.id === req.params.id);
+    const database = getDatabase();
+    const group = await database
+      .collection("groups")
+      .findOne({ id: req.params.id }, { projection: { _id: 0 } });
 
     if (!group) {
       return res.status(404).json({
@@ -431,9 +441,9 @@ function requestRoutes(app) {
       });
     }
 
-    const requester = data.users.find((user) => {
-      return user.id === details.requesterId;
-    });
+    const requester = await database
+      .collection("users")
+      .findOne({ id: details.requesterId });
 
     if (
       !requester ||
@@ -446,13 +456,13 @@ function requestRoutes(app) {
       });
     }
 
-    const deletionAlreadyPending = data.requests.some((request) => {
-      return (
-        request.type === "groupDeletion" &&
-        request.groupId === group.id &&
-        request.status === "pending"
-      );
-    });
+    const deletionAlreadyPending = await database
+      .collection("requests")
+      .findOne({
+        type: "groupDeletion",
+        groupId: group.id,
+        status: "pending",
+      });
 
     if (deletionAlreadyPending) {
       return res.status(409).json({
@@ -474,17 +484,18 @@ function requestRoutes(app) {
       decidedAt: null,
     };
 
-    data.requests.push(request);
-    addAuditLog(data, {
-      actorId: requester.id,
-      actionType: "groupDeletionRequested",
-      entityType: "request",
-      entityId: request.id,
-      groupId: group.id,
-      summary: `Requested deletion of ${group.title}.`,
-      createdAt: request.createdAt,
-    });
-    saveData(data);
+    await database.collection("requests").insertOne({ ...request });
+    await database.collection("auditLogs").insertOne(
+      createAuditLog({
+        actorId: requester.id,
+        actionType: "groupDeletionRequested",
+        entityType: "request",
+        entityId: request.id,
+        groupId: group.id,
+        summary: `Requested deletion of ${group.title}.`,
+        createdAt: request.createdAt,
+      }),
+    );
 
     return res.status(201).json({
       valid: true,
@@ -493,7 +504,7 @@ function requestRoutes(app) {
     });
   });
 
-  app.post("/api/groups/:id/system-ban-requests", (req, res) => {
+  app.post("/api/groups/:id/system-ban-requests", async (req, res) => {
     const details = getSystemBanRequestDetails(req.body);
 
     if (!details.requesterId || !details.targetUserId || !details.reason) {
@@ -510,8 +521,10 @@ function requestRoutes(app) {
       });
     }
 
-    const data = loadData();
-    const group = data.groups.find((item) => item.id === req.params.id);
+    const database = getDatabase();
+    const group = await database
+      .collection("groups")
+      .findOne({ id: req.params.id }, { projection: { _id: 0 } });
 
     if (!group) {
       return res.status(404).json({
@@ -520,9 +533,9 @@ function requestRoutes(app) {
       });
     }
 
-    const requester = data.users.find((user) => {
-      return user.id === details.requesterId;
-    });
+    const requester = await database
+      .collection("users")
+      .findOne({ id: details.requesterId });
 
     if (
       !requester ||
@@ -535,9 +548,9 @@ function requestRoutes(app) {
       });
     }
 
-    const targetUser = data.users.find((user) => {
-      return user.id === details.targetUserId;
-    });
+    const targetUser = await database
+      .collection("users")
+      .findOne({ id: details.targetUserId });
 
     // A Group Admin user can only report accounts from their own group.
     if (
@@ -552,13 +565,13 @@ function requestRoutes(app) {
       });
     }
 
-    const requestAlreadyPending = data.requests.some((request) => {
-      return (
-        request.type === "systemBan" &&
-        request.targetUserId === targetUser.id &&
-        request.status === "pending"
-      );
-    });
+    const requestAlreadyPending = await database
+      .collection("requests")
+      .findOne({
+        type: "systemBan",
+        targetUserId: targetUser.id,
+        status: "pending",
+      });
 
     if (requestAlreadyPending) {
       return res.status(409).json({
@@ -581,17 +594,18 @@ function requestRoutes(app) {
       decidedAt: null,
     };
 
-    data.requests.push(request);
-    addAuditLog(data, {
-      actorId: requester.id,
-      actionType: "systemBanRequested",
-      entityType: "request",
-      entityId: request.id,
-      groupId: group.id,
-      summary: `Requested a system hard ban for ${targetUser.username}.`,
-      createdAt: request.createdAt,
-    });
-    saveData(data);
+    await database.collection("requests").insertOne({ ...request });
+    await database.collection("auditLogs").insertOne(
+      createAuditLog({
+        actorId: requester.id,
+        actionType: "systemBanRequested",
+        entityType: "request",
+        entityId: request.id,
+        groupId: group.id,
+        summary: `Requested a system hard ban for ${targetUser.username}.`,
+        createdAt: request.createdAt,
+      }),
+    );
 
     return res.status(201).json({
       valid: true,
@@ -600,7 +614,7 @@ function requestRoutes(app) {
     });
   });
 
-  app.put("/api/requests/:id/decision", (req, res) => {
+  app.put("/api/requests/:id/decision", async (req, res) => {
     const details = getRequestDecisionDetails(req.body);
 
     if (
@@ -620,8 +634,10 @@ function requestRoutes(app) {
       });
     }
 
-    const data = loadData();
-    const request = data.requests.find((item) => item.id === req.params.id);
+    const database = getDatabase();
+    const request = await database
+      .collection("requests")
+      .findOne({ id: req.params.id }, { projection: { _id: 0 } });
 
     if (!request) {
       return res.status(404).json({
@@ -654,7 +670,9 @@ function requestRoutes(app) {
       });
     }
 
-    const decider = data.users.find((user) => user.id === details.deciderId);
+    const decider = await database
+      .collection("users")
+      .findOne({ id: details.deciderId });
 
     if (!decider) {
       return res.status(403).json({
@@ -663,9 +681,9 @@ function requestRoutes(app) {
       });
     }
 
-    const requester = data.users.find(
-      (user) => user.id === request.requesterId,
-    );
+    const requester = await database
+      .collection("users")
+      .findOne({ id: request.requesterId });
 
     if (!requester || requester.systemRole !== "user") {
       return res.status(409).json({
@@ -688,12 +706,12 @@ function requestRoutes(app) {
         }
 
         if (details.decision === "approved") {
-          const titleAlreadyExists = data.groups.some((item) => {
-            return (
-              item.title.toLowerCase() ===
-              request.proposedGroup.title.toLowerCase()
+          const titleAlreadyExists = await database
+            .collection("groups")
+            .findOne(
+              { title: request.proposedGroup.title },
+              { collation: { locale: "en", strength: 2 } },
             );
-          });
 
           if (titleAlreadyExists) {
             return res.status(409).json({
@@ -715,7 +733,7 @@ function requestRoutes(app) {
             updatedAt: now,
           };
 
-          data.groups.push(group);
+          await database.collection("groups").insertOne({ ...group });
           request.createdGroupId = group.id;
         }
 
@@ -724,7 +742,9 @@ function requestRoutes(app) {
       }
 
       case "membership": {
-        group = data.groups.find((item) => item.id === request.groupId);
+        group = await database
+          .collection("groups")
+          .findOne({ id: request.groupId }, { projection: { _id: 0 } });
 
         if (!group) {
           return res.status(409).json({
@@ -748,10 +768,9 @@ function requestRoutes(app) {
             });
           }
 
-          const isGroupBanned = data.groupBans.some((ban) => {
-            return (
-              ban.groupId === group.id && ban.bannedUserId === requester.id
-            );
+          const isGroupBanned = await database.collection("groupBans").findOne({
+            groupId: group.id,
+            bannedUserId: requester.id,
           });
 
           if (isGroupBanned) {
@@ -770,6 +789,15 @@ function requestRoutes(app) {
 
           group.memberIds.push(requester.id);
           group.updatedAt = now;
+          await database.collection("groups").updateOne(
+            { id: group.id },
+            {
+              $set: {
+                memberIds: group.memberIds,
+                updatedAt: now,
+              },
+            },
+          );
         }
 
         responseMessage = `Membership request ${details.decision}.`;
@@ -777,7 +805,9 @@ function requestRoutes(app) {
       }
 
       case "roomProposal": {
-        group = data.groups.find((item) => item.id === request.groupId);
+        group = await database
+          .collection("groups")
+          .findOne({ id: request.groupId }, { projection: { _id: 0 } });
 
         if (!group) {
           return res.status(409).json({
@@ -804,13 +834,13 @@ function requestRoutes(app) {
             });
           }
 
-          const nameAlreadyExists = data.rooms.some((room) => {
-            return (
-              room.groupId === group.id &&
-              room.name.toLowerCase() ===
-                request.proposedRoom.name.toLowerCase()
-            );
-          });
+          const nameAlreadyExists = await database.collection("rooms").findOne(
+            {
+              groupId: group.id,
+              name: request.proposedRoom.name,
+            },
+            { collation: { locale: "en", strength: 2 } },
+          );
 
           if (nameAlreadyExists) {
             return res.status(409).json({
@@ -831,9 +861,18 @@ function requestRoutes(app) {
             updatedAt: now,
           };
 
-          data.rooms.push(room);
+          await database.collection("rooms").insertOne({ ...room });
           group.roomIds.push(room.id);
           group.updatedAt = now;
+          await database.collection("groups").updateOne(
+            { id: group.id },
+            {
+              $set: {
+                roomIds: group.roomIds,
+                updatedAt: now,
+              },
+            },
+          );
           request.createdRoomId = room.id;
         }
 
@@ -842,7 +881,9 @@ function requestRoutes(app) {
       }
 
       case "groupBanReport": {
-        group = data.groups.find((item) => item.id === request.groupId);
+        group = await database
+          .collection("groups")
+          .findOne({ id: request.groupId }, { projection: { _id: 0 } });
 
         if (!group) {
           return res.status(409).json({
@@ -869,9 +910,9 @@ function requestRoutes(app) {
         }
 
         if (details.decision === "approved") {
-          const targetUser = data.users.find((user) => {
-            return user.id === request.targetUserId;
-          });
+          const targetUser = await database
+            .collection("users")
+            .findOne({ id: request.targetUserId });
 
           if (!targetUser || !group.memberIds.includes(targetUser.id)) {
             return res.status(409).json({
@@ -880,10 +921,9 @@ function requestRoutes(app) {
             });
           }
 
-          const alreadyBanned = data.groupBans.some((ban) => {
-            return (
-              ban.groupId === group.id && ban.bannedUserId === targetUser.id
-            );
+          const alreadyBanned = await database.collection("groupBans").findOne({
+            groupId: group.id,
+            bannedUserId: targetUser.id,
           });
 
           if (alreadyBanned) {
@@ -913,7 +953,7 @@ function requestRoutes(app) {
             bannedAt: now,
           };
 
-          data.groupBans.push(groupBan);
+          await database.collection("groupBans").insertOne({ ...groupBan });
           // Removing group membership also removes access to every room in the group.
           group.memberIds = group.memberIds.filter((userId) => {
             return userId !== targetUser.id;
@@ -922,6 +962,16 @@ function requestRoutes(app) {
             return userId !== targetUser.id;
           });
           group.updatedAt = now;
+          await database.collection("groups").updateOne(
+            { id: group.id },
+            {
+              $set: {
+                memberIds: group.memberIds,
+                adminIds: group.adminIds,
+                updatedAt: now,
+              },
+            },
+          );
           request.createdGroupBanId = groupBan.id;
         }
 
@@ -937,7 +987,9 @@ function requestRoutes(app) {
           });
         }
 
-        group = data.groups.find((item) => item.id === request.groupId);
+        group = await database
+          .collection("groups")
+          .findOne({ id: request.groupId }, { projection: { _id: 0 } });
 
         if (!group) {
           return res.status(409).json({
@@ -957,18 +1009,17 @@ function requestRoutes(app) {
         }
 
         if (details.decision === "approved") {
-          data.groups = data.groups.filter((item) => item.id !== group.id);
-          data.rooms = data.rooms.filter((room) => room.groupId !== group.id);
-          data.groupBans = data.groupBans.filter((ban) => {
-            return ban.groupId !== group.id;
-          });
-          // Keep this decision for history, but discard other requests that can no longer be actioned.
-          data.requests = data.requests.filter((item) => {
-            return (
-              item.id === request.id ||
-              item.groupId !== group.id ||
-              item.status !== "pending"
-            );
+          await database.collection("groups").deleteOne({ id: group.id });
+          await database.collection("rooms").deleteMany({ groupId: group.id });
+          await database
+            .collection("groupBans")
+            .deleteMany({ groupId: group.id });
+          // Keep this decision for history. Other pending group requests can no
+          // longer be actioned after the group is deleted.
+          await database.collection("requests").deleteMany({
+            id: { $ne: request.id },
+            groupId: group.id,
+            status: "pending",
           });
         }
 
@@ -985,7 +1036,9 @@ function requestRoutes(app) {
           });
         }
 
-        group = data.groups.find((item) => item.id === request.groupId);
+        group = await database
+          .collection("groups")
+          .findOne({ id: request.groupId }, { projection: { _id: 0 } });
 
         if (!group) {
           return res.status(409).json({
@@ -1003,9 +1056,9 @@ function requestRoutes(app) {
             });
           }
 
-          const targetUser = data.users.find((user) => {
-            return user.id === request.targetUserId;
-          });
+          const targetUser = await database
+            .collection("users")
+            .findOne({ id: request.targetUserId });
 
           if (
             !targetUser ||
@@ -1027,11 +1080,12 @@ function requestRoutes(app) {
             });
           }
 
-          const groupWithoutReplacement = data.groups.find((item) => {
-            return (
-              item.adminIds.includes(targetUser.id) &&
-              item.adminIds.length === 1
-            );
+          const administeredGroups = await database
+            .collection("groups")
+            .find({ adminIds: targetUser.id }, { projection: { _id: 0 } })
+            .toArray();
+          const groupWithoutReplacement = administeredGroups.find((item) => {
+            return item.adminIds.length === 1;
           });
 
           if (groupWithoutReplacement) {
@@ -1041,9 +1095,9 @@ function requestRoutes(app) {
             });
           }
 
-          const alreadySystemBanned = data.systemBans.some((ban) => {
-            return ban.normalizedEmail === targetUser.email.toLowerCase();
-          });
+          const alreadySystemBanned = await database
+            .collection("systemBans")
+            .findOne({ normalizedEmail: targetUser.email.toLowerCase() });
 
           if (alreadySystemBanned) {
             return res.status(409).json({
@@ -1061,10 +1115,23 @@ function requestRoutes(app) {
             bannedAt: now,
           };
 
-          data.systemBans.push(systemBan);
-          data.users = data.users.filter((user) => user.id !== targetUser.id);
+          await database.collection("systemBans").insertOne({ ...systemBan });
+          await database.collection("users").deleteOne({ id: targetUser.id });
 
-          data.groups.forEach((item) => {
+          const affectedGroups = await database
+            .collection("groups")
+            .find(
+              {
+                $or: [
+                  { memberIds: targetUser.id },
+                  { adminIds: targetUser.id },
+                ],
+              },
+              { projection: { _id: 0 } },
+            )
+            .toArray();
+
+          for (const item of affectedGroups) {
             const wasMember = item.memberIds.includes(targetUser.id);
             const wasAdmin = item.adminIds.includes(targetUser.id);
 
@@ -1076,17 +1143,32 @@ function requestRoutes(app) {
                 return userId !== targetUser.id;
               });
               item.updatedAt = now;
+
+              await database.collection("groups").updateOne(
+                { id: item.id },
+                {
+                  $set: {
+                    memberIds: item.memberIds,
+                    adminIds: item.adminIds,
+                    updatedAt: now,
+                  },
+                },
+              );
+
+              if (item.id === group.id) {
+                group = item;
+              }
             }
-          });
+          }
 
           // Pending requests from or about the deleted account cannot be completed later.
-          data.requests = data.requests.filter((item) => {
-            return (
-              item.id === request.id ||
-              item.status !== "pending" ||
-              (item.requesterId !== targetUser.id &&
-                item.targetUserId !== targetUser.id)
-            );
+          await database.collection("requests").deleteMany({
+            id: { $ne: request.id },
+            status: "pending",
+            $or: [
+              { requesterId: targetUser.id },
+              { targetUserId: targetUser.id },
+            ],
           });
 
           request.createdSystemBanId = systemBan.id;
@@ -1144,20 +1226,24 @@ function requestRoutes(app) {
       }
     }
 
-    addAuditLog(data, {
-      actorId: decider.id,
-      actionType:
-        details.decision === "approved" ?
-          approvedActionTypes[request.type]
-        : "requestRejected",
-      entityType: auditEntityType,
-      entityId: auditEntityId,
-      groupId: request.groupId || (group ? group.id : null),
-      summary: responseMessage,
-      createdAt: now,
-    });
-
-    saveData(data);
+    // The switch may add the ID of a group, room or ban created by approval.
+    await database
+      .collection("requests")
+      .updateOne({ id: request.id }, { $set: request });
+    await database.collection("auditLogs").insertOne(
+      createAuditLog({
+        actorId: decider.id,
+        actionType:
+          details.decision === "approved" ?
+            approvedActionTypes[request.type]
+          : "requestRejected",
+        entityType: auditEntityType,
+        entityId: auditEntityId,
+        groupId: request.groupId || (group ? group.id : null),
+        summary: responseMessage,
+        createdAt: now,
+      }),
+    );
 
     return res.status(200).json({
       valid: true,
