@@ -1,12 +1,22 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { closeDatabase, connectDatabase, getDatabase } from "./database.js";
-import { loadData } from "./data.js";
+
+const currentFolder = path.dirname(fileURLToPath(import.meta.url));
+const seedFile = path.join(currentFolder, "data", "fabulari.json");
+
+function loadSeedData() {
+  const fileContents = fs.readFileSync(seedFile, "utf8");
+  return JSON.parse(fileContents);
+}
 
 async function seedDatabase() {
   try {
     await connectDatabase();
 
     const database = getDatabase();
-    const data = loadData();
+    const data = loadSeedData();
     const collectionData = {
       users: data.users,
       groups: data.groups,

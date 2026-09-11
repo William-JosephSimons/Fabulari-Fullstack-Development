@@ -164,10 +164,6 @@ function createAuditLog(details) {
   };
 }
 
-function addAuditLog(data, details) {
-  data.auditLogs.push(createAuditLog(details));
-}
-
 function getGroupRequestDetails(body = {}) {
   return {
     requesterId: ensureText(body.requesterId),
@@ -371,7 +367,6 @@ export {
   safeUser,
   safeGroupUser,
   createAuditLog,
-  addAuditLog,
   getGroupRequestDetails,
   validateGroupRequest,
   getGroupSettingsDetails,
