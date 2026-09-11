@@ -2,7 +2,8 @@ import http from "node:http";
 import cors from "cors";
 import express from "express";
 import { Server as SocketIOServer } from "socket.io";
-import { connectDatabase } from "./database.js";
+import { connectDatabase, getDatabase } from "./database.js";
+import { createIndexes } from "./indexes.js";
 import { routes } from "./routes.js";
 import { connectSockets } from "./socket.js";
 
@@ -25,8 +26,9 @@ connectSockets(io);
 
 async function startServer() {
   try {
-    // Do not accept requests until MongoDB is ready.
+    // Do not accept requests until MongoDB and its indexes are ready.
     await connectDatabase();
+    await createIndexes(getDatabase());
 
     server.listen(port, () => {
       console.log(`Fabulari server listening on port ${port}`);
