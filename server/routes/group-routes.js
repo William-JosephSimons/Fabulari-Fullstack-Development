@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { loadData, saveData } from "../data.js";
+import { getDatabase } from "../database.js";
 import {
   ensureText,
   calculateAge,
   meetsMinimumAge,
   safeGroupUser,
-  addAuditLog,
+  createAuditLog,
   getGroupSettingsDetails,
   validateGroupSettings,
   getMembershipRequestDetails,
@@ -16,10 +16,10 @@ import {
 } from "./route-helpers.js";
 
 function groupRoutes(app) {
-  app.get("/api/groups", (req, res) => {
-    const data = loadData();
+  app.get("/api/groups", async (req, res) => {
+    const database = getDatabase();
     const userId = ensureText(req.query.userId);
-    const user = data.users.find((item) => item.id === userId);
+    const user = await database.collection("users").findOne({ id: userId });
 
     if (!user) {
       return res.status(404).json({
@@ -28,13 +28,27 @@ function groupRoutes(app) {
       });
     }
 
-    const groups = data.groups.map((group) => {
+    const storedGroups = await database
+      .collection("groups")
+      .find({}, { projection: { _id: 0 } })
+      .toArray();
+    const requests = await database
+      .collection("requests")
+      .find({ status: "pending" }, { projection: { _id: 0 } })
+      .toArray();
+    const groupBans = await database
+      .collection("groupBans")
+      .find({}, { projection: { _id: 0 } })
+      .toArray();
+    const membershipData = { requests, groupBans };
+
+    const groups = storedGroups.map((group) => {
       const isAdmin = group.adminIds.includes(user.id);
       let adminSummary = null;
 
       if (isAdmin) {
-        const pendingRequests = data.requests.filter((request) => {
-          return request.groupId === group.id && request.status === "pending";
+        const pendingRequests = requests.filter((request) => {
+          return request.groupId === group.id;
         });
 
         // Workload details are only returned for groups this user administers.
@@ -60,7 +74,7 @@ function groupRoutes(app) {
         description: group.description,
         minimumAge: group.minimumAge,
         colour: group.colour,
-        status: getGroupMembershipStatus(data, group, user),
+        status: getGroupMembershipStatus(membershipData, group, user),
         isAdmin,
         adminSummary,
       };
@@ -72,7 +86,7 @@ function groupRoutes(app) {
     });
   });
 
-  app.patch("/api/groups/:id", (req, res) => {
+  app.patch("/api/groups/:id", async (req, res) => {
     const details = getGroupSettingsDetails(req.body);
     const validationError = validateGroupSettings(details);
 
@@ -80,8 +94,10 @@ function groupRoutes(app) {
       return res.status(400).json({ valid: false, message: validationError });
     }
 
-    const data = loadData();
-    const group = data.groups.find((item) => item.id === req.params.id);
+    const database = getDatabase();
+    const group = await database
+      .collection("groups")
+      .findOne({ id: req.params.id }, { projection: { _id: 0 } });
 
     if (!group) {
       return res.status(404).json({
@@ -90,9 +106,9 @@ function groupRoutes(app) {
       });
     }
 
-    const actingUser = data.users.find((user) => {
-      return user.id === details.actingUserId;
-    });
+    const actingUser = await database
+      .collection("users")
+      .findOne({ id: details.actingUserId });
 
     if (
       !actingUser ||
@@ -105,12 +121,13 @@ function groupRoutes(app) {
       });
     }
 
-    const titleAlreadyExists = data.groups.some((item) => {
-      return (
-        item.id !== group.id &&
-        item.title.toLowerCase() === details.title.toLowerCase()
-      );
-    });
+    const titleAlreadyExists = await database.collection("groups").findOne(
+      {
+        id: { $ne: group.id },
+        title: details.title,
+      },
+      { collation: { locale: "en", strength: 2 } },
+    );
 
     if (titleAlreadyExists) {
       return res.status(409).json({
@@ -119,11 +136,13 @@ function groupRoutes(app) {
       });
     }
 
-    const underAgeMemberIds = group.memberIds.filter((memberId) => {
-      const member = data.users.find((user) => user.id === memberId);
-      return member && !meetsMinimumAge(member, details.minimumAge);
-    });
-
+    const members = await database
+      .collection("users")
+      .find({ id: { $in: group.memberIds } })
+      .toArray();
+    const underAgeMemberIds = members
+      .filter((member) => !meetsMinimumAge(member, details.minimumAge))
+      .map((member) => member.id);
     const remainingAdminIds = group.adminIds.filter((adminId) => {
       return !underAgeMemberIds.includes(adminId);
     });
@@ -135,6 +154,7 @@ function groupRoutes(app) {
       });
     }
 
+    const now = new Date().toISOString();
     group.title = details.title;
     group.description = details.description;
     group.minimumAge = details.minimumAge;
@@ -144,17 +164,33 @@ function groupRoutes(app) {
       return !underAgeMemberIds.includes(memberId);
     });
     group.adminIds = remainingAdminIds;
-    group.updatedAt = new Date().toISOString();
-    addAuditLog(data, {
-      actorId: actingUser.id,
-      actionType: "groupUpdated",
-      entityType: "group",
-      entityId: group.id,
-      groupId: group.id,
-      summary: `Updated ${group.title}.`,
-      createdAt: group.updatedAt,
-    });
-    saveData(data);
+    group.updatedAt = now;
+
+    await database.collection("groups").updateOne(
+      { id: group.id },
+      {
+        $set: {
+          title: group.title,
+          description: group.description,
+          minimumAge: group.minimumAge,
+          colour: group.colour,
+          memberIds: group.memberIds,
+          adminIds: group.adminIds,
+          updatedAt: group.updatedAt,
+        },
+      },
+    );
+    await database.collection("auditLogs").insertOne(
+      createAuditLog({
+        actorId: actingUser.id,
+        actionType: "groupUpdated",
+        entityType: "group",
+        entityId: group.id,
+        groupId: group.id,
+        summary: `Updated ${group.title}.`,
+        createdAt: now,
+      }),
+    );
 
     return res.status(200).json({
       valid: true,
@@ -164,10 +200,12 @@ function groupRoutes(app) {
     });
   });
 
-  app.get("/api/groups/:id/users", (req, res) => {
-    const data = loadData();
+  app.get("/api/groups/:id/users", async (req, res) => {
+    const database = getDatabase();
     const userId = ensureText(req.query.userId);
-    const group = data.groups.find((item) => item.id === req.params.id);
+    const group = await database
+      .collection("groups")
+      .findOne({ id: req.params.id }, { projection: { _id: 0 } });
 
     if (!group) {
       return res.status(404).json({
@@ -176,7 +214,7 @@ function groupRoutes(app) {
       });
     }
 
-    const user = data.users.find((item) => item.id === userId);
+    const user = await database.collection("users").findOne({ id: userId });
 
     if (
       !user ||
@@ -189,9 +227,11 @@ function groupRoutes(app) {
       });
     }
 
-    const members = group.memberIds
-      .map((memberId) => data.users.find((item) => item.id === memberId))
-      .filter((member) => member)
+    const storedMembers = await database
+      .collection("users")
+      .find({ id: { $in: group.memberIds } })
+      .toArray();
+    const members = storedMembers
       .map((member) => {
         return safeGroupUser(member, group.adminIds.includes(member.id));
       })
@@ -199,27 +239,31 @@ function groupRoutes(app) {
         return first.firstName.localeCompare(second.firstName);
       });
 
-    const bannedUsers = data.groupBans
-      .filter((ban) => ban.groupId === group.id)
-      .map((ban) => {
-        const bannedUser = data.users.find(
-          (item) => item.id === ban.bannedUserId,
-        );
+    const bans = await database
+      .collection("groupBans")
+      .find({ groupId: group.id }, { projection: { _id: 0 } })
+      .sort({ bannedAt: -1 })
+      .toArray();
+    const bannedAccounts = await database
+      .collection("users")
+      .find({ id: { $in: bans.map((ban) => ban.bannedUserId) } })
+      .toArray();
+    const bannedUsers = bans.map((ban) => {
+      const bannedUser = bannedAccounts.find(
+        (item) => item.id === ban.bannedUserId,
+      );
 
-        return {
-          id: ban.bannedUserId,
-          username: bannedUser ? bannedUser.username : "Deleted user",
-          firstName: bannedUser ? bannedUser.firstName : "Deleted",
-          lastName: bannedUser ? bannedUser.lastName : "user",
-          age: bannedUser ? calculateAge(bannedUser.birthdate) : null,
-          avatarUrl: bannedUser ? bannedUser.avatarUrl : null,
-          reason: ban.reason,
-          bannedAt: ban.bannedAt,
-        };
-      })
-      .sort((first, second) => {
-        return new Date(second.bannedAt) - new Date(first.bannedAt);
-      });
+      return {
+        id: ban.bannedUserId,
+        username: bannedUser ? bannedUser.username : "Deleted user",
+        firstName: bannedUser ? bannedUser.firstName : "Deleted",
+        lastName: bannedUser ? bannedUser.lastName : "user",
+        age: bannedUser ? calculateAge(bannedUser.birthdate) : null,
+        avatarUrl: bannedUser ? bannedUser.avatarUrl : null,
+        reason: ban.reason,
+        bannedAt: ban.bannedAt,
+      };
+    });
 
     return res.status(200).json({
       valid: true,
@@ -235,10 +279,12 @@ function groupRoutes(app) {
     });
   });
 
-  app.get("/api/groups/:id/rooms", (req, res) => {
-    const data = loadData();
+  app.get("/api/groups/:id/rooms", async (req, res) => {
+    const database = getDatabase();
     const userId = ensureText(req.query.userId);
-    const group = data.groups.find((item) => item.id === req.params.id);
+    const group = await database
+      .collection("groups")
+      .findOne({ id: req.params.id }, { projection: { _id: 0 } });
 
     if (!group) {
       return res.status(404).json({
@@ -247,7 +293,7 @@ function groupRoutes(app) {
       });
     }
 
-    const user = data.users.find((item) => item.id === userId);
+    const user = await database.collection("users").findOne({ id: userId });
 
     if (
       !user ||
@@ -261,9 +307,13 @@ function groupRoutes(app) {
       });
     }
 
+    const storedRooms = await database
+      .collection("rooms")
+      .find({ id: { $in: group.roomIds } }, { projection: { _id: 0 } })
+      .toArray();
     // roomIds keeps the rooms in the order saved by the group.
     const rooms = group.roomIds
-      .map((roomId) => data.rooms.find((room) => room.id === roomId))
+      .map((roomId) => storedRooms.find((room) => room.id === roomId))
       .filter((room) => room);
 
     return res.status(200).json({
@@ -279,7 +329,7 @@ function groupRoutes(app) {
     });
   });
 
-  app.post("/api/groups/:id/rooms", (req, res) => {
+  app.post("/api/groups/:id/rooms", async (req, res) => {
     const details = getRoomDetails(req.body);
     const validationError = validateRoomDetails(details);
 
@@ -287,8 +337,10 @@ function groupRoutes(app) {
       return res.status(400).json({ valid: false, message: validationError });
     }
 
-    const data = loadData();
-    const group = data.groups.find((item) => item.id === req.params.id);
+    const database = getDatabase();
+    const group = await database
+      .collection("groups")
+      .findOne({ id: req.params.id }, { projection: { _id: 0 } });
 
     if (!group) {
       return res.status(404).json({
@@ -297,9 +349,9 @@ function groupRoutes(app) {
       });
     }
 
-    const actingUser = data.users.find((user) => {
-      return user.id === details.actingUserId;
-    });
+    const actingUser = await database
+      .collection("users")
+      .findOne({ id: details.actingUserId });
 
     if (
       !actingUser ||
@@ -312,12 +364,13 @@ function groupRoutes(app) {
       });
     }
 
-    const nameAlreadyExists = data.rooms.some((room) => {
-      return (
-        room.groupId === group.id &&
-        room.name.toLowerCase() === details.name.toLowerCase()
-      );
-    });
+    const nameAlreadyExists = await database.collection("rooms").findOne(
+      {
+        groupId: group.id,
+        name: details.name,
+      },
+      { collation: { locale: "en", strength: 2 } },
+    );
 
     if (nameAlreadyExists) {
       return res.status(409).json({
@@ -338,19 +391,28 @@ function groupRoutes(app) {
     };
 
     // Rooms inherit the group's age and colour, so those values are not copied here.
-    data.rooms.push(room);
+    await database.collection("rooms").insertOne({ ...room });
     group.roomIds.push(room.id);
-    group.updatedAt = now;
-    addAuditLog(data, {
-      actorId: actingUser.id,
-      actionType: "roomCreated",
-      entityType: "room",
-      entityId: room.id,
-      groupId: group.id,
-      summary: `Created ${room.name} in ${group.title}.`,
-      createdAt: now,
-    });
-    saveData(data);
+    await database.collection("groups").updateOne(
+      { id: group.id },
+      {
+        $set: {
+          roomIds: group.roomIds,
+          updatedAt: now,
+        },
+      },
+    );
+    await database.collection("auditLogs").insertOne(
+      createAuditLog({
+        actorId: actingUser.id,
+        actionType: "roomCreated",
+        entityType: "room",
+        entityId: room.id,
+        groupId: group.id,
+        summary: `Created ${room.name} in ${group.title}.`,
+        createdAt: now,
+      }),
+    );
 
     return res.status(201).json({
       valid: true,
@@ -359,7 +421,7 @@ function groupRoutes(app) {
     });
   });
 
-  app.patch("/api/rooms/:id", (req, res) => {
+  app.patch("/api/rooms/:id", async (req, res) => {
     const details = getRoomDetails(req.body);
     const validationError = validateRoomDetails(details);
 
@@ -367,8 +429,10 @@ function groupRoutes(app) {
       return res.status(400).json({ valid: false, message: validationError });
     }
 
-    const data = loadData();
-    const room = data.rooms.find((item) => item.id === req.params.id);
+    const database = getDatabase();
+    const room = await database
+      .collection("rooms")
+      .findOne({ id: req.params.id }, { projection: { _id: 0 } });
 
     if (!room) {
       return res.status(404).json({
@@ -377,10 +441,12 @@ function groupRoutes(app) {
       });
     }
 
-    const group = data.groups.find((item) => item.id === room.groupId);
-    const actingUser = data.users.find((user) => {
-      return user.id === details.actingUserId;
-    });
+    const group = await database
+      .collection("groups")
+      .findOne({ id: room.groupId }, { projection: { _id: 0 } });
+    const actingUser = await database
+      .collection("users")
+      .findOne({ id: details.actingUserId });
 
     if (
       !group ||
@@ -394,13 +460,14 @@ function groupRoutes(app) {
       });
     }
 
-    const nameAlreadyExists = data.rooms.some((item) => {
-      return (
-        item.id !== room.id &&
-        item.groupId === group.id &&
-        item.name.toLowerCase() === details.name.toLowerCase()
-      );
-    });
+    const nameAlreadyExists = await database.collection("rooms").findOne(
+      {
+        id: { $ne: room.id },
+        groupId: group.id,
+        name: details.name,
+      },
+      { collation: { locale: "en", strength: 2 } },
+    );
 
     if (nameAlreadyExists) {
       return res.status(409).json({
@@ -409,20 +476,35 @@ function groupRoutes(app) {
       });
     }
 
+    const now = new Date().toISOString();
     room.name = details.name;
     room.description = details.description;
-    room.updatedAt = new Date().toISOString();
-    group.updatedAt = room.updatedAt;
-    addAuditLog(data, {
-      actorId: actingUser.id,
-      actionType: "roomUpdated",
-      entityType: "room",
-      entityId: room.id,
-      groupId: group.id,
-      summary: `Updated ${room.name} in ${group.title}.`,
-      createdAt: room.updatedAt,
-    });
-    saveData(data);
+    room.updatedAt = now;
+
+    await database.collection("rooms").updateOne(
+      { id: room.id },
+      {
+        $set: {
+          name: room.name,
+          description: room.description,
+          updatedAt: now,
+        },
+      },
+    );
+    await database
+      .collection("groups")
+      .updateOne({ id: group.id }, { $set: { updatedAt: now } });
+    await database.collection("auditLogs").insertOne(
+      createAuditLog({
+        actorId: actingUser.id,
+        actionType: "roomUpdated",
+        entityType: "room",
+        entityId: room.id,
+        groupId: group.id,
+        summary: `Updated ${room.name} in ${group.title}.`,
+        createdAt: now,
+      }),
+    );
 
     return res.status(200).json({
       valid: true,
@@ -431,7 +513,7 @@ function groupRoutes(app) {
     });
   });
 
-  app.delete("/api/rooms/:id", (req, res) => {
+  app.delete("/api/rooms/:id", async (req, res) => {
     const actingUserId = ensureText(req.query.actingUserId);
 
     if (!actingUserId) {
@@ -441,8 +523,10 @@ function groupRoutes(app) {
       });
     }
 
-    const data = loadData();
-    const room = data.rooms.find((item) => item.id === req.params.id);
+    const database = getDatabase();
+    const room = await database
+      .collection("rooms")
+      .findOne({ id: req.params.id }, { projection: { _id: 0 } });
 
     if (!room) {
       return res.status(404).json({
@@ -451,8 +535,12 @@ function groupRoutes(app) {
       });
     }
 
-    const group = data.groups.find((item) => item.id === room.groupId);
-    const actingUser = data.users.find((user) => user.id === actingUserId);
+    const group = await database
+      .collection("groups")
+      .findOne({ id: room.groupId }, { projection: { _id: 0 } });
+    const actingUser = await database
+      .collection("users")
+      .findOne({ id: actingUserId });
 
     if (
       !group ||
@@ -466,20 +554,30 @@ function groupRoutes(app) {
       });
     }
 
+    const now = new Date().toISOString();
     // Delete the room record and the matching reference held by its group.
-    data.rooms = data.rooms.filter((item) => item.id !== room.id);
+    await database.collection("rooms").deleteOne({ id: room.id });
     group.roomIds = group.roomIds.filter((roomId) => roomId !== room.id);
-    group.updatedAt = new Date().toISOString();
-    addAuditLog(data, {
-      actorId: actingUser.id,
-      actionType: "roomDeleted",
-      entityType: "room",
-      entityId: room.id,
-      groupId: group.id,
-      summary: `Deleted ${room.name} from ${group.title}.`,
-      createdAt: group.updatedAt,
-    });
-    saveData(data);
+    await database.collection("groups").updateOne(
+      { id: group.id },
+      {
+        $set: {
+          roomIds: group.roomIds,
+          updatedAt: now,
+        },
+      },
+    );
+    await database.collection("auditLogs").insertOne(
+      createAuditLog({
+        actorId: actingUser.id,
+        actionType: "roomDeleted",
+        entityType: "room",
+        entityId: room.id,
+        groupId: group.id,
+        summary: `Deleted ${room.name} from ${group.title}.`,
+        createdAt: now,
+      }),
+    );
 
     return res.status(200).json({
       valid: true,
@@ -488,7 +586,7 @@ function groupRoutes(app) {
     });
   });
 
-  app.post("/api/groups/:id/join-requests", (req, res) => {
+  app.post("/api/groups/:id/join-requests", async (req, res) => {
     const details = getMembershipRequestDetails(req.body);
 
     if (!details.requesterId || !details.reason) {
@@ -498,8 +596,10 @@ function groupRoutes(app) {
       });
     }
 
-    const data = loadData();
-    const group = data.groups.find((item) => item.id === req.params.id);
+    const database = getDatabase();
+    const group = await database
+      .collection("groups")
+      .findOne({ id: req.params.id }, { projection: { _id: 0 } });
 
     if (!group) {
       return res.status(404).json({
@@ -508,9 +608,9 @@ function groupRoutes(app) {
       });
     }
 
-    const requester = data.users.find(
-      (user) => user.id === details.requesterId,
-    );
+    const requester = await database
+      .collection("users")
+      .findOne({ id: details.requesterId });
 
     if (!requester) {
       return res.status(404).json({
@@ -540,8 +640,9 @@ function groupRoutes(app) {
       });
     }
 
-    const isGroupBanned = data.groupBans.some((ban) => {
-      return ban.groupId === group.id && ban.bannedUserId === requester.id;
+    const isGroupBanned = await database.collection("groupBans").findOne({
+      groupId: group.id,
+      bannedUserId: requester.id,
     });
 
     if (isGroupBanned) {
@@ -551,13 +652,11 @@ function groupRoutes(app) {
       });
     }
 
-    const existingRequest = data.requests.some((request) => {
-      return (
-        request.type === "membership" &&
-        request.groupId === group.id &&
-        request.requesterId === requester.id &&
-        request.status === "pending"
-      );
+    const existingRequest = await database.collection("requests").findOne({
+      type: "membership",
+      groupId: group.id,
+      requesterId: requester.id,
+      status: "pending",
     });
 
     if (existingRequest) {
@@ -581,17 +680,18 @@ function groupRoutes(app) {
       decidedAt: null,
     };
 
-    data.requests.push(request);
-    addAuditLog(data, {
-      actorId: requester.id,
-      actionType: "membershipRequested",
-      entityType: "request",
-      entityId: request.id,
-      groupId: group.id,
-      summary: `Requested membership of ${group.title}.`,
-      createdAt: request.createdAt,
-    });
-    saveData(data);
+    await database.collection("requests").insertOne({ ...request });
+    await database.collection("auditLogs").insertOne(
+      createAuditLog({
+        actorId: requester.id,
+        actionType: "membershipRequested",
+        entityType: "request",
+        entityId: request.id,
+        groupId: group.id,
+        summary: `Requested membership of ${group.title}.`,
+        createdAt: request.createdAt,
+      }),
+    );
 
     return res.status(201).json({
       valid: true,
@@ -600,7 +700,7 @@ function groupRoutes(app) {
     });
   });
 
-  app.post("/api/groups/:id/admins", (req, res) => {
+  app.post("/api/groups/:id/admins", async (req, res) => {
     const details = getAdminChangeDetails(req.body);
 
     if (!details.actingUserId || !details.targetUserId) {
@@ -610,8 +710,10 @@ function groupRoutes(app) {
       });
     }
 
-    const data = loadData();
-    const group = data.groups.find((item) => item.id === req.params.id);
+    const database = getDatabase();
+    const group = await database
+      .collection("groups")
+      .findOne({ id: req.params.id }, { projection: { _id: 0 } });
 
     if (!group) {
       return res.status(404).json({
@@ -620,9 +722,9 @@ function groupRoutes(app) {
       });
     }
 
-    const actingUser = data.users.find(
-      (user) => user.id === details.actingUserId,
-    );
+    const actingUser = await database
+      .collection("users")
+      .findOne({ id: details.actingUserId });
 
     if (
       !actingUser ||
@@ -635,9 +737,9 @@ function groupRoutes(app) {
       });
     }
 
-    const targetUser = data.users.find(
-      (user) => user.id === details.targetUserId,
-    );
+    const targetUser = await database
+      .collection("users")
+      .findOne({ id: details.targetUserId });
 
     if (!targetUser || targetUser.systemRole !== "user") {
       return res.status(404).json({
@@ -660,18 +762,28 @@ function groupRoutes(app) {
       });
     }
 
+    const now = new Date().toISOString();
     group.adminIds.push(targetUser.id);
-    group.updatedAt = new Date().toISOString();
-    addAuditLog(data, {
-      actorId: actingUser.id,
-      actionType: "groupAdminPromoted",
-      entityType: "user",
-      entityId: targetUser.id,
-      groupId: group.id,
-      summary: `Promoted ${targetUser.username} in ${group.title}.`,
-      createdAt: group.updatedAt,
-    });
-    saveData(data);
+    await database.collection("groups").updateOne(
+      { id: group.id },
+      {
+        $set: {
+          adminIds: group.adminIds,
+          updatedAt: now,
+        },
+      },
+    );
+    await database.collection("auditLogs").insertOne(
+      createAuditLog({
+        actorId: actingUser.id,
+        actionType: "groupAdminPromoted",
+        entityType: "user",
+        entityId: targetUser.id,
+        groupId: group.id,
+        summary: `Promoted ${targetUser.username} in ${group.title}.`,
+        createdAt: now,
+      }),
+    );
 
     return res.status(200).json({
       valid: true,
@@ -681,7 +793,7 @@ function groupRoutes(app) {
     });
   });
 
-  app.delete("/api/groups/:id/admins/:userId", (req, res) => {
+  app.delete("/api/groups/:id/admins/:userId", async (req, res) => {
     const actingUserId = ensureText(req.query.actingUserId);
     const targetUserId = ensureText(req.params.userId);
 
@@ -692,8 +804,10 @@ function groupRoutes(app) {
       });
     }
 
-    const data = loadData();
-    const group = data.groups.find((item) => item.id === req.params.id);
+    const database = getDatabase();
+    const group = await database
+      .collection("groups")
+      .findOne({ id: req.params.id }, { projection: { _id: 0 } });
 
     if (!group) {
       return res.status(404).json({
@@ -702,7 +816,9 @@ function groupRoutes(app) {
       });
     }
 
-    const actingUser = data.users.find((user) => user.id === actingUserId);
+    const actingUser = await database
+      .collection("users")
+      .findOne({ id: actingUserId });
 
     if (
       !actingUser ||
@@ -715,7 +831,9 @@ function groupRoutes(app) {
       });
     }
 
-    const targetUser = data.users.find((user) => user.id === targetUserId);
+    const targetUser = await database
+      .collection("users")
+      .findOne({ id: targetUserId });
 
     if (!targetUser || !group.adminIds.includes(targetUser.id)) {
       return res.status(409).json({
@@ -738,20 +856,30 @@ function groupRoutes(app) {
       });
     }
 
+    const now = new Date().toISOString();
     group.adminIds = group.adminIds.filter(
       (userId) => userId !== targetUser.id,
     );
-    group.updatedAt = new Date().toISOString();
-    addAuditLog(data, {
-      actorId: actingUser.id,
-      actionType: "groupAdminDemoted",
-      entityType: "user",
-      entityId: targetUser.id,
-      groupId: group.id,
-      summary: `Demoted ${targetUser.username} in ${group.title}.`,
-      createdAt: group.updatedAt,
-    });
-    saveData(data);
+    await database.collection("groups").updateOne(
+      { id: group.id },
+      {
+        $set: {
+          adminIds: group.adminIds,
+          updatedAt: now,
+        },
+      },
+    );
+    await database.collection("auditLogs").insertOne(
+      createAuditLog({
+        actorId: actingUser.id,
+        actionType: "groupAdminDemoted",
+        entityType: "user",
+        entityId: targetUser.id,
+        groupId: group.id,
+        summary: `Demoted ${targetUser.username} in ${group.title}.`,
+        createdAt: now,
+      }),
+    );
 
     return res.status(200).json({
       valid: true,
