@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { loadData, saveData } from "../data.js";
+import { getDatabase } from "../database.js";
 import {
   ensureText,
   getUserDetails,
@@ -7,24 +7,26 @@ import {
   findAccountConflict,
   createUser,
   safeUser,
-  addAuditLog,
+  createAuditLog,
 } from "./route-helpers.js";
 
 function accountRoutes(app) {
-  app.get("/api/bootstrap-status", (req, res) => {
-    const data = loadData();
+  app.get("/api/bootstrap-status", async (req, res) => {
+    const database = getDatabase();
+    const userCount = await database.collection("users").countDocuments();
 
     return res.status(200).json({
       valid: true,
-      setupRequired: data.users.length === 0,
+      setupRequired: userCount === 0,
     });
   });
 
   app.post("/api/bootstrap", async (req, res) => {
-    const data = loadData();
+    const database = getDatabase();
+    const users = database.collection("users");
 
     // Setup is only available before any account has been created.
-    if (data.users.length > 0) {
+    if ((await users.countDocuments()) > 0) {
       return res.status(409).json({
         valid: false,
         message: "Super Admin setup has already been completed.",
@@ -37,21 +39,22 @@ function accountRoutes(app) {
       return res.status(400).json({ valid: false, message: validationError });
     }
 
-    const conflictError = findAccountConflict(data, details);
+    const conflictError = await findAccountConflict(database, details);
     if (conflictError) {
       return res.status(409).json({ valid: false, message: conflictError });
     }
 
     const user = await createUser(details, "superAdmin");
-    data.users.push(user);
-    addAuditLog(data, {
-      actorId: user.id,
-      actionType: "accountCreated",
-      entityType: "user",
-      entityId: user.id,
-      summary: "Created the first Super Admin account.",
-    });
-    saveData(data);
+    await users.insertOne(user);
+    await database.collection("auditLogs").insertOne(
+      createAuditLog({
+        actorId: user.id,
+        actionType: "accountCreated",
+        entityType: "user",
+        entityId: user.id,
+        summary: "Created the first Super Admin account.",
+      }),
+    );
 
     return res.status(201).json({
       valid: true,
@@ -61,10 +64,11 @@ function accountRoutes(app) {
   });
 
   app.post("/api/register", async (req, res) => {
-    const data = loadData();
+    const database = getDatabase();
+    const users = database.collection("users");
 
     // A user account cannot take the place of the required first Super Admin.
-    if (data.users.length === 0) {
+    if ((await users.countDocuments()) === 0) {
       return res.status(409).json({
         valid: false,
         message: "Super Admin setup must be completed first.",
@@ -77,21 +81,22 @@ function accountRoutes(app) {
       return res.status(400).json({ valid: false, message: validationError });
     }
 
-    const conflictError = findAccountConflict(data, details);
+    const conflictError = await findAccountConflict(database, details);
     if (conflictError) {
       return res.status(409).json({ valid: false, message: conflictError });
     }
 
     const user = await createUser(details, "user");
-    data.users.push(user);
-    addAuditLog(data, {
-      actorId: user.id,
-      actionType: "accountCreated",
-      entityType: "user",
-      entityId: user.id,
-      summary: `Created the ${user.username} account.`,
-    });
-    saveData(data);
+    await users.insertOne(user);
+    await database.collection("auditLogs").insertOne(
+      createAuditLog({
+        actorId: user.id,
+        actionType: "accountCreated",
+        entityType: "user",
+        entityId: user.id,
+        summary: `Created the ${user.username} account.`,
+      }),
+    );
 
     return res.status(201).json({
       valid: true,
@@ -112,10 +117,11 @@ function accountRoutes(app) {
       });
     }
 
-    const data = loadData();
-    const user = data.users.find((item) => {
-      return item.username.toLowerCase() === username.toLowerCase();
-    });
+    const database = getDatabase();
+    const user = await database.collection("users").findOne(
+      { username },
+      { collation: { locale: "en", strength: 2 } },
+    );
 
     // The same response is used for an unknown username or incorrect password.
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {

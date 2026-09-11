@@ -1,11 +1,12 @@
+import { getDatabase } from "../database.js";
 import { loadData } from "../data.js";
 import { calculateAge, ensureText } from "./route-helpers.js";
 
 function adminRoutes(app) {
-  app.get("/api/admin/dashboard", (req, res) => {
-    const data = loadData();
+  app.get("/api/admin/dashboard", async (req, res) => {
+    const database = getDatabase();
     const userId = ensureText(req.query.userId);
-    const user = data.users.find((item) => item.id === userId);
+    const user = await database.collection("users").findOne({ id: userId });
 
     if (!user || user.systemRole !== "superAdmin") {
       return res.status(403).json({
@@ -14,22 +15,27 @@ function adminRoutes(app) {
       });
     }
 
-    // These are the three request types decided by the Super Admin.
-    const pendingRequests = data.requests.filter((request) => {
+    // Requests remain in JSON until their read and decision routes move together.
+    const pendingRequests = loadData().requests.filter((request) => {
       return (
         ["groupCreation", "groupDeletion", "systemBan"].includes(
           request.type,
         ) && request.status === "pending"
       );
     });
+    const userCount = await database.collection("users").countDocuments();
+    const groupCount = await database.collection("groups").countDocuments();
+    const systemBanCount = await database
+      .collection("systemBans")
+      .countDocuments();
 
     return res.status(200).json({
       valid: true,
       summary: {
-        userCount: data.users.length,
-        groupCount: data.groups.length,
+        userCount,
+        groupCount,
         pendingRequestCount: pendingRequests.length,
-        systemBanCount: data.systemBans.length,
+        systemBanCount,
         groupCreationRequestCount: pendingRequests.filter((request) => {
           return request.type === "groupCreation";
         }).length,
@@ -97,10 +103,10 @@ function adminRoutes(app) {
     });
   });
 
-  app.get("/api/admin/users", (req, res) => {
-    const data = loadData();
+  app.get("/api/admin/users", async (req, res) => {
+    const database = getDatabase();
     const userId = ensureText(req.query.userId);
-    const user = data.users.find((item) => item.id === userId);
+    const user = await database.collection("users").findOne({ id: userId });
 
     if (!user || user.systemRole !== "superAdmin") {
       return res.status(403).json({
@@ -109,7 +115,8 @@ function adminRoutes(app) {
       });
     }
 
-    const users = data.users
+    const storedUsers = await database.collection("users").find({}).toArray();
+    const users = storedUsers
       .map((item) => {
         return {
           id: item.id,
@@ -132,10 +139,10 @@ function adminRoutes(app) {
     });
   });
 
-  app.get("/api/admin/system-bans", (req, res) => {
-    const data = loadData();
+  app.get("/api/admin/system-bans", async (req, res) => {
+    const database = getDatabase();
     const userId = ensureText(req.query.userId);
-    const user = data.users.find((item) => item.id === userId);
+    const user = await database.collection("users").findOne({ id: userId });
 
     if (!user || user.systemRole !== "superAdmin") {
       return res.status(403).json({
@@ -144,9 +151,11 @@ function adminRoutes(app) {
       });
     }
 
-    const systemBans = [...data.systemBans].sort((first, second) => {
-      return new Date(second.bannedAt) - new Date(first.bannedAt);
-    });
+    const systemBans = await database
+      .collection("systemBans")
+      .find({}, { projection: { _id: 0 } })
+      .sort({ bannedAt: -1 })
+      .toArray();
 
     return res.status(200).json({
       valid: true,
@@ -154,13 +163,13 @@ function adminRoutes(app) {
     });
   });
 
-  app.get("/api/audit-logs", (req, res) => {
-    const data = loadData();
+  app.get("/api/audit-logs", async (req, res) => {
+    const database = getDatabase();
     const userId = ensureText(req.query.userId);
     const actionType = ensureText(req.query.actionType);
     const startDate = ensureText(req.query.startDate);
     const endDate = ensureText(req.query.endDate);
-    const user = data.users.find((item) => item.id === userId);
+    const user = await database.collection("users").findOne({ id: userId });
 
     if (!user || user.systemRole !== "superAdmin") {
       return res.status(403).json({
@@ -187,39 +196,56 @@ function adminRoutes(app) {
       });
     }
 
-    const auditLogs = data.auditLogs
-      .filter((log) => {
-        const logDate = log.createdAt.slice(0, 10);
-        const matchesType =
-          !actionType || actionType === "all" || log.actionType === actionType;
-        const afterStart = !startDate || logDate >= startDate;
-        const beforeEnd = !endDate || logDate <= endDate;
+    const auditFilter = {};
 
-        return matchesType && afterStart && beforeEnd;
-      })
-      .sort((first, second) => {
-        return new Date(second.createdAt) - new Date(first.createdAt);
-      })
-      .map((log) => {
-        const actor = data.users.find((item) => item.id === log.actorId);
-        const group = data.groups.find((item) => item.id === log.groupId);
-        let groupName = null;
+    if (actionType && actionType !== "all") {
+      auditFilter.actionType = actionType;
+    }
 
-        if (group) {
-          groupName = group.title;
-        } else if (log.groupId) {
-          groupName = "Deleted group";
-        }
+    if (startDate || endDate) {
+      auditFilter.createdAt = {};
 
-        return {
-          ...log,
-          actorUsername: actor ? actor.username : "Deleted user",
-          groupName,
-        };
-      });
+      // ISO timestamps compared as text because they use the same format.
+      if (startDate) {
+        auditFilter.createdAt.$gte = `${startDate}T00:00:00.000Z`;
+      }
 
+      if (endDate) {
+        auditFilter.createdAt.$lte = `${endDate}T23:59:59.999Z`;
+      }
+    }
+
+    const storedLogs = await database
+      .collection("auditLogs")
+      .find(auditFilter, { projection: { _id: 0 } })
+      .sort({ createdAt: -1 })
+      .toArray();
+    const users = await database.collection("users").find({}).toArray();
+    const groups = await database.collection("groups").find({}).toArray();
+    const allAuditLogs = await database
+      .collection("auditLogs")
+      .find({}, { projection: { _id: 0, actionType: 1 } })
+      .toArray();
+
+    const auditLogs = storedLogs.map((log) => {
+      const actor = users.find((item) => item.id === log.actorId);
+      const group = groups.find((item) => item.id === log.groupId);
+      let groupName = null;
+
+      if (group) {
+        groupName = group.title;
+      } else if (log.groupId) {
+        groupName = "Deleted group";
+      }
+
+      return {
+        ...log,
+        actorUsername: actor ? actor.username : "Deleted user",
+        groupName,
+      };
+    });
     const actionTypes = [
-      ...new Set(data.auditLogs.map((log) => log.actionType)),
+      ...new Set(allAuditLogs.map((log) => log.actionType)),
     ].sort();
 
     return res.status(200).json({

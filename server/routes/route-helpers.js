@@ -84,23 +84,26 @@ function validateUserDetails(details) {
   return null;
 }
 
-function findAccountConflict(data, details) {
-  const usernameTaken = data.users.some((user) => {
-    return user.username.toLowerCase() === details.username.toLowerCase();
-  });
+async function findAccountConflict(database, details) {
+  const users = database.collection("users");
+  // Usernames are unique even when the letter case is different.
+  const usernameTaken = await users.findOne(
+    { username: details.username },
+    { collation: { locale: "en", strength: 2 } },
+  );
 
   if (usernameTaken) {
     return "That username is already in use.";
   }
 
-  const emailTaken = data.users.some((user) => user.email === details.email);
+  const emailTaken = await users.findOne({ email: details.email });
   if (emailTaken) {
     return "That email is already registered.";
   }
 
-  const emailBanned = data.systemBans.some((ban) => {
-    return ban.normalizedEmail === details.email;
-  });
+  const emailBanned = await database
+    .collection("systemBans")
+    .findOne({ normalizedEmail: details.email });
 
   if (emailBanned) {
     return "That email cannot be used to register.";
@@ -130,7 +133,9 @@ async function createUser(details, systemRole) {
 
 function safeUser(user) {
   // Password hashes are never sent over the network
-  const { passwordHash, ...userSafe } = user;
+  const userSafe = { ...user };
+  delete userSafe.passwordHash;
+  delete userSafe._id;
   return userSafe;
 }
 
@@ -146,8 +151,8 @@ function safeGroupUser(user, isAdmin = false) {
   };
 }
 
-function addAuditLog(data, details) {
-  data.auditLogs.push({
+function createAuditLog(details) {
+  return {
     id: `audit-${randomUUID()}`,
     actorId: details.actorId,
     actionType: details.actionType,
@@ -156,7 +161,11 @@ function addAuditLog(data, details) {
     groupId: details.groupId || null,
     summary: details.summary,
     createdAt: details.createdAt || new Date().toISOString(),
-  });
+  };
+}
+
+function addAuditLog(data, details) {
+  data.auditLogs.push(createAuditLog(details));
 }
 
 function getGroupRequestDetails(body = {}) {
@@ -361,6 +370,7 @@ export {
   createUser,
   safeUser,
   safeGroupUser,
+  createAuditLog,
   addAuditLog,
   getGroupRequestDetails,
   validateGroupRequest,
