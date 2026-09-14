@@ -1,17 +1,23 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import io from 'socket.io-client';
+import { Auth } from '../auth/auth';
 
 @Injectable({
   providedIn: 'root',
 })
 export class Socket {
+  private readonly auth = inject(Auth);
   private readonly serverUrl = 'http://localhost:3000';
   private socket: any = null;
 
   connect(): void {
     if (!this.socket) {
-      this.socket = io(this.serverUrl);
+      this.socket = io(this.serverUrl, {
+        auth: {
+          token: this.auth.getAuthToken() || '',
+        },
+      });
     }
   }
 
@@ -22,8 +28,8 @@ export class Socket {
     }
   }
 
-  joinRoom(roomId: string, userId: string): void {
-    this.socket?.emit('room:join', { roomId, userId });
+  joinRoom(roomId: string): void {
+    this.socket?.emit('room:join', { roomId });
   }
 
   leaveRoom(roomId: string): void {

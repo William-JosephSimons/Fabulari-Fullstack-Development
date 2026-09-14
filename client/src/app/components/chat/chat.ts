@@ -114,8 +114,8 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
       }),
     );
     this.socketSubscriptions.push(
-      this.socketService.onConnectionError().subscribe(() => {
-        this.socketError = 'Unable to connect to live chat. The server may be offline.';
+      this.socketService.onConnectionError().subscribe((error: any) => {
+        this.socketError = error.message || 'Unable to connect to live chat.';
       }),
     );
     this.socketSubscriptions.push(
@@ -129,7 +129,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
         this.socketError = '';
 
         if (this.roomId && this.currentUserId) {
-          this.socketService.joinRoom(this.roomId, this.currentUserId);
+          this.socketService.joinRoom(this.roomId);
         }
       }),
     );
@@ -211,7 +211,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
         }
 
         this.roomName = selectedRoom.name;
-        this.socketService.joinRoom(this.roomId, currentUser.id);
+        this.socketService.joinRoom(this.roomId);
         // Wait for Angular to add the new message before measuring the scroll height.
         setTimeout(() => this.scrollToBottom());
       },

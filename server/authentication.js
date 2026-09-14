@@ -11,9 +11,7 @@ function getBearerToken(req) {
   return ensureText(authorization.slice(7));
 }
 
-async function getAuthenticatedUser(req) {
-  const token = getBearerToken(req);
-
+async function getUserFromToken(token) {
   if (!token) {
     return null;
   }
@@ -36,6 +34,10 @@ async function getAuthenticatedUser(req) {
   }
 
   return user;
+}
+
+async function getAuthenticatedUser(req) {
+  return getUserFromToken(getBearerToken(req));
 }
 
 async function requireLogin(req, res) {
@@ -72,6 +74,7 @@ async function requireSuperAdmin(req, res) {
 
 export {
   getBearerToken,
+  getUserFromToken,
   getAuthenticatedUser,
   requireLogin,
   requireSuperAdmin,

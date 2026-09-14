@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { getUserFromToken } from "./authentication.js";
 import { getDatabase } from "./database.js";
 import { ensureText, meetsMinimumAge } from "./routes/route-helpers.js";
 
@@ -60,7 +61,6 @@ function leaveCurrentRoom(io, socket, connections) {
   });
 
   delete socket.data.roomId;
-  delete socket.data.userId;
   console.log(`Socket ${socket.id} left room ${connection.roomId}.`);
 }
 
@@ -68,23 +68,43 @@ function connectSockets(io) {
   // Presence resets whenever the server restarts because it represents live connections.
   const connections = [];
 
+  // Socket.IO runs this check before allowing the connection event below.
+  io.use(async (socket, next) => {
+    try {
+      const token = ensureText(socket.handshake.auth.token);
+      const user = await getUserFromToken(token);
+
+      if (!user) {
+        next(new Error("A valid login session is required for live chat."));
+        return;
+      }
+
+      socket.data.userId = user.id;
+      next();
+    } catch (error) {
+      console.error("Unable to authenticate the socket:", error.message);
+      next(new Error("Live chat authentication could not be completed."));
+    }
+  });
+
   io.on("connection", (socket) => {
     console.log(`Socket connected: ${socket.id}`);
 
     socket.on("room:join", async (details = {}) => {
       const roomId = ensureText(details.roomId);
-      const userId = ensureText(details.userId);
 
-      if (!roomId || !userId) {
+      if (!roomId) {
         socket.emit("socket:error", {
-          message: "A room and current user are required.",
+          message: "A room is required.",
         });
         return;
       }
 
       try {
         const database = getDatabase();
-        const user = await database.collection("users").findOne({ id: userId });
+        const user = await database
+          .collection("users")
+          .findOne({ id: socket.data.userId });
         const room = await database.collection("rooms").findOne({ id: roomId });
 
         if (!user) {
@@ -219,8 +239,9 @@ function connectSockets(io) {
           .collection("users")
           .findOne({ id: socket.data.userId });
         const room = await database.collection("rooms").findOne({ id: roomId });
-        const group = room
-          ? await database.collection("groups").findOne({ id: room.groupId })
+        const group =
+          room ?
+            await database.collection("groups").findOne({ id: room.groupId })
           : null;
 
         // Membership may have changed since the socket first joined the room.
@@ -233,7 +254,8 @@ function connectSockets(io) {
           !meetsMinimumAge(user, group.minimumAge)
         ) {
           socket.emit("socket:error", {
-            message: "You are no longer eligible to send messages in this room.",
+            message:
+              "You are no longer eligible to send messages in this room.",
           });
           return;
         }
