@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
+import { getBearerToken } from "../authentication.js";
 import { getDatabase } from "../database.js";
 import {
   ensureText,
@@ -10,16 +11,6 @@ import {
   safeUser,
   createAuditLog,
 } from "./route-helpers.js";
-
-function getBearerToken(req) {
-  const authorization = ensureText(req.headers.authorization);
-
-  if (!authorization.startsWith("Bearer ")) {
-    return "";
-  }
-
-  return ensureText(authorization.slice(7));
-}
 
 function accountRoutes(app) {
   app.get("/api/bootstrap-status", async (req, res) => {

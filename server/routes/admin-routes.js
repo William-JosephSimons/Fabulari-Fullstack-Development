@@ -1,19 +1,14 @@
+import { requireSuperAdmin } from "../authentication.js";
 import { getDatabase } from "../database.js";
 import { calculateAge, ensureText } from "./route-helpers.js";
 
 function adminRoutes(app) {
   app.get("/api/admin/dashboard", async (req, res) => {
-    const database = getDatabase();
-    const userId = ensureText(req.query.userId);
-    const user = await database.collection("users").findOne({ id: userId });
-
-    if (!user || user.systemRole !== "superAdmin") {
-      return res.status(403).json({
-        valid: false,
-        message: "Only the Super Admin can view the system dashboard.",
-      });
+    if (!(await requireSuperAdmin(req, res))) {
+      return;
     }
 
+    const database = getDatabase();
     const pendingRequests = await database
       .collection("requests")
       .find({
@@ -48,17 +43,11 @@ function adminRoutes(app) {
   });
 
   app.get("/api/admin/requests", async (req, res) => {
-    const database = getDatabase();
-    const userId = ensureText(req.query.userId);
-    const user = await database.collection("users").findOne({ id: userId });
-
-    if (!user || user.systemRole !== "superAdmin") {
-      return res.status(403).json({
-        valid: false,
-        message: "Only the Super Admin can view system requests.",
-      });
+    if (!(await requireSuperAdmin(req, res))) {
+      return;
     }
 
+    const database = getDatabase();
     const pendingRequests = await database
       .collection("requests")
       .find(
@@ -101,17 +90,11 @@ function adminRoutes(app) {
   });
 
   app.get("/api/admin/users", async (req, res) => {
-    const database = getDatabase();
-    const userId = ensureText(req.query.userId);
-    const user = await database.collection("users").findOne({ id: userId });
-
-    if (!user || user.systemRole !== "superAdmin") {
-      return res.status(403).json({
-        valid: false,
-        message: "Only the Super Admin can view the system user list.",
-      });
+    if (!(await requireSuperAdmin(req, res))) {
+      return;
     }
 
+    const database = getDatabase();
     const storedUsers = await database.collection("users").find({}).toArray();
     const users = storedUsers
       .map((item) => {
@@ -137,17 +120,11 @@ function adminRoutes(app) {
   });
 
   app.get("/api/admin/system-bans", async (req, res) => {
-    const database = getDatabase();
-    const userId = ensureText(req.query.userId);
-    const user = await database.collection("users").findOne({ id: userId });
-
-    if (!user || user.systemRole !== "superAdmin") {
-      return res.status(403).json({
-        valid: false,
-        message: "Only the Super Admin can view permanent system bans.",
-      });
+    if (!(await requireSuperAdmin(req, res))) {
+      return;
     }
 
+    const database = getDatabase();
     const systemBans = await database
       .collection("systemBans")
       .find({}, { projection: { _id: 0 } })
@@ -161,19 +138,13 @@ function adminRoutes(app) {
   });
 
   app.get("/api/audit-logs", async (req, res) => {
-    const database = getDatabase();
-    const userId = ensureText(req.query.userId);
+    if (!(await requireSuperAdmin(req, res))) {
+      return;
+    }
+
     const actionType = ensureText(req.query.actionType);
     const startDate = ensureText(req.query.startDate);
     const endDate = ensureText(req.query.endDate);
-    const user = await database.collection("users").findOne({ id: userId });
-
-    if (!user || user.systemRole !== "superAdmin") {
-      return res.status(403).json({
-        valid: false,
-        message: "Only the Super Admin can view audit logs.",
-      });
-    }
 
     const datePattern = /^\d{4}-\d{2}-\d{2}$/;
     if (
@@ -212,6 +183,7 @@ function adminRoutes(app) {
       }
     }
 
+    const database = getDatabase();
     const storedLogs = await database
       .collection("auditLogs")
       .find(auditFilter, { projection: { _id: 0 } })

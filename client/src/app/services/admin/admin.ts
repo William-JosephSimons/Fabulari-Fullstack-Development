@@ -1,28 +1,30 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
+import { Auth } from '../auth/auth';
 
 @Injectable({
   providedIn: 'root',
 })
 export class Admin {
   private readonly http = inject(HttpClient);
+  private readonly auth = inject(Auth);
   private readonly serverUrl = 'http://localhost:3000';
 
-  getDashboardSummary(userId: string) {
+  getDashboardSummary() {
     return this.http.get(`${this.serverUrl}/api/admin/dashboard`, {
-      params: { userId },
+      headers: this.auth.getAuthHeaders(),
     });
   }
 
-  getUsers(userId: string) {
+  getUsers() {
     return this.http.get(`${this.serverUrl}/api/admin/users`, {
-      params: { userId },
+      headers: this.auth.getAuthHeaders(),
     });
   }
 
-  getSystemBans(userId: string) {
+  getSystemBans() {
     return this.http.get(`${this.serverUrl}/api/admin/system-bans`, {
-      params: { userId },
+      headers: this.auth.getAuthHeaders(),
     });
   }
 }

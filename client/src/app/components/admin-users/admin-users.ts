@@ -33,8 +33,8 @@ export class AdminUsers implements OnInit {
       return;
     }
 
-    this.loadUsers(currentUser.id);
-    this.loadSystemBans(currentUser.id);
+    this.loadUsers();
+    this.loadSystemBans();
   }
 
   protected get filteredUsers() {
@@ -63,8 +63,8 @@ export class AdminUsers implements OnInit {
     });
   }
 
-  private loadUsers(userId: string): void {
-    this.adminService.getUsers(userId).subscribe({
+  private loadUsers(): void {
+    this.adminService.getUsers().subscribe({
       next: (response: any) => {
         this.usersLoading = false;
 
@@ -82,8 +82,8 @@ export class AdminUsers implements OnInit {
     });
   }
 
-  private loadSystemBans(userId: string): void {
-    this.adminService.getSystemBans(userId).subscribe({
+  private loadSystemBans(): void {
+    this.adminService.getSystemBans().subscribe({
       next: (response: any) => {
         this.bansLoading = false;
 

@@ -1,11 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
+import { Auth } from '../auth/auth';
 
 @Injectable({
   providedIn: 'root',
 })
 export class Request {
   private readonly http = inject(HttpClient);
+  private readonly auth = inject(Auth);
   private readonly serverUrl = 'http://localhost:3000';
 
   getMyRequests(userId: string) {
@@ -14,9 +16,9 @@ export class Request {
     });
   }
 
-  getAdminRequests(userId: string) {
+  getAdminRequests() {
     return this.http.get(`${this.serverUrl}/api/admin/requests`, {
-      params: { userId },
+      headers: this.auth.getAuthHeaders(),
     });
   }
 

@@ -113,7 +113,7 @@ export class AdminRequests implements OnInit {
 
     this.isLoading = true;
 
-    this.requestService.getAdminRequests(currentUser.id).subscribe({
+    this.requestService.getAdminRequests().subscribe({
       next: (response: any) => {
         this.isLoading = false;
 

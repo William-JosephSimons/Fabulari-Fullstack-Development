@@ -68,7 +68,6 @@ export class AuditLogs implements OnInit {
 
     this.auditService
       .getAuditLogs(
-        currentUser.id,
         this.selectedActionType,
         this.selectedStartDate,
         this.selectedEndDate

@@ -29,7 +29,7 @@ export class SuperAdminDashboard implements OnInit {
       return;
     }
 
-    this.adminService.getDashboardSummary(currentUser.id).subscribe({
+    this.adminService.getDashboardSummary().subscribe({
       next: (response: any) => {
         this.isLoading = false;
 
