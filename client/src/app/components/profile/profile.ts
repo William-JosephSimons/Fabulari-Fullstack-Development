@@ -16,12 +16,21 @@ export class Profile implements OnInit {
   protected profileError = '';
   protected profileLoading = true;
   protected profileSaving = false;
+  protected showPasswordForm = false;
+  protected passwordSaving = false;
+  protected passwordMessage = '';
+  protected passwordError = '';
   protected email = '';
   protected profile = {
     firstName: '',
     lastName: '',
     username: '',
     birthdate: '',
+  };
+  protected passwordDetails = {
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
   };
 
   protected get profileInitial(): string {
@@ -87,9 +96,74 @@ export class Profile implements OnInit {
     });
   }
 
-  protected showLaterFeature(feature: string): void {
+  protected showImageMessage(): void {
     this.profileError = '';
-    this.profileMessage = `${feature} will be connected in Phase 2.`;
+    this.profileMessage = 'Profile image uploads will be connected next.';
+  }
+
+  protected togglePasswordForm(): void {
+    this.showPasswordForm = !this.showPasswordForm;
+    this.profileMessage = '';
+    this.profileError = '';
+    this.passwordMessage = '';
+    this.passwordError = '';
+    this.passwordDetails = {
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    };
+  }
+
+  protected changePassword(): void {
+    this.passwordMessage = '';
+    this.passwordError = '';
+
+    if (
+      !this.passwordDetails.currentPassword ||
+      !this.passwordDetails.newPassword ||
+      !this.passwordDetails.confirmPassword
+    ) {
+      this.passwordError = 'Complete all password fields.';
+      return;
+    }
+
+    if (this.passwordDetails.newPassword.length < 8) {
+      this.passwordError = 'The new password must contain at least 8 characters.';
+      return;
+    }
+
+    if (this.passwordDetails.newPassword !== this.passwordDetails.confirmPassword) {
+      this.passwordError = 'The new passwords do not match.';
+      return;
+    }
+
+    this.passwordSaving = true;
+    this.auth
+      .changePassword({
+        currentPassword: this.passwordDetails.currentPassword,
+        newPassword: this.passwordDetails.newPassword,
+      })
+      .subscribe({
+        next: (response: any) => {
+          this.passwordSaving = false;
+
+          if (!response.valid) {
+            this.passwordError = response.message || 'Unable to change your password.';
+            return;
+          }
+
+          this.passwordDetails = {
+            currentPassword: '',
+            newPassword: '',
+            confirmPassword: '',
+          };
+          this.passwordMessage = response.message;
+        },
+        error: (error) => {
+          this.passwordSaving = false;
+          this.passwordError = error.error?.message || 'Unable to contact the server.';
+        },
+      });
   }
 
   private setProfile(user: any): void {

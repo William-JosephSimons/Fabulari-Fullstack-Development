@@ -13,7 +13,7 @@
           class="btn btn-outline-dark"
           type="button"
           [disabled]="profileLoading"
-          (click)="showLaterFeature('Profile image uploads')"
+          (click)="showImageMessage()"
         >
           Change image
         </button>
@@ -98,12 +98,82 @@
             class="btn btn-outline-dark"
             type="button"
             [disabled]="profileLoading"
-            (click)="showLaterFeature('Password changes')"
+            (click)="togglePasswordForm()"
           >
-            Change password
+            {{ showPasswordForm ? 'Cancel password change' : 'Change password' }}
           </button>
         </div>
       </form>
+
+      @if (showPasswordForm) {
+        <hr class="my-4" />
+
+        <form (ngSubmit)="changePassword()">
+          <h2 class="h4 mb-3">Change password</h2>
+
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label" for="current-password">Current password</label>
+              <input
+                id="current-password"
+                class="form-control"
+                type="password"
+                name="currentPassword"
+                [(ngModel)]="passwordDetails.currentPassword"
+                autocomplete="current-password"
+                required
+              />
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label" for="new-password">New password</label>
+              <input
+                id="new-password"
+                class="form-control"
+                type="password"
+                name="newPassword"
+                [(ngModel)]="passwordDetails.newPassword"
+                autocomplete="new-password"
+                minlength="8"
+                required
+              />
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label" for="confirm-password">Confirm new password</label>
+              <input
+                id="confirm-password"
+                class="form-control"
+                type="password"
+                name="confirmPassword"
+                [(ngModel)]="passwordDetails.confirmPassword"
+                autocomplete="new-password"
+                minlength="8"
+                required
+              />
+            </div>
+          </div>
+
+          @if (passwordMessage) {
+            <div class="alert alert-success mt-3 mb-0" role="status">
+              {{ passwordMessage }}
+            </div>
+          }
+          @if (passwordError) {
+            <div class="alert alert-danger mt-3 mb-0" role="alert">
+              {{ passwordError }}
+            </div>
+          }
+
+          <button
+            class="btn btn-outline-dark mt-3"
+            type="submit"
+            [disabled]="passwordSaving"
+          >
+            {{ passwordSaving ? 'Changing...' : 'Save new password' }}
+          </button>
+        </form>
+      }
     </div>
   </section>
 </main>

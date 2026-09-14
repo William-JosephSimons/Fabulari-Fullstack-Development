@@ -69,6 +69,12 @@ export class Auth {
     });
   }
 
+  changePassword(passwordDetails: object) {
+    return this.http.put(`${this.serverUrl}/api/profile/password`, passwordDetails, {
+      headers: this.getAuthHeaders(),
+    });
+  }
+
   isLoggedIn(): boolean {
     return this.getCurrentUser() !== null && this.getAuthToken() !== null;
   }

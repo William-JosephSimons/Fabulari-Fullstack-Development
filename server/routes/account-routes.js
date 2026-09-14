@@ -304,6 +304,72 @@ function accountRoutes(app) {
       user: safeUser(updatedUser),
     });
   });
+
+  app.put("/api/profile/password", async (req, res) => {
+    const user = await requireLogin(req, res);
+
+    if (!user) {
+      return;
+    }
+
+    // Password spaces are preserved because they may be intentional.
+    const currentPassword =
+      typeof req.body?.currentPassword === "string" ?
+        req.body.currentPassword
+      : "";
+    const newPassword =
+      typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        valid: false,
+        message: "The current and new passwords are required.",
+      });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        valid: false,
+        message: "The new password must contain at least 8 characters.",
+      });
+    }
+
+    if (!(await bcrypt.compare(currentPassword, user.passwordHash))) {
+      return res.status(401).json({
+        valid: false,
+        message: "The current password is incorrect.",
+      });
+    }
+
+    const database = getDatabase();
+    const updatedAt = new Date().toISOString();
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    await database.collection("users").updateOne(
+      { id: user.id },
+      {
+        $set: {
+          passwordHash,
+          updatedAt,
+        },
+      },
+    );
+    await database.collection("auditLogs").insertOne(
+      createAuditLog({
+        actorId: user.id,
+        actionType: "passwordChanged",
+        entityType: "user",
+        entityId: user.id,
+        summary: `Changed the password for ${user.username}.`,
+        createdAt: updatedAt,
+      }),
+    );
+
+    return res.status(200).json({
+      valid: true,
+      message: "Password changed successfully.",
+    });
+  });
 }
 
 export { accountRoutes };
