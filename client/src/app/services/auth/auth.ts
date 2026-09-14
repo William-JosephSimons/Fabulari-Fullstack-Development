@@ -57,6 +57,18 @@ export class Auth {
     });
   }
 
+  getProfile() {
+    return this.http.get(`${this.serverUrl}/api/profile`, {
+      headers: this.getAuthHeaders(),
+    });
+  }
+
+  updateProfile(profileDetails: object) {
+    return this.http.put(`${this.serverUrl}/api/profile`, profileDetails, {
+      headers: this.getAuthHeaders(),
+    });
+  }
+
   isLoggedIn(): boolean {
     return this.getCurrentUser() !== null && this.getAuthToken() !== null;
   }

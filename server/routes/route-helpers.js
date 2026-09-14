@@ -84,6 +84,37 @@ function validateUserDetails(details) {
   return null;
 }
 
+function getProfileDetails(body = {}) {
+  return {
+    username: ensureText(body.username),
+    firstName: ensureText(body.firstName),
+    lastName: ensureText(body.lastName),
+    birthdate: ensureText(body.birthdate),
+  };
+}
+
+function validateProfileDetails(details) {
+  if (
+    !details.username ||
+    !details.firstName ||
+    !details.lastName ||
+    !details.birthdate
+  ) {
+    return "All profile fields are required.";
+  }
+
+  if (details.username.length < 3 || details.username.length > 30) {
+    return "Username must be between 3 and 30 characters.";
+  }
+
+  const age = calculateAge(details.birthdate);
+  if (age === null || age < 1 || age > 120) {
+    return "Enter a valid birthdate for an age between 1 and 120.";
+  }
+
+  return null;
+}
+
 async function findAccountConflict(database, details) {
   const users = database.collection("users");
   // Usernames are unique even when the letter case is different.
@@ -349,6 +380,8 @@ export {
   meetsMinimumAge,
   getUserDetails,
   validateUserDetails,
+  getProfileDetails,
+  validateProfileDetails,
   findAccountConflict,
   createUser,
   safeUser,

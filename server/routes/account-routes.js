@@ -1,11 +1,13 @@
 import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
-import { getBearerToken } from "../authentication.js";
+import { getBearerToken, requireLogin } from "../authentication.js";
 import { getDatabase } from "../database.js";
 import {
   ensureText,
   getUserDetails,
   validateUserDetails,
+  getProfileDetails,
+  validateProfileDetails,
   findAccountConflict,
   createUser,
   safeUser,
@@ -120,10 +122,9 @@ function accountRoutes(app) {
     }
 
     const database = getDatabase();
-    const user = await database.collection("users").findOne(
-      { username },
-      { collation: { locale: "en", strength: 2 } },
-    );
+    const user = await database
+      .collection("users")
+      .findOne({ username }, { collation: { locale: "en", strength: 2 } });
 
     // The same response is used for an unknown username or incorrect password.
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
@@ -213,6 +214,94 @@ function accountRoutes(app) {
     return res.status(200).json({
       valid: true,
       user: safeUser(user),
+    });
+  });
+
+  app.get("/api/profile", async (req, res) => {
+    const user = await requireLogin(req, res);
+
+    if (!user) {
+      return;
+    }
+
+    return res.status(200).json({
+      valid: true,
+      user: safeUser(user),
+    });
+  });
+
+  app.put("/api/profile", async (req, res) => {
+    const user = await requireLogin(req, res);
+
+    if (!user) {
+      return;
+    }
+
+    const requestedEmail = ensureText(req.body?.email).toLowerCase();
+    if (requestedEmail && requestedEmail !== user.email) {
+      return res.status(400).json({
+        valid: false,
+        message: "Email cannot be changed.",
+      });
+    }
+
+    const details = getProfileDetails(req.body);
+    const validationError = validateProfileDetails(details);
+
+    if (validationError) {
+      return res.status(400).json({ valid: false, message: validationError });
+    }
+
+    const database = getDatabase();
+    const usernameTaken = await database.collection("users").findOne(
+      {
+        id: { $ne: user.id },
+        username: details.username,
+      },
+      { collation: { locale: "en", strength: 2 } },
+    );
+
+    if (usernameTaken) {
+      return res.status(409).json({
+        valid: false,
+        message: "That username is already in use.",
+      });
+    }
+
+    const updatedAt = new Date().toISOString();
+    await database.collection("users").updateOne(
+      { id: user.id },
+      {
+        $set: {
+          username: details.username,
+          firstName: details.firstName,
+          lastName: details.lastName,
+          birthdate: details.birthdate,
+          updatedAt,
+        },
+      },
+    );
+    await database.collection("auditLogs").insertOne(
+      createAuditLog({
+        actorId: user.id,
+        actionType: "profileUpdated",
+        entityType: "user",
+        entityId: user.id,
+        summary: `Updated the ${details.username} profile.`,
+        createdAt: updatedAt,
+      }),
+    );
+
+    const updatedUser = {
+      ...user,
+      ...details,
+      updatedAt,
+    };
+
+    return res.status(200).json({
+      valid: true,
+      message: "Profile changes saved.",
+      user: safeUser(updatedUser),
     });
   });
 }
