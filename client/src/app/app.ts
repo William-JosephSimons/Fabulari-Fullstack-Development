@@ -1,10 +1,45 @@
-import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, inject, OnInit } from '@angular/core';
+import { Router, RouterOutlet } from '@angular/router';
+import { Auth } from './services/auth/auth';
 
 @Component({
   selector: 'app-root',
   imports: [RouterOutlet],
   templateUrl: './app.html',
-  styleUrl: './app.css'
+  styleUrl: './app.css',
 })
-export class App {}
+export class App implements OnInit {
+  private readonly auth = inject(Auth);
+  private readonly router = inject(Router);
+
+  ngOnInit(): void {
+    const currentUser = this.auth.getCurrentUser();
+    const token = this.auth.getAuthToken();
+
+    if (!currentUser && !token) {
+      return;
+    }
+
+    if (!currentUser || !token) {
+      this.auth.clearLogin();
+      this.router.navigate(['/login']);
+      return;
+    }
+
+    this.auth.getSession().subscribe({
+      next: (response: any) => {
+        if (response.valid && response.user) {
+          this.auth.saveCurrentUser(response.user);
+          return;
+        }
+
+        this.auth.clearLogin();
+        this.router.navigate(['/login']);
+      },
+      error: () => {
+        this.auth.clearLogin();
+        this.router.navigate(['/login']);
+      },
+    });
+  }
+}

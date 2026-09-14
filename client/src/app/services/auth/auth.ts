@@ -8,6 +8,7 @@ export class Auth {
   private readonly http = inject(HttpClient);
   private readonly serverUrl = 'http://localhost:3000';
   private readonly storageKey = 'currentUser';
+  private readonly tokenStorageKey = 'authToken';
 
   login(loginDetails: object) {
     return this.http.post(`${this.serverUrl}/api/login`, loginDetails);
@@ -29,17 +30,54 @@ export class Auth {
     localStorage.setItem(this.storageKey, JSON.stringify(user));
   }
 
+  saveLogin(user: object, token: string): void {
+    this.saveCurrentUser(user);
+    localStorage.setItem(this.tokenStorageKey, token);
+  }
+
   getCurrentUser() {
     const storedUser = localStorage.getItem(this.storageKey);
 
     return storedUser ? JSON.parse(storedUser) : null;
   }
 
+  getAuthToken(): string | null {
+    return localStorage.getItem(this.tokenStorageKey);
+  }
+
+  getAuthHeaders() {
+    return {
+      Authorization: `Bearer ${this.getAuthToken() || ''}`,
+    };
+  }
+
+  getSession() {
+    return this.http.get(`${this.serverUrl}/api/session`, {
+      headers: this.getAuthHeaders(),
+    });
+  }
+
   isLoggedIn(): boolean {
-    return this.getCurrentUser() !== null;
+    return this.getCurrentUser() !== null && this.getAuthToken() !== null;
   }
 
   logout(): void {
+    const token = this.getAuthToken();
+
+    if (token) {
+      this.http
+        .post(`${this.serverUrl}/api/logout`, {}, { headers: this.getAuthHeaders() })
+        .subscribe({
+          // Local logout must still work if the server session has already ended.
+          error: () => {},
+        });
+    }
+
+    this.clearLogin();
+  }
+
+  clearLogin(): void {
     localStorage.removeItem(this.storageKey);
+    localStorage.removeItem(this.tokenStorageKey);
   }
 }

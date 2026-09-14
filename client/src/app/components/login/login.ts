@@ -38,12 +38,12 @@ export class Login implements OnInit {
 
     this.auth.login(this.loginDetails).subscribe({
       next: (response: any) => {
-        if (!response.valid || !response.user) {
+        if (!response.valid || !response.user || !response.token) {
           this.loginMessage = response.message || 'Login was unsuccessful.';
           return;
         }
 
-        this.auth.saveCurrentUser(response.user);
+        this.auth.saveLogin(response.user, response.token);
 
         if (response.user.systemRole === 'superAdmin') {
           this.router.navigate(['/super-admin-dashboard']);
