@@ -82,7 +82,7 @@ export class Requests implements OnInit {
       return;
     }
 
-    this.requestService.getMyRequests(currentUser.id).subscribe({
+    this.requestService.getMyRequests().subscribe({
       next: (response: any) => {
         this.isLoading = false;
 

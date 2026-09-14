@@ -90,7 +90,6 @@ export class Groups implements OnInit {
 
     this.groupService
       .submitMembershipRequest(groupId, {
-        requesterId: currentUser.id,
         reason,
       })
       .subscribe({
@@ -128,14 +127,9 @@ export class Groups implements OnInit {
       return;
     }
 
-    const requestDetails = {
-      ...this.groupRequest,
-      requesterId: currentUser.id,
-    };
-
     this.requestSubmitting = true;
 
-    this.groupService.submitGroupRequest(requestDetails).subscribe({
+    this.groupService.submitGroupRequest(this.groupRequest).subscribe({
       next: (response: any) => {
         this.requestSubmitting = false;
 
@@ -170,7 +164,7 @@ export class Groups implements OnInit {
       return;
     }
 
-    this.groupService.getGroups(currentUser.id).subscribe({
+    this.groupService.getGroups().subscribe({
       next: (response: any) => {
         this.groupsLoading = false;
 

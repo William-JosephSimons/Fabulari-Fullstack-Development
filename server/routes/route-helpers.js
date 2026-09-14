@@ -166,7 +166,6 @@ function createAuditLog(details) {
 
 function getGroupRequestDetails(body = {}) {
   return {
-    requesterId: ensureText(body.requesterId),
     title: ensureText(body.title),
     description: ensureText(body.description),
     minimumAge: Number(body.minimumAge),
@@ -177,7 +176,6 @@ function getGroupRequestDetails(body = {}) {
 
 function validateGroupRequest(details) {
   if (
-    !details.requesterId ||
     !details.title ||
     !details.description ||
     !details.colour ||
@@ -203,7 +201,6 @@ function validateGroupRequest(details) {
 
 function getGroupSettingsDetails(body = {}) {
   return {
-    actingUserId: ensureText(body.actingUserId),
     title: ensureText(body.title),
     description: ensureText(body.description),
     minimumAge: Number(body.minimumAge),
@@ -213,7 +210,6 @@ function getGroupSettingsDetails(body = {}) {
 
 function validateGroupSettings(details) {
   if (
-    !details.actingUserId ||
     !details.title ||
     !details.description ||
     !details.colour
@@ -238,7 +234,6 @@ function validateGroupSettings(details) {
 
 function getRequestDecisionDetails(body = {}) {
   return {
-    deciderId: ensureText(body.deciderId),
     decision: ensureText(body.decision).toLowerCase(),
     rejectionReason: ensureText(body.rejectionReason),
   };
@@ -246,29 +241,26 @@ function getRequestDecisionDetails(body = {}) {
 
 function getMembershipRequestDetails(body = {}) {
   return {
-    requesterId: ensureText(body.requesterId),
     reason: ensureText(body.reason),
   };
 }
 
 function getAdminChangeDetails(body = {}) {
   return {
-    actingUserId: ensureText(body.actingUserId),
     targetUserId: ensureText(body.targetUserId),
   };
 }
 
 function getRoomDetails(body = {}) {
   return {
-    actingUserId: ensureText(body.actingUserId),
     name: ensureText(body.name),
     description: ensureText(body.description),
   };
 }
 
 function validateRoomDetails(details) {
-  if (!details.actingUserId || !details.name || !details.description) {
-    return "A Group Admin, room name and description are required.";
+  if (!details.name || !details.description) {
+    return "A room name and description are required.";
   }
 
   return null;
@@ -276,7 +268,6 @@ function validateRoomDetails(details) {
 
 function getRoomProposalDetails(body = {}) {
   return {
-    requesterId: ensureText(body.requesterId),
     name: ensureText(body.name),
     description: ensureText(body.description),
     reason: ensureText(body.reason),
@@ -285,7 +276,6 @@ function getRoomProposalDetails(body = {}) {
 
 function validateRoomProposal(details) {
   if (
-    !details.requesterId ||
     !details.name ||
     !details.description ||
     !details.reason
@@ -298,7 +288,6 @@ function validateRoomProposal(details) {
 
 function getGroupBanReportDetails(body = {}) {
   return {
-    requesterId: ensureText(body.requesterId),
     targetUserId: ensureText(body.targetUserId),
     reason: ensureText(body.reason),
   };
@@ -306,14 +295,12 @@ function getGroupBanReportDetails(body = {}) {
 
 function getGroupDeletionRequestDetails(body = {}) {
   return {
-    requesterId: ensureText(body.requesterId),
     reason: ensureText(body.reason),
   };
 }
 
 function getSystemBanRequestDetails(body = {}) {
   return {
-    requesterId: ensureText(body.requesterId),
     targetUserId: ensureText(body.targetUserId),
     reason: ensureText(body.reason),
   };

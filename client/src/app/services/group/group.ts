@@ -1,108 +1,121 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
+import { Auth } from '../auth/auth';
 
 @Injectable({
   providedIn: 'root',
 })
 export class Group {
   private readonly http = inject(HttpClient);
+  private readonly auth = inject(Auth);
   private readonly serverUrl = 'http://localhost:3000';
 
-  getGroups(userId: string) {
+  getGroups() {
     return this.http.get(`${this.serverUrl}/api/groups`, {
-      params: { userId },
+      headers: this.auth.getAuthHeaders(),
     });
   }
 
-  getGroupUsers(groupId: string, userId: string) {
+  getGroupUsers(groupId: string) {
     return this.http.get(`${this.serverUrl}/api/groups/${groupId}/users`, {
-      params: { userId },
+      headers: this.auth.getAuthHeaders(),
     });
   }
 
   updateGroupSettings(groupId: string, settingsDetails: object) {
     return this.http.patch(
       `${this.serverUrl}/api/groups/${groupId}`,
-      settingsDetails
+      settingsDetails,
+      { headers: this.auth.getAuthHeaders() }
     );
   }
 
-  getGroupRooms(groupId: string, userId: string) {
+  getGroupRooms(groupId: string) {
     return this.http.get(`${this.serverUrl}/api/groups/${groupId}/rooms`, {
-      params: { userId },
+      headers: this.auth.getAuthHeaders(),
     });
   }
 
   createRoom(groupId: string, roomDetails: object) {
     return this.http.post(
       `${this.serverUrl}/api/groups/${groupId}/rooms`,
-      roomDetails
+      roomDetails,
+      { headers: this.auth.getAuthHeaders() }
     );
   }
 
   updateRoom(roomId: string, roomDetails: object) {
     return this.http.patch(
       `${this.serverUrl}/api/rooms/${roomId}`,
-      roomDetails
+      roomDetails,
+      { headers: this.auth.getAuthHeaders() }
     );
   }
 
-  deleteRoom(roomId: string, actingUserId: string) {
+  deleteRoom(roomId: string) {
     return this.http.delete(`${this.serverUrl}/api/rooms/${roomId}`, {
-      params: { actingUserId },
+      headers: this.auth.getAuthHeaders(),
     });
   }
 
   submitGroupRequest(requestDetails: object) {
-    return this.http.post(`${this.serverUrl}/api/group-requests`, requestDetails);
+    return this.http.post(`${this.serverUrl}/api/group-requests`, requestDetails, {
+      headers: this.auth.getAuthHeaders(),
+    });
   }
 
   submitMembershipRequest(groupId: string, requestDetails: object) {
     return this.http.post(
       `${this.serverUrl}/api/groups/${groupId}/join-requests`,
-      requestDetails
+      requestDetails,
+      { headers: this.auth.getAuthHeaders() }
     );
   }
 
   submitRoomProposal(groupId: string, proposalDetails: object) {
     return this.http.post(
       `${this.serverUrl}/api/groups/${groupId}/room-requests`,
-      proposalDetails
+      proposalDetails,
+      { headers: this.auth.getAuthHeaders() }
     );
   }
 
   submitGroupBanReport(groupId: string, reportDetails: object) {
     return this.http.post(
       `${this.serverUrl}/api/groups/${groupId}/ban-reports`,
-      reportDetails
+      reportDetails,
+      { headers: this.auth.getAuthHeaders() }
     );
   }
 
   submitGroupDeletionRequest(groupId: string, requestDetails: object) {
     return this.http.post(
       `${this.serverUrl}/api/groups/${groupId}/delete-request`,
-      requestDetails
+      requestDetails,
+      { headers: this.auth.getAuthHeaders() }
     );
   }
 
   submitSystemBanRequest(groupId: string, requestDetails: object) {
     return this.http.post(
       `${this.serverUrl}/api/groups/${groupId}/system-ban-requests`,
-      requestDetails
+      requestDetails,
+      { headers: this.auth.getAuthHeaders() }
     );
   }
 
   promoteMember(groupId: string, adminDetails: object) {
     return this.http.post(
       `${this.serverUrl}/api/groups/${groupId}/admins`,
-      adminDetails
+      adminDetails,
+      { headers: this.auth.getAuthHeaders() }
     );
   }
 
-  demoteAdmin(groupId: string, targetUserId: string, actingUserId: string) {
+  demoteAdmin(groupId: string, targetUserId: string) {
     return this.http.delete(
       `${this.serverUrl}/api/groups/${groupId}/admins/${targetUserId}`,
-      { params: { actingUserId } }
+      { headers: this.auth.getAuthHeaders() }
     );
   }
 }

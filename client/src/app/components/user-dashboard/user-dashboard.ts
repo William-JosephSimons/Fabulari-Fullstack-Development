@@ -35,8 +35,8 @@ export class UserDashboard implements OnInit {
       return;
     }
 
-    this.loadGroups(currentUser.id);
-    this.loadRecentRequests(currentUser.id);
+    this.loadGroups();
+    this.loadRecentRequests();
   }
 
   protected getRequestDescription(request: any): string {
@@ -67,8 +67,8 @@ export class UserDashboard implements OnInit {
     return status.charAt(0).toUpperCase() + status.slice(1);
   }
 
-  private loadGroups(userId: string): void {
-    this.groupService.getGroups(userId).subscribe({
+  private loadGroups(): void {
+    this.groupService.getGroups().subscribe({
       next: (response: any) => {
         this.groupsLoading = false;
 
@@ -86,8 +86,8 @@ export class UserDashboard implements OnInit {
     });
   }
 
-  private loadRecentRequests(userId: string): void {
-    this.requestService.getMyRequests(userId).subscribe({
+  private loadRecentRequests(): void {
+    this.requestService.getMyRequests().subscribe({
       next: (response: any) => {
         this.requestsLoading = false;
 

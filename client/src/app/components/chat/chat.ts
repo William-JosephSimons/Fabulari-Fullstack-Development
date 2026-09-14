@@ -192,7 +192,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
     this.currentUserId = currentUser.id;
     this.loadError = '';
 
-    this.groupService.getGroupRooms(this.groupId, currentUser.id).subscribe({
+    this.groupService.getGroupRooms(this.groupId).subscribe({
       next: (response: any) => {
         if (!response.valid) {
           this.loadError = response.message || 'Unable to load this chat room.';

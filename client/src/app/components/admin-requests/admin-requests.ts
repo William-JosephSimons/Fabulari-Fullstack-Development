@@ -146,7 +146,6 @@ export class AdminRequests implements OnInit {
 
     this.requestService
       .decideRequest(request.id, {
-        deciderId: currentUser.id,
         decision,
         rejectionReason,
       })

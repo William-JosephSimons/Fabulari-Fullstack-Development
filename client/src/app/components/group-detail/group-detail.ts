@@ -49,7 +49,6 @@ export class GroupDetail implements OnInit {
 
     this.groupService
       .submitRoomProposal(this.groupId, {
-        requesterId: this.currentUserId,
         name: this.proposalDetails.name,
         description: this.proposalDetails.description,
         reason: this.proposalDetails.reason,
@@ -80,7 +79,7 @@ export class GroupDetail implements OnInit {
       return;
     }
 
-    this.groupService.getGroupRooms(this.groupId, this.currentUserId).subscribe({
+    this.groupService.getGroupRooms(this.groupId).subscribe({
       next: (response: any) => {
         this.isLoading = false;
 

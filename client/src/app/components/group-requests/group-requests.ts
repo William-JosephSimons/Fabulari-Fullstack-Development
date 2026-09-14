@@ -97,7 +97,7 @@ export class GroupRequests implements OnInit {
       return;
     }
 
-    this.requestService.getGroupRequests(this.groupId, currentUser.id).subscribe({
+    this.requestService.getGroupRequests(this.groupId).subscribe({
       next: (response: any) => {
         this.isLoading = false;
 
@@ -131,7 +131,6 @@ export class GroupRequests implements OnInit {
 
     this.requestService
       .decideRequest(request.id, {
-        deciderId: currentUser.id,
         decision,
         rejectionReason,
       })

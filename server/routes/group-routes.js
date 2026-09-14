@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { requireLogin } from "../authentication.js";
 import { getDatabase } from "../database.js";
 import {
   ensureText,
@@ -17,17 +18,13 @@ import {
 
 function groupRoutes(app) {
   app.get("/api/groups", async (req, res) => {
-    const database = getDatabase();
-    const userId = ensureText(req.query.userId);
-    const user = await database.collection("users").findOne({ id: userId });
+    const user = await requireLogin(req, res);
 
     if (!user) {
-      return res.status(404).json({
-        valid: false,
-        message: "Current user was not found.",
-      });
+      return;
     }
 
+    const database = getDatabase();
     const storedGroups = await database
       .collection("groups")
       .find({}, { projection: { _id: 0 } })
@@ -87,6 +84,12 @@ function groupRoutes(app) {
   });
 
   app.patch("/api/groups/:id", async (req, res) => {
+    const actingUser = await requireLogin(req, res);
+
+    if (!actingUser) {
+      return;
+    }
+
     const details = getGroupSettingsDetails(req.body);
     const validationError = validateGroupSettings(details);
 
@@ -106,12 +109,7 @@ function groupRoutes(app) {
       });
     }
 
-    const actingUser = await database
-      .collection("users")
-      .findOne({ id: details.actingUserId });
-
     if (
-      !actingUser ||
       actingUser.systemRole !== "user" ||
       !group.adminIds.includes(actingUser.id)
     ) {
@@ -201,8 +199,13 @@ function groupRoutes(app) {
   });
 
   app.get("/api/groups/:id/users", async (req, res) => {
+    const user = await requireLogin(req, res);
+
+    if (!user) {
+      return;
+    }
+
     const database = getDatabase();
-    const userId = ensureText(req.query.userId);
     const group = await database
       .collection("groups")
       .findOne({ id: req.params.id }, { projection: { _id: 0 } });
@@ -214,10 +217,7 @@ function groupRoutes(app) {
       });
     }
 
-    const user = await database.collection("users").findOne({ id: userId });
-
     if (
-      !user ||
       user.systemRole !== "user" ||
       !group.adminIds.includes(user.id)
     ) {
@@ -280,8 +280,13 @@ function groupRoutes(app) {
   });
 
   app.get("/api/groups/:id/rooms", async (req, res) => {
+    const user = await requireLogin(req, res);
+
+    if (!user) {
+      return;
+    }
+
     const database = getDatabase();
-    const userId = ensureText(req.query.userId);
     const group = await database
       .collection("groups")
       .findOne({ id: req.params.id }, { projection: { _id: 0 } });
@@ -293,10 +298,7 @@ function groupRoutes(app) {
       });
     }
 
-    const user = await database.collection("users").findOne({ id: userId });
-
     if (
-      !user ||
       user.systemRole !== "user" ||
       !group.memberIds.includes(user.id) ||
       !meetsMinimumAge(user, group.minimumAge)
@@ -330,6 +332,12 @@ function groupRoutes(app) {
   });
 
   app.post("/api/groups/:id/rooms", async (req, res) => {
+    const actingUser = await requireLogin(req, res);
+
+    if (!actingUser) {
+      return;
+    }
+
     const details = getRoomDetails(req.body);
     const validationError = validateRoomDetails(details);
 
@@ -349,12 +357,7 @@ function groupRoutes(app) {
       });
     }
 
-    const actingUser = await database
-      .collection("users")
-      .findOne({ id: details.actingUserId });
-
     if (
-      !actingUser ||
       actingUser.systemRole !== "user" ||
       !group.adminIds.includes(actingUser.id)
     ) {
@@ -422,6 +425,12 @@ function groupRoutes(app) {
   });
 
   app.patch("/api/rooms/:id", async (req, res) => {
+    const actingUser = await requireLogin(req, res);
+
+    if (!actingUser) {
+      return;
+    }
+
     const details = getRoomDetails(req.body);
     const validationError = validateRoomDetails(details);
 
@@ -444,13 +453,9 @@ function groupRoutes(app) {
     const group = await database
       .collection("groups")
       .findOne({ id: room.groupId }, { projection: { _id: 0 } });
-    const actingUser = await database
-      .collection("users")
-      .findOne({ id: details.actingUserId });
 
     if (
       !group ||
-      !actingUser ||
       actingUser.systemRole !== "user" ||
       !group.adminIds.includes(actingUser.id)
     ) {
@@ -514,13 +519,10 @@ function groupRoutes(app) {
   });
 
   app.delete("/api/rooms/:id", async (req, res) => {
-    const actingUserId = ensureText(req.query.actingUserId);
+    const actingUser = await requireLogin(req, res);
 
-    if (!actingUserId) {
-      return res.status(400).json({
-        valid: false,
-        message: "An acting Group Admin is required.",
-      });
+    if (!actingUser) {
+      return;
     }
 
     const database = getDatabase();
@@ -538,13 +540,9 @@ function groupRoutes(app) {
     const group = await database
       .collection("groups")
       .findOne({ id: room.groupId }, { projection: { _id: 0 } });
-    const actingUser = await database
-      .collection("users")
-      .findOne({ id: actingUserId });
 
     if (
       !group ||
-      !actingUser ||
       actingUser.systemRole !== "user" ||
       !group.adminIds.includes(actingUser.id)
     ) {
@@ -587,12 +585,18 @@ function groupRoutes(app) {
   });
 
   app.post("/api/groups/:id/join-requests", async (req, res) => {
+    const requester = await requireLogin(req, res);
+
+    if (!requester) {
+      return;
+    }
+
     const details = getMembershipRequestDetails(req.body);
 
-    if (!details.requesterId || !details.reason) {
+    if (!details.reason) {
       return res.status(400).json({
         valid: false,
-        message: "A requesting user and reason are required.",
+        message: "A membership reason is required.",
       });
     }
 
@@ -605,17 +609,6 @@ function groupRoutes(app) {
       return res.status(404).json({
         valid: false,
         message: "Group was not found.",
-      });
-    }
-
-    const requester = await database
-      .collection("users")
-      .findOne({ id: details.requesterId });
-
-    if (!requester) {
-      return res.status(404).json({
-        valid: false,
-        message: "Requesting user was not found.",
       });
     }
 
@@ -701,12 +694,18 @@ function groupRoutes(app) {
   });
 
   app.post("/api/groups/:id/admins", async (req, res) => {
+    const actingUser = await requireLogin(req, res);
+
+    if (!actingUser) {
+      return;
+    }
+
     const details = getAdminChangeDetails(req.body);
 
-    if (!details.actingUserId || !details.targetUserId) {
+    if (!details.targetUserId) {
       return res.status(400).json({
         valid: false,
-        message: "An acting user and target user are required.",
+        message: "A target user is required.",
       });
     }
 
@@ -722,12 +721,7 @@ function groupRoutes(app) {
       });
     }
 
-    const actingUser = await database
-      .collection("users")
-      .findOne({ id: details.actingUserId });
-
     if (
-      !actingUser ||
       actingUser.systemRole !== "user" ||
       !group.adminIds.includes(actingUser.id)
     ) {
@@ -794,13 +788,18 @@ function groupRoutes(app) {
   });
 
   app.delete("/api/groups/:id/admins/:userId", async (req, res) => {
-    const actingUserId = ensureText(req.query.actingUserId);
+    const actingUser = await requireLogin(req, res);
+
+    if (!actingUser) {
+      return;
+    }
+
     const targetUserId = ensureText(req.params.userId);
 
-    if (!actingUserId || !targetUserId) {
+    if (!targetUserId) {
       return res.status(400).json({
         valid: false,
-        message: "An acting user and target user are required.",
+        message: "A target user is required.",
       });
     }
 
@@ -816,12 +815,7 @@ function groupRoutes(app) {
       });
     }
 
-    const actingUser = await database
-      .collection("users")
-      .findOne({ id: actingUserId });
-
     if (
-      !actingUser ||
       actingUser.systemRole !== "user" ||
       !group.adminIds.includes(actingUser.id)
     ) {

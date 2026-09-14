@@ -48,7 +48,7 @@ export class GroupAdminDashboard implements OnInit {
       return;
     }
 
-    this.groupService.getGroups(currentUser.id).subscribe({
+    this.groupService.getGroups().subscribe({
       next: (response: any) => {
         this.isLoading = false;
 

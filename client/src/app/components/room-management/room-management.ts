@@ -92,7 +92,6 @@ export class RoomManagement implements OnInit {
 
     this.groupService
       .updateGroupSettings(this.groupId, {
-        actingUserId: this.currentUserId,
         title: this.groupSettings.title,
         description: this.groupSettings.description,
         minimumAge: this.groupSettings.minimumAge,
@@ -149,7 +148,6 @@ export class RoomManagement implements OnInit {
 
     this.groupService
       .submitGroupDeletionRequest(this.groupId, {
-        requesterId: this.currentUserId,
         reason: this.groupDeletionReason,
       })
       .subscribe({
@@ -185,7 +183,6 @@ export class RoomManagement implements OnInit {
 
     this.groupService
       .promoteMember(this.groupId, {
-        actingUserId: this.currentUserId,
         targetUserId: member.id,
       })
       .subscribe({
@@ -219,7 +216,7 @@ export class RoomManagement implements OnInit {
     this.adminChangingId = member.id;
 
     this.groupService
-      .demoteAdmin(this.groupId, member.id, this.currentUserId)
+      .demoteAdmin(this.groupId, member.id)
       .subscribe({
         next: (response: any) => {
           this.adminChangingId = null;
@@ -272,7 +269,6 @@ export class RoomManagement implements OnInit {
 
     this.groupService
       .submitGroupBanReport(this.groupId, {
-        requesterId: this.currentUserId,
         targetUserId: this.banTargetId,
         reason: this.banReason,
       })
@@ -328,7 +324,6 @@ export class RoomManagement implements OnInit {
 
     this.groupService
       .submitSystemBanRequest(this.groupId, {
-        requesterId: this.currentUserId,
         targetUserId: this.systemBanTargetId,
         reason: this.systemBanReason,
       })
@@ -360,7 +355,6 @@ export class RoomManagement implements OnInit {
     }
 
     const requestDetails = {
-      actingUserId: this.currentUserId,
       name: this.roomDetails.name,
       description: this.roomDetails.description,
     };
@@ -444,7 +438,7 @@ export class RoomManagement implements OnInit {
     this.roomError = '';
     this.deletingRoomId = room.id;
 
-    this.groupService.deleteRoom(room.id, this.currentUserId).subscribe({
+    this.groupService.deleteRoom(room.id).subscribe({
       next: (response: any) => {
         this.deletingRoomId = null;
 
@@ -475,7 +469,7 @@ export class RoomManagement implements OnInit {
       return;
     }
 
-    this.groupService.getGroupUsers(this.groupId, this.currentUserId).subscribe({
+    this.groupService.getGroupUsers(this.groupId).subscribe({
       next: (response: any) => {
         this.usersLoading = false;
 
@@ -509,7 +503,7 @@ export class RoomManagement implements OnInit {
       return;
     }
 
-    this.groupService.getGroupRooms(this.groupId, this.currentUserId).subscribe({
+    this.groupService.getGroupRooms(this.groupId).subscribe({
       next: (response: any) => {
         this.roomsLoading = false;
 

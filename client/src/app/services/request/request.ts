@@ -10,9 +10,9 @@ export class Request {
   private readonly auth = inject(Auth);
   private readonly serverUrl = 'http://localhost:3000';
 
-  getMyRequests(userId: string) {
+  getMyRequests() {
     return this.http.get(`${this.serverUrl}/api/requests/mine`, {
-      params: { userId },
+      headers: this.auth.getAuthHeaders(),
     });
   }
 
@@ -22,16 +22,17 @@ export class Request {
     });
   }
 
-  getGroupRequests(groupId: string, userId: string) {
+  getGroupRequests(groupId: string) {
     return this.http.get(`${this.serverUrl}/api/groups/${groupId}/requests`, {
-      params: { userId },
+      headers: this.auth.getAuthHeaders(),
     });
   }
 
   decideRequest(requestId: string, decisionDetails: object) {
     return this.http.put(
       `${this.serverUrl}/api/requests/${requestId}/decision`,
-      decisionDetails
+      decisionDetails,
+      { headers: this.auth.getAuthHeaders() }
     );
   }
 }

@@ -38,7 +38,7 @@ async function getAuthenticatedUser(req) {
   return user;
 }
 
-async function requireSuperAdmin(req, res) {
+async function requireLogin(req, res) {
   const user = await getAuthenticatedUser(req);
 
   if (!user) {
@@ -46,6 +46,16 @@ async function requireSuperAdmin(req, res) {
       valid: false,
       message: "A valid login session is required.",
     });
+    return null;
+  }
+
+  return user;
+}
+
+async function requireSuperAdmin(req, res) {
+  const user = await requireLogin(req, res);
+
+  if (!user) {
     return null;
   }
 
@@ -60,4 +70,9 @@ async function requireSuperAdmin(req, res) {
   return user;
 }
 
-export { getBearerToken, getAuthenticatedUser, requireSuperAdmin };
+export {
+  getBearerToken,
+  getAuthenticatedUser,
+  requireLogin,
+  requireSuperAdmin,
+};

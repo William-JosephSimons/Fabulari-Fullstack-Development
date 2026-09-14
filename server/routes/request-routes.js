@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { requireLogin } from "../authentication.js";
 import { getDatabase } from "../database.js";
 import {
-  ensureText,
   calculateAge,
   meetsMinimumAge,
   createAuditLog,
@@ -17,23 +17,17 @@ import {
 
 function requestRoutes(app) {
   app.post("/api/group-requests", async (req, res) => {
+    const requester = await requireLogin(req, res);
+
+    if (!requester) {
+      return;
+    }
+
     const details = getGroupRequestDetails(req.body);
     const validationError = validateGroupRequest(details);
 
     if (validationError) {
       return res.status(400).json({ valid: false, message: validationError });
-    }
-
-    const database = getDatabase();
-    const requester = await database
-      .collection("users")
-      .findOne({ id: details.requesterId });
-
-    if (!requester) {
-      return res.status(404).json({
-        valid: false,
-        message: "Requesting user was not found.",
-      });
     }
 
     if (requester.systemRole !== "user") {
@@ -43,6 +37,7 @@ function requestRoutes(app) {
       });
     }
 
+    const database = getDatabase();
     const request = {
       id: `request-${randomUUID()}`,
       type: "groupCreation",
@@ -81,17 +76,13 @@ function requestRoutes(app) {
   });
 
   app.get("/api/requests/mine", async (req, res) => {
-    const database = getDatabase();
-    const userId = ensureText(req.query.userId);
-    const user = await database.collection("users").findOne({ id: userId });
+    const user = await requireLogin(req, res);
 
     if (!user) {
-      return res.status(404).json({
-        valid: false,
-        message: "Current user was not found.",
-      });
+      return;
     }
 
+    const database = getDatabase();
     // Allow the user to see pending and rejected requests.
     const storedRequests = await database
       .collection("requests")
@@ -135,8 +126,13 @@ function requestRoutes(app) {
   });
 
   app.get("/api/groups/:id/requests", async (req, res) => {
+    const user = await requireLogin(req, res);
+
+    if (!user) {
+      return;
+    }
+
     const database = getDatabase();
-    const userId = ensureText(req.query.userId);
     const group = await database
       .collection("groups")
       .findOne({ id: req.params.id }, { projection: { _id: 0 } });
@@ -148,9 +144,7 @@ function requestRoutes(app) {
       });
     }
 
-    const user = await database.collection("users").findOne({ id: userId });
-
-    if (!user || !group.adminIds.includes(user.id)) {
+    if (user.systemRole !== "user" || !group.adminIds.includes(user.id)) {
       return res.status(403).json({
         valid: false,
         message: "Only a Group Admin can view this group's requests.",
@@ -201,6 +195,12 @@ function requestRoutes(app) {
   });
 
   app.post("/api/groups/:id/room-requests", async (req, res) => {
+    const requester = await requireLogin(req, res);
+
+    if (!requester) {
+      return;
+    }
+
     const details = getRoomProposalDetails(req.body);
     const validationError = validateRoomProposal(details);
 
@@ -220,12 +220,7 @@ function requestRoutes(app) {
       });
     }
 
-    const requester = await database
-      .collection("users")
-      .findOne({ id: details.requesterId });
-
     if (
-      !requester ||
       requester.systemRole !== "user" ||
       !group.memberIds.includes(requester.id) ||
       !meetsMinimumAge(requester, group.minimumAge)
@@ -305,16 +300,22 @@ function requestRoutes(app) {
   });
 
   app.post("/api/groups/:id/ban-reports", async (req, res) => {
+    const requester = await requireLogin(req, res);
+
+    if (!requester) {
+      return;
+    }
+
     const details = getGroupBanReportDetails(req.body);
 
-    if (!details.requesterId || !details.targetUserId || !details.reason) {
+    if (!details.targetUserId || !details.reason) {
       return res.status(400).json({
         valid: false,
-        message: "A Group Admin, target member and report reason are required.",
+        message: "A target member and report reason are required.",
       });
     }
 
-    if (details.requesterId === details.targetUserId) {
+    if (requester.id === details.targetUserId) {
       return res.status(400).json({
         valid: false,
         message: "A Group Admin cannot report themselves.",
@@ -333,12 +334,7 @@ function requestRoutes(app) {
       });
     }
 
-    const requester = await database
-      .collection("users")
-      .findOne({ id: details.requesterId });
-
     if (
-      !requester ||
       requester.systemRole !== "user" ||
       !group.adminIds.includes(requester.id)
     ) {
@@ -420,12 +416,18 @@ function requestRoutes(app) {
   });
 
   app.post("/api/groups/:id/delete-request", async (req, res) => {
+    const requester = await requireLogin(req, res);
+
+    if (!requester) {
+      return;
+    }
+
     const details = getGroupDeletionRequestDetails(req.body);
 
-    if (!details.requesterId || !details.reason) {
+    if (!details.reason) {
       return res.status(400).json({
         valid: false,
-        message: "A Group Admin and deletion reason are required.",
+        message: "A deletion reason is required.",
       });
     }
 
@@ -441,12 +443,7 @@ function requestRoutes(app) {
       });
     }
 
-    const requester = await database
-      .collection("users")
-      .findOne({ id: details.requesterId });
-
     if (
-      !requester ||
       requester.systemRole !== "user" ||
       !group.adminIds.includes(requester.id)
     ) {
@@ -505,16 +502,22 @@ function requestRoutes(app) {
   });
 
   app.post("/api/groups/:id/system-ban-requests", async (req, res) => {
+    const requester = await requireLogin(req, res);
+
+    if (!requester) {
+      return;
+    }
+
     const details = getSystemBanRequestDetails(req.body);
 
-    if (!details.requesterId || !details.targetUserId || !details.reason) {
+    if (!details.targetUserId || !details.reason) {
       return res.status(400).json({
         valid: false,
-        message: "A Group Admin, target user and reason are required.",
+        message: "A target user and reason are required.",
       });
     }
 
-    if (details.requesterId === details.targetUserId) {
+    if (requester.id === details.targetUserId) {
       return res.status(400).json({
         valid: false,
         message: "A Group Admin cannot request deletion of their own account.",
@@ -533,12 +536,7 @@ function requestRoutes(app) {
       });
     }
 
-    const requester = await database
-      .collection("users")
-      .findOne({ id: details.requesterId });
-
     if (
-      !requester ||
       requester.systemRole !== "user" ||
       !group.adminIds.includes(requester.id)
     ) {
@@ -615,15 +613,18 @@ function requestRoutes(app) {
   });
 
   app.put("/api/requests/:id/decision", async (req, res) => {
+    const decider = await requireLogin(req, res);
+
+    if (!decider) {
+      return;
+    }
+
     const details = getRequestDecisionDetails(req.body);
 
-    if (
-      !details.deciderId ||
-      !["approved", "rejected"].includes(details.decision)
-    ) {
+    if (!["approved", "rejected"].includes(details.decision)) {
       return res.status(400).json({
         valid: false,
-        message: "A decision-maker and valid decision are required.",
+        message: "A valid decision is required.",
       });
     }
 
@@ -667,17 +668,6 @@ function requestRoutes(app) {
       return res.status(409).json({
         valid: false,
         message: "This request has already been decided.",
-      });
-    }
-
-    const decider = await database
-      .collection("users")
-      .findOne({ id: details.deciderId });
-
-    if (!decider) {
-      return res.status(403).json({
-        valid: false,
-        message: "The decision-maker is not permitted to decide this request.",
       });
     }
 
