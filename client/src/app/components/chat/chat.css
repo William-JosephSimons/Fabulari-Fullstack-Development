@@ -67,6 +67,7 @@
   border-radius: 50%;
   color: var(--fabulari-navy);
   font-weight: 700;
+  object-fit: cover;
 }
 
 .admin-badge {

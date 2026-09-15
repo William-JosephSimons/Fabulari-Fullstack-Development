@@ -75,6 +75,19 @@ export class Auth {
     });
   }
 
+  uploadProfileImage(file: File) {
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    return this.http.post(`${this.serverUrl}/api/profile/avatar`, formData, {
+      headers: this.getAuthHeaders(),
+    });
+  }
+
+  getUploadUrl(uploadPath: string): string {
+    return uploadPath ? `${this.serverUrl}${uploadPath}` : '';
+  }
+
   isLoggedIn(): boolean {
     return this.getCurrentUser() !== null && this.getAuthToken() !== null;
   }

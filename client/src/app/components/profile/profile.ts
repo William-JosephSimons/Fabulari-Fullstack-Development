@@ -17,10 +17,12 @@ export class Profile implements OnInit {
   protected profileLoading = true;
   protected profileSaving = false;
   protected showPasswordForm = false;
+  protected avatarSaving = false;
   protected passwordSaving = false;
   protected passwordMessage = '';
   protected passwordError = '';
   protected email = '';
+  protected avatarUrl = '';
   protected profile = {
     firstName: '',
     lastName: '',
@@ -96,9 +98,49 @@ export class Profile implements OnInit {
     });
   }
 
-  protected showImageMessage(): void {
+  protected uploadAvatar(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    this.profileMessage = '';
     this.profileError = '';
-    this.profileMessage = 'Profile image uploads will be connected next.';
+
+    if (!['image/png', 'image/jpeg', 'image/gif'].includes(file.type)) {
+      this.profileError = 'Choose a PNG, JPEG or GIF profile image.';
+      input.value = '';
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      this.profileError = 'Profile images cannot be larger than 2 MB.';
+      input.value = '';
+      return;
+    }
+
+    this.avatarSaving = true;
+    this.auth.uploadProfileImage(file).subscribe({
+      next: (response: any) => {
+        this.avatarSaving = false;
+        input.value = '';
+
+        if (!response.valid || !response.user) {
+          this.profileError = response.message || 'Unable to update your profile image.';
+          return;
+        }
+
+        this.setProfile(response.user);
+        this.profileMessage = response.message;
+      },
+      error: (error) => {
+        this.avatarSaving = false;
+        input.value = '';
+        this.profileError = error.error?.message || 'Unable to contact the server.';
+      },
+    });
   }
 
   protected togglePasswordForm(): void {
@@ -169,6 +211,7 @@ export class Profile implements OnInit {
   private setProfile(user: any): void {
     this.auth.saveCurrentUser(user);
     this.email = user.email;
+    this.avatarUrl = this.auth.getUploadUrl(user.avatarUrl);
     this.profile = {
       firstName: user.firstName,
       lastName: user.lastName,

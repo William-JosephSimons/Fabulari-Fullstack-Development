@@ -33,7 +33,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
   protected participants: any[] = [];
 
   // Every object has the same fields to keep the mock template easy to follow.
-  protected messages = [
+  protected messages: any[] = [
     {
       type: 'text',
       userName: 'Jordan',
@@ -43,6 +43,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
       text: 'Welcome! What is everyone reading?',
       id: 'msg-104',
       userId: 'user-2',
+      avatarUrl: null,
     },
     {
       type: 'text',
@@ -53,6 +54,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
       text: 'I just started The Hobbit.',
       id: 'msg-105',
       userId: 'user-4',
+      avatarUrl: null,
     },
     {
       type: 'image',
@@ -63,6 +65,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
       text: '',
       id: 'msg-106',
       userId: 'user-6',
+      avatarUrl: null,
     },
   ];
 
@@ -181,6 +184,10 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
     this.messages = this.messages.filter((message) => message.id !== messageId);
   }
 
+  protected getAvatarUrl(avatarUrl: string | null): string {
+    return avatarUrl ? this.auth.getUploadUrl(avatarUrl) : '';
+  }
+
   private loadRoomShell(): void {
     const currentUser = this.auth.getCurrentUser();
 
@@ -231,6 +238,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
       text,
       id: '',
       userId: '',
+      avatarUrl: null,
     });
 
     setTimeout(() => this.scrollToBottom());

@@ -19,6 +19,7 @@
   color: var(--fabulari-navy);
   font-size: 2.5rem;
   font-weight: 700;
+  object-fit: cover;
 }
 
 .read-only-field {

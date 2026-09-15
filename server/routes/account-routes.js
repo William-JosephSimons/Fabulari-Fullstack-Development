@@ -1,7 +1,12 @@
 import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
-import { getBearerToken, requireLogin } from "../authentication.js";
+import {
+  getBearerToken,
+  requireLogin,
+  loginRequiredMiddleware,
+} from "../authentication.js";
 import { getDatabase } from "../database.js";
+import { removeAvatar, uploadAvatar } from "../upload.js";
 import {
   ensureText,
   getUserDetails,
@@ -370,6 +375,70 @@ function accountRoutes(app) {
       message: "Password changed successfully.",
     });
   });
+
+  app.post(
+    "/api/profile/avatar",
+    // login middleware required here because authentication is needed before image upload
+    loginRequiredMiddleware,
+    uploadAvatar,
+    async (req, res) => {
+      const user = req.currentUser;
+
+      if (!req.file) {
+        return res.status(400).json({
+          valid: false,
+          message: "Choose a PNG, JPEG or GIF profile image.",
+        });
+      }
+
+      if (req.file.size === 0) {
+        removeAvatar(req.file.filename);
+        return res.status(400).json({
+          valid: false,
+          message: "The selected profile image is empty.",
+        });
+      }
+
+      const database = getDatabase();
+      const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+      const updatedAt = new Date().toISOString();
+
+      await database.collection("users").updateOne(
+        { id: user.id },
+        {
+          $set: {
+            avatarUrl,
+            updatedAt,
+          },
+        },
+      );
+
+      // Delete the previous file only after MongoDB accepts the replacement.
+      removeAvatar(user.avatarUrl);
+      await database.collection("auditLogs").insertOne(
+        createAuditLog({
+          actorId: user.id,
+          actionType: "profileImageUpdated",
+          entityType: "user",
+          entityId: user.id,
+          summary: `Updated the profile image for ${user.username}.`,
+          createdAt: updatedAt,
+        }),
+      );
+
+      const updatedUser = {
+        ...user,
+        avatarUrl,
+        updatedAt,
+      };
+
+      return res.status(200).json({
+        valid: true,
+        message: "Profile image updated.",
+        user: safeUser(updatedUser),
+      });
+    },
+  );
 }
 
 export { accountRoutes };

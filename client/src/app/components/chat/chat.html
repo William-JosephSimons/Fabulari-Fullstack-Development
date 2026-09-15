@@ -57,7 +57,15 @@
               } @else {
                 <article class="chat-message">
                   <header class="d-flex align-items-center gap-2">
-                    <span class="avatar-circle" aria-hidden="true">{{ message.initial }}</span>
+                    @if (message.avatarUrl) {
+                      <img
+                        class="avatar-circle"
+                        [src]="getAvatarUrl(message.avatarUrl)"
+                        [alt]="message.userName + '\'s profile image'"
+                      />
+                    } @else {
+                      <span class="avatar-circle" aria-hidden="true">{{ message.initial }}</span>
+                    }
                     <strong>{{ message.userName }}</strong>
                     @if (message.isAdmin) {
                       <span class="admin-badge">Admin</span>
@@ -114,7 +122,15 @@
           <ul class="list-group list-group-flush">
             @for (participant of participants; track participant.userId) {
               <li class="list-group-item d-flex align-items-center gap-2 px-0">
-                <span class="avatar-circle" aria-hidden="true">{{ participant.initial }}</span>
+                @if (participant.avatarUrl) {
+                  <img
+                    class="avatar-circle"
+                    [src]="getAvatarUrl(participant.avatarUrl)"
+                    [alt]="participant.name + '\'s profile image'"
+                  />
+                } @else {
+                  <span class="avatar-circle" aria-hidden="true">{{ participant.initial }}</span>
+                }
                 <span>{{ participant.name }}</span>
                 @if (participant.isAdmin) {
                   <strong class="admin-badge ms-auto">Admin</strong>

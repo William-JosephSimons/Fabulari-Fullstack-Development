@@ -6,17 +6,30 @@
       <h1 id="profile-heading" class="h2 mb-4">My Profile</h1>
 
       <div class="profile-image-section mb-4">
-        <div class="profile-avatar" aria-label="Current profile image">
-          {{ profileInitial }}
+        @if (avatarUrl) {
+          <img
+            class="profile-avatar"
+            [src]="avatarUrl"
+            [alt]="profile.firstName + '\'s profile image'"
+          />
+        } @else {
+          <div class="profile-avatar" aria-label="Default profile image">
+            {{ profileInitial }}
+          </div>
+        }
+
+        <input
+          id="profile-image"
+          class="form-control"
+          type="file"
+          accept="image/png,image/jpeg,image/gif"
+          aria-describedby="profile-image-help"
+          [disabled]="profileLoading || avatarSaving"
+          (change)="uploadAvatar($event)"
+        />
+        <div id="profile-image-help" class="form-text">
+          {{ avatarSaving ? 'Uploading image...' : 'PNG, JPEG or GIF. Maximum size 2 MB.' }}
         </div>
-        <button
-          class="btn btn-outline-dark"
-          type="button"
-          [disabled]="profileLoading"
-          (click)="showImageMessage()"
-        >
-          Change image
-        </button>
       </div>
 
       <form (ngSubmit)="saveProfile()">

@@ -6,6 +6,7 @@ import { connectDatabase, getDatabase } from "./database.js";
 import { createIndexes } from "./indexes.js";
 import { routes } from "./routes.js";
 import { connectSockets } from "./socket.js";
+import { uploadsFolder } from "./upload.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -20,6 +21,7 @@ const io = new SocketIOServer(server, {
 
 app.use(cors());
 app.use(express.json());
+app.use("/uploads", express.static(uploadsFolder));
 
 routes(app);
 connectSockets(io);

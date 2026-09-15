@@ -72,10 +72,20 @@ async function requireSuperAdmin(req, res) {
   return user;
 }
 
+async function loginRequiredMiddleware(req, res, next) {
+  const user = await requireLogin(req, res);
+
+  if (user) {
+    req.currentUser = user;
+    next();
+  }
+}
+
 export {
   getBearerToken,
   getUserFromToken,
   getAuthenticatedUser,
   requireLogin,
   requireSuperAdmin,
+  loginRequiredMiddleware,
 };

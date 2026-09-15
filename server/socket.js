@@ -268,6 +268,7 @@ function connectSockets(io) {
           userId: user.id,
           userName: user.firstName,
           initial: user.firstName.charAt(0).toUpperCase() || "?",
+          avatarUrl: user.avatarUrl,
           isAdmin: group.adminIds.includes(user.id),
           createdAt: new Date().toISOString(),
         };
