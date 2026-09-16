@@ -1043,6 +1043,13 @@ function requestRoutes(app, io) {
             groupId: group.id,
             status: "pending",
           });
+
+          // Connected members must stop receiving events from deleted rooms.
+          for (const socket of io.sockets.sockets.values()) {
+            if (roomIds.includes(socket.data.roomId)) {
+              socket.disconnect(true);
+            }
+          }
         }
 
         responseMessage = `Group deletion request ${details.decision}.`;

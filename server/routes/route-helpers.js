@@ -5,23 +5,28 @@ function ensureText(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function isValidDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+
+  // JavaScript adjusts invalid dates such as 31 February, so compare each part again.
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  );
+}
+
 function calculateAge(birthdate) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(birthdate)) {
+  if (!isValidDate(birthdate)) {
     return null;
   }
 
   const [year, month, day] = birthdate.split("-").map(Number);
-  const birthDate = new Date(year, month - 1, day);
-
-  // JavaScript adjusts invalid dates such as 31 February, so compare each part again.
-  if (
-    birthDate.getFullYear() !== year ||
-    birthDate.getMonth() !== month - 1 ||
-    birthDate.getDate() !== day
-  ) {
-    return null;
-  }
-
   const today = new Date();
   let age = today.getFullYear() - year;
   const birthdayHasPassed =
@@ -376,6 +381,7 @@ function getGroupMembershipStatus(data, group, user) {
 
 export {
   ensureText,
+  isValidDate,
   calculateAge,
   meetsMinimumAge,
   getUserDetails,

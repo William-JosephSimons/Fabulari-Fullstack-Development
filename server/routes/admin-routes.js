@@ -1,6 +1,10 @@
 import { requireSuperAdmin } from "../authentication.js";
 import { getDatabase } from "../database.js";
-import { calculateAge, ensureText } from "./route-helpers.js";
+import {
+  calculateAge,
+  ensureText,
+  isValidDate,
+} from "./route-helpers.js";
 
 function adminRoutes(app) {
   app.get("/api/admin/dashboard", async (req, res) => {
@@ -146,14 +150,13 @@ function adminRoutes(app) {
     const startDate = ensureText(req.query.startDate);
     const endDate = ensureText(req.query.endDate);
 
-    const datePattern = /^\d{4}-\d{2}-\d{2}$/;
     if (
-      (startDate && !datePattern.test(startDate)) ||
-      (endDate && !datePattern.test(endDate))
+      (startDate && !isValidDate(startDate)) ||
+      (endDate && !isValidDate(endDate))
     ) {
       return res.status(400).json({
         valid: false,
-        message: "Audit dates must use the YYYY-MM-DD format.",
+        message: "Audit dates must be valid dates using the YYYY-MM-DD format.",
       });
     }
 
