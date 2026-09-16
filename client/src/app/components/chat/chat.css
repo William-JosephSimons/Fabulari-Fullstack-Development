@@ -78,14 +78,13 @@
   font-size: 0.8rem;
 }
 
-.message-image-placeholder {
-  display: grid;
+.message-image {
+  display: block;
   width: min(100%, 260px);
-  min-height: 150px;
+  max-height: 220px;
   margin-bottom: 0.5rem;
-  place-items: center;
-  background-color: #e8e9ee;
   border: 2px solid var(--fabulari-navy);
+  object-fit: contain;
 }
 
 .chat-composer {

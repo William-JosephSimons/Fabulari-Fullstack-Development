@@ -7,6 +7,7 @@ import multer from "multer";
 const currentFolder = path.dirname(fileURLToPath(import.meta.url));
 const uploadsFolder = path.join(currentFolder, "uploads");
 const avatarFolder = path.join(uploadsFolder, "avatars");
+const chatImageFolder = path.join(uploadsFolder, "chat");
 const imageExtensions = {
   "image/png": ".png",
   "image/jpeg": ".jpg",
@@ -15,7 +16,9 @@ const imageExtensions = {
 
 // Create the destination folder for Multer
 fs.mkdirSync(avatarFolder, { recursive: true });
+fs.mkdirSync(chatImageFolder, { recursive: true });
 
+// diskStorage tells Multer where to write a file and how to name it.
 const avatarStorage = multer.diskStorage({
   destination(req, file, callback) {
     callback(null, avatarFolder);
@@ -25,6 +28,16 @@ const avatarStorage = multer.diskStorage({
   },
 });
 
+const chatImageStorage = multer.diskStorage({
+  destination(req, file, callback) {
+    callback(null, chatImageFolder);
+  },
+  filename(req, file, callback) {
+    callback(null, `${randomUUID()}${imageExtensions[file.mimetype]}`);
+  },
+});
+
+// single("image"/"avatar") accepts the one multipart field and places its details on req.file.
 const receiveAvatarFile = multer({
   storage: avatarStorage,
   limits: { fileSize: 2 * 1024 * 1024 }, // roughly 2MB.
@@ -37,6 +50,19 @@ const receiveAvatarFile = multer({
     callback(null, true);
   },
 }).single("avatar");
+
+const receiveChatImage = multer({
+  storage: chatImageStorage,
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter(req, file, callback) {
+    if (!imageExtensions[file.mimetype]) {
+      callback(new Error("Only PNG, JPEG and GIF chat images are allowed."));
+      return;
+    }
+
+    callback(null, true);
+  },
+}).single("image");
 
 function uploadAvatar(req, res, next) {
   receiveAvatarFile(req, res, (error) => {
@@ -51,6 +77,25 @@ function uploadAvatar(req, res, next) {
       message = "Profile images cannot be larger than 2 MB.";
     } else if (error.code === "LIMIT_UNEXPECTED_FILE") {
       message = "Upload one profile image using the avatar field.";
+    }
+
+    res.status(400).json({ valid: false, message });
+  });
+}
+
+function uploadChatImage(req, res, next) {
+  receiveChatImage(req, res, (error) => {
+    if (!error) {
+      next();
+      return;
+    }
+
+    let message = error.message || "The chat image could not be uploaded.";
+
+    if (error.code === "LIMIT_FILE_SIZE") {
+      message = "Chat images cannot be larger than 2 MB.";
+    } else if (error.code === "LIMIT_UNEXPECTED_FILE") {
+      message = "Upload one chat image using the image field.";
     }
 
     res.status(400).json({ valid: false, message });
@@ -73,4 +118,26 @@ function removeAvatar(avatarUrl) {
   }
 }
 
-export { uploadsFolder, uploadAvatar, removeAvatar };
+function removeChatImage(imageUrl) {
+  if (!imageUrl) {
+    return;
+  }
+
+  const imagePath = path.join(chatImageFolder, path.basename(imageUrl));
+
+  try {
+    if (fs.existsSync(imagePath)) {
+      fs.unlinkSync(imagePath);
+    }
+  } catch (error) {
+    console.warn("Unable to remove the chat image:", error.message);
+  }
+}
+
+export {
+  uploadsFolder,
+  uploadAvatar,
+  uploadChatImage,
+  removeAvatar,
+  removeChatImage,
+};

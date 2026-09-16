@@ -4,10 +4,10 @@ import { groupRoutes } from "./routes/group-routes.js";
 import { messageRoutes } from "./routes/message-routes.js";
 import { requestRoutes } from "./routes/request-routes.js";
 
-function routes(app) {
+function routes(app, io) {
   accountRoutes(app);
   groupRoutes(app);
-  messageRoutes(app);
+  messageRoutes(app, io);
   requestRoutes(app);
   adminRoutes(app);
 }

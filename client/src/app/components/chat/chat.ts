@@ -28,6 +28,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
   protected loadError = '';
   protected socketError = '';
   protected messageText = '';
+  protected uploadingImage = false;
   protected rooms: any[] = [];
   protected currentUserId = '';
   protected participants: any[] = [];
@@ -150,8 +151,36 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
     this.messages = this.messages.filter((message) => message.id !== messageId);
   }
 
+  protected uploadImage(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    this.socketError = '';
+    this.uploadingImage = true;
+
+    this.groupService.uploadChatImage(this.roomId, file).subscribe({
+      next: () => {
+        this.uploadingImage = false;
+        input.value = '';
+      },
+      error: (error) => {
+        this.socketError = error.error?.message || 'The chat image could not be uploaded.';
+        this.uploadingImage = false;
+        input.value = '';
+      },
+    });
+  }
+
   protected getAvatarUrl(avatarUrl: string | null): string {
     return avatarUrl ? this.auth.getUploadUrl(avatarUrl) : '';
+  }
+
+  protected getMessageImageUrl(imageUrl: string): string {
+    return this.auth.getUploadUrl(imageUrl);
   }
 
   private loadRoomShell(): void {

@@ -23,7 +23,7 @@ app.use(cors());
 app.use(express.json());
 app.use("/uploads", express.static(uploadsFolder));
 
-routes(app);
+routes(app, io);
 connectSockets(io);
 
 async function startServer() {

@@ -42,6 +42,15 @@ export class Group {
     });
   }
 
+  uploadChatImage(roomId: string, file: File) {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    return this.http.post(`${this.serverUrl}/api/rooms/${roomId}/message-images`, formData, {
+      headers: this.auth.getAuthHeaders(),
+    });
+  }
+
   createRoom(groupId: string, roomDetails: object) {
     return this.http.post(
       `${this.serverUrl}/api/groups/${groupId}/rooms`,

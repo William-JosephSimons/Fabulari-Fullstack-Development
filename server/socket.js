@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { getUserFromToken } from "./authentication.js";
 import { getDatabase } from "./database.js";
 import { ensureText, meetsMinimumAge } from "./routes/route-helpers.js";
+import { removeChatImage } from "./upload.js";
 
 function getParticipantDetails(connection) {
   return {
@@ -277,13 +278,18 @@ function connectSockets(io) {
           .find({ roomId: room.id })
           .sort({ createdAt: -1 })
           .skip(5)
-          .project({ _id: 1 })
           .toArray();
 
         if (olderMessages.length > 0) {
           await messages.deleteMany({
             _id: { $in: olderMessages.map((item) => item._id) },
           });
+
+          for (const olderMessage of olderMessages) {
+            if (olderMessage.type === "image") {
+              removeChatImage(olderMessage.imageUrl);
+            }
+          }
         }
 
         io.to(`room:${room.id}`).emit("message:new", {

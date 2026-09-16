@@ -74,9 +74,11 @@
                   </header>
 
                   @if (message.type === 'image') {
-                    <div class="message-image-placeholder" role="img" aria-label="Shared image">
-                      Image preview
-                    </div>
+                    <img
+                      class="message-image"
+                      [src]="getMessageImageUrl(message.imageUrl)"
+                      [alt]="'Image shared by ' + message.userName"
+                    />
                   } @else {
                     <p class="mb-2">{{ message.text }}</p>
                   }
@@ -110,7 +112,21 @@
             />
             <div class="d-flex flex-wrap gap-2">
               <button class="btn btn-outline-dark" type="submit">Send</button>
-              <button class="btn btn-outline-dark" type="button">Attach image</button>
+              <label
+                class="btn btn-outline-dark"
+                [class.disabled]="uploadingImage"
+                for="chat-image"
+              >
+                {{ uploadingImage ? 'Uploading...' : 'Attach image' }}
+              </label>
+              <input
+                id="chat-image"
+                class="visually-hidden"
+                type="file"
+                accept=".png,.jpg,.jpeg,.gif,image/png,image/jpeg,image/gif"
+                [disabled]="uploadingImage"
+                (change)="uploadImage($event)"
+              />
             </div>
           </form>
         </div>
