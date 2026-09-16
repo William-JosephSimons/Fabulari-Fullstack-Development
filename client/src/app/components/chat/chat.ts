@@ -56,6 +56,13 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
       }),
     );
     this.socketSubscriptions.push(
+      this.socketService.onMessageDeleted().subscribe((details: any) => {
+        if (details.roomId === this.roomId) {
+          this.messages = this.messages.filter((message) => message.id !== details.messageId);
+        }
+      }),
+    );
+    this.socketSubscriptions.push(
       this.socketService.onPresenceState().subscribe((details: any) => {
         if (details.roomId === this.roomId) {
           this.socketError = '';
@@ -148,7 +155,13 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
   }
 
   protected deleteMessage(messageId: string): void {
-    this.messages = this.messages.filter((message) => message.id !== messageId);
+    this.socketError = '';
+
+    this.groupService.deleteMessage(messageId).subscribe({
+      error: (error) => {
+        this.socketError = error.error?.message || 'The message could not be deleted.';
+      },
+    });
   }
 
   protected uploadImage(event: Event): void {

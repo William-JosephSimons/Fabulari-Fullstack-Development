@@ -51,6 +51,12 @@ export class Group {
     });
   }
 
+  deleteMessage(messageId: string) {
+    return this.http.delete(`${this.serverUrl}/api/messages/${messageId}`, {
+      headers: this.auth.getAuthHeaders(),
+    });
+  }
+
   createRoom(groupId: string, roomDetails: object) {
     return this.http.post(
       `${this.serverUrl}/api/groups/${groupId}/rooms`,

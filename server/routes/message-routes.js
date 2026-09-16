@@ -175,6 +175,48 @@ function messageRoutes(app, io) {
       });
     },
   );
+
+  app.delete("/api/messages/:id", async (req, res) => {
+    const user = await requireLogin(req, res);
+
+    if (!user) {
+      return;
+    }
+
+    const database = getDatabase();
+    const messages = database.collection("messages");
+    const message = await messages.findOne({ id: req.params.id });
+
+    if (!message) {
+      return res.status(404).json({
+        valid: false,
+        message: "Message was not found.",
+      });
+    }
+
+    if (message.userId !== user.id) {
+      return res.status(403).json({
+        valid: false,
+        message: "You can only delete your own messages.",
+      });
+    }
+
+    await messages.deleteOne({ id: message.id });
+
+    if (message.type === "image") {
+      removeChatImage(message.imageUrl);
+    }
+
+    io.to(`room:${message.roomId}`).emit("message:deleted", {
+      roomId: message.roomId,
+      messageId: message.id,
+    });
+
+    return res.status(200).json({
+      valid: true,
+      message: "Message deleted.",
+    });
+  });
 }
 
 export { messageRoutes };
