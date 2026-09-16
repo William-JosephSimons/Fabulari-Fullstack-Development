@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { requireLogin } from "../authentication.js";
 import { getDatabase } from "../database.js";
+import { removeChatImage } from "../upload.js";
 import {
   calculateAge,
   meetsMinimumAge,
@@ -999,11 +1000,31 @@ function requestRoutes(app) {
         }
 
         if (details.decision === "approved") {
+          const groupRooms = await database
+            .collection("rooms")
+            .find({ groupId: group.id })
+            .toArray();
+          const roomIds = groupRooms.map((room) => room.id);
+          const groupMessages = await database
+            .collection("messages")
+            .find({ roomId: { $in: roomIds } })
+            .toArray();
+
           await database.collection("groups").deleteOne({ id: group.id });
           await database.collection("rooms").deleteMany({ groupId: group.id });
           await database
+            .collection("messages")
+            .deleteMany({ roomId: { $in: roomIds } });
+          await database
             .collection("groupBans")
             .deleteMany({ groupId: group.id });
+
+          for (const message of groupMessages) {
+            if (message.type === "image") {
+              removeChatImage(message.imageUrl);
+            }
+          }
+
           // Keep this decision for history. Other pending group requests can no
           // longer be actioned after the group is deleted.
           await database.collection("requests").deleteMany({
