@@ -36,6 +36,12 @@ export class Group {
     });
   }
 
+  getRoomMessages(roomId: string) {
+    return this.http.get(`${this.serverUrl}/api/rooms/${roomId}/messages`, {
+      headers: this.auth.getAuthHeaders(),
+    });
+  }
+
   createRoom(groupId: string, roomDetails: object) {
     return this.http.post(
       `${this.serverUrl}/api/groups/${groupId}/rooms`,

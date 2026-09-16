@@ -266,14 +266,33 @@ function connectSockets(io) {
           type: "text",
           text,
           userId: user.id,
+          createdAt: new Date().toISOString(),
+        };
+
+        const messages = database.collection("messages");
+        await messages.insertOne({ ...message });
+
+        // retain only the newest five messages in each room.
+        const olderMessages = await messages
+          .find({ roomId: room.id })
+          .sort({ createdAt: -1 })
+          .skip(5)
+          .project({ _id: 1 })
+          .toArray();
+
+        if (olderMessages.length > 0) {
+          await messages.deleteMany({
+            _id: { $in: olderMessages.map((item) => item._id) },
+          });
+        }
+
+        io.to(`room:${room.id}`).emit("message:new", {
+          ...message,
           userName: user.firstName,
           initial: user.firstName.charAt(0).toUpperCase() || "?",
           avatarUrl: user.avatarUrl,
           isAdmin: group.adminIds.includes(user.id),
-          createdAt: new Date().toISOString(),
-        };
-
-        io.to(`room:${room.id}`).emit("message:new", message);
+        });
       } catch (error) {
         console.error("Unable to send the chat message:", error.message);
         socket.emit("socket:error", {

@@ -32,42 +32,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
   protected currentUserId = '';
   protected participants: any[] = [];
 
-  // Every object has the same fields to keep the mock template easy to follow.
-  protected messages: any[] = [
-    {
-      type: 'text',
-      userName: 'Jordan',
-      initial: 'J',
-      isAdmin: true,
-      time: '10:31',
-      text: 'Welcome! What is everyone reading?',
-      id: 'msg-104',
-      userId: 'user-2',
-      avatarUrl: null,
-    },
-    {
-      type: 'text',
-      userName: 'Billy',
-      initial: 'B',
-      isAdmin: false,
-      time: '10:33',
-      text: 'I just started The Hobbit.',
-      id: 'msg-105',
-      userId: 'user-4',
-      avatarUrl: null,
-    },
-    {
-      type: 'image',
-      userName: 'Sam',
-      initial: 'S',
-      isAdmin: false,
-      time: '10:35',
-      text: '',
-      id: 'msg-106',
-      userId: 'user-6',
-      avatarUrl: null,
-    },
-  ];
+  protected messages: any[] = [];
 
   ngOnInit(): void {
     this.socketService.connect();
@@ -148,6 +113,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
       this.roomId = params.get('roomId') || '';
       this.socketError = '';
       this.participants = [];
+      this.messages = [];
       this.loadRoomShell();
     });
   }
@@ -218,12 +184,31 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
         }
 
         this.roomName = selectedRoom.name;
-        this.socketService.joinRoom(this.roomId);
-        // Wait for Angular to add the new message before measuring the scroll height.
-        setTimeout(() => this.scrollToBottom());
+        this.loadMessages();
       },
       error: (error) => {
         this.loadError = error.error?.message || 'Unable to contact the server.';
+      },
+    });
+  }
+
+  private loadMessages(): void {
+    this.groupService.getRoomMessages(this.roomId).subscribe({
+      next: (response: any) => {
+        this.messages = response.messages.map((message: any) => ({
+          ...message,
+          time: new Date(message.createdAt).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+        }));
+
+        this.socketService.joinRoom(this.roomId);
+        // Wait for Angular to display the history before updating the scroll position.
+        setTimeout(() => this.scrollToBottom());
+      },
+      error: (error) => {
+        this.loadError = error.error?.message || 'Unable to load the room messages.';
       },
     });
   }
