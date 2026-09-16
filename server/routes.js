@@ -8,7 +8,7 @@ function routes(app, io) {
   accountRoutes(app);
   groupRoutes(app);
   messageRoutes(app, io);
-  requestRoutes(app);
+  requestRoutes(app, io);
   adminRoutes(app);
 }
 

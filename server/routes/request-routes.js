@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { requireLogin } from "../authentication.js";
 import { getDatabase } from "../database.js";
-import { removeChatImage } from "../upload.js";
+import { removeAvatar, removeChatImage } from "../upload.js";
 import {
   calculateAge,
   meetsMinimumAge,
@@ -16,7 +16,7 @@ import {
   getSystemBanRequestDetails,
 } from "./route-helpers.js";
 
-function requestRoutes(app) {
+function requestRoutes(app, io) {
   app.post("/api/group-requests", async (req, res) => {
     const requester = await requireLogin(req, res);
 
@@ -1126,8 +1126,22 @@ function requestRoutes(app) {
             bannedAt: now,
           };
 
+          const targetMessages = await database
+            .collection("messages")
+            .find({ userId: targetUser.id })
+            .toArray();
+
           await database.collection("systemBans").insertOne({ ...systemBan });
           await database.collection("users").deleteOne({ id: targetUser.id });
+          await database
+            .collection("authSessions")
+            .deleteMany({ userId: targetUser.id });
+          await database
+            .collection("messages")
+            .deleteMany({ userId: targetUser.id });
+          await database
+            .collection("groupBans")
+            .deleteMany({ bannedUserId: targetUser.id });
 
           const affectedGroups = await database
             .collection("groups")
@@ -1181,6 +1195,26 @@ function requestRoutes(app) {
               { targetUserId: targetUser.id },
             ],
           });
+
+          removeAvatar(targetUser.avatarUrl);
+
+          for (const message of targetMessages) {
+            if (message.type === "image") {
+              removeChatImage(message.imageUrl);
+            }
+
+            io.to(`room:${message.roomId}`).emit("message:deleted", {
+              roomId: message.roomId,
+              messageId: message.id,
+            });
+          }
+
+          // Disconnect every open tab belonging to the deleted account.
+          for (const socket of io.sockets.sockets.values()) {
+            if (socket.data.userId === targetUser.id) {
+              socket.disconnect(true);
+            }
+          }
 
           request.createdSystemBanId = systemBan.id;
         }
