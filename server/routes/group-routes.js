@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { requireLogin } from "../authentication.js";
 import { getDatabase } from "../database.js";
+import { removeChatImage } from "../upload.js";
 import {
   ensureText,
   calculateAge,
@@ -16,7 +17,7 @@ import {
   getGroupMembershipStatus,
 } from "./route-helpers.js";
 
-function groupRoutes(app) {
+function groupRoutes(app, io) {
   app.get("/api/groups", async (req, res) => {
     const user = await requireLogin(req, res);
 
@@ -189,6 +190,16 @@ function groupRoutes(app) {
         createdAt: now,
       }),
     );
+
+    // Removed members must stop receiving live messages from this group.
+    for (const socket of io.sockets.sockets.values()) {
+      if (
+        underAgeMemberIds.includes(socket.data.userId) &&
+        group.roomIds.includes(socket.data.roomId)
+      ) {
+        socket.disconnect(true);
+      }
+    }
 
     return res.status(200).json({
       valid: true,
@@ -553,8 +564,14 @@ function groupRoutes(app) {
     }
 
     const now = new Date().toISOString();
-    // Delete the room record and the matching reference held by its group.
+    const roomMessages = await database
+      .collection("messages")
+      .find({ roomId: room.id })
+      .toArray();
+
+    // Delete the room, its messages and the matching reference held by its group.
     await database.collection("rooms").deleteOne({ id: room.id });
+    await database.collection("messages").deleteMany({ roomId: room.id });
     group.roomIds = group.roomIds.filter((roomId) => roomId !== room.id);
     await database.collection("groups").updateOne(
       { id: group.id },
@@ -576,6 +593,18 @@ function groupRoutes(app) {
         createdAt: now,
       }),
     );
+
+    for (const message of roomMessages) {
+      if (message.type === "image") {
+        removeChatImage(message.imageUrl);
+      }
+    }
+
+    for (const socket of io.sockets.sockets.values()) {
+      if (socket.data.roomId === room.id) {
+        socket.disconnect(true);
+      }
+    }
 
     return res.status(200).json({
       valid: true,

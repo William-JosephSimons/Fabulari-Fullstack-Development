@@ -963,6 +963,17 @@ function requestRoutes(app, io) {
               },
             },
           );
+
+          // A banned member must stop receiving live messages immediately.
+          for (const socket of io.sockets.sockets.values()) {
+            if (
+              socket.data.userId === targetUser.id &&
+              group.roomIds.includes(socket.data.roomId)
+            ) {
+              socket.disconnect(true);
+            }
+          }
+
           request.createdGroupBanId = groupBan.id;
         }
 

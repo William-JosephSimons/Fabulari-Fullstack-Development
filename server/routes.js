@@ -6,7 +6,7 @@ import { requestRoutes } from "./routes/request-routes.js";
 
 function routes(app, io) {
   accountRoutes(app);
-  groupRoutes(app);
+  groupRoutes(app, io);
   messageRoutes(app, io);
   requestRoutes(app, io);
   adminRoutes(app);
