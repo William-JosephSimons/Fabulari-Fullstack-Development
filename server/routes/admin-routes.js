@@ -1,10 +1,39 @@
 import { requireSuperAdmin } from "../authentication.js";
 import { getDatabase } from "../database.js";
-import {
-  calculateAge,
-  ensureText,
-  isValidDate,
-} from "./route-helpers.js";
+import { calculateAge, ensureText, isValidDate } from "./route-helpers.js";
+
+function getListOptions(query = {}) {
+  const search = ensureText(query.search);
+  const usesPaging = query.skip !== undefined || query.limit !== undefined;
+  const skip = Number(ensureText(query.skip) || 0);
+  const limit = Number(ensureText(query.limit) || 10);
+
+  if (search.length > 100) {
+    return { error: "Search text cannot be longer than 100 characters." };
+  }
+
+  if (
+    usesPaging &&
+    (!Number.isInteger(skip) ||
+      skip < 0 ||
+      !Number.isInteger(limit) ||
+      limit < 1 ||
+      limit > 50)
+  ) {
+    return {
+      error: "Paging must use a skip of zero or more and a limit from 1 to 50.",
+    };
+  }
+
+  return { search, usesPaging, skip, limit };
+}
+
+function getSearchPattern(search) {
+  // convert search into case insensitive mongoDB regex
+  // Prepend backslash to special characters to make the search behave as ordinary text.
+  const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return { $regex: escapedSearch, $options: "i" };
+}
 
 function adminRoutes(app) {
   app.get("/api/admin/dashboard", async (req, res) => {
@@ -98,28 +127,54 @@ function adminRoutes(app) {
       return;
     }
 
+    const options = getListOptions(req.query);
+
+    if (options.error) {
+      return res.status(400).json({ valid: false, message: options.error });
+    }
+
+    const userFilter = {};
+
+    if (options.search) {
+      const searchPattern = getSearchPattern(options.search);
+      userFilter.$or = [
+        { username: searchPattern },
+        { email: searchPattern },
+        { firstName: searchPattern },
+        { lastName: searchPattern },
+      ];
+    }
+
     const database = getDatabase();
-    const storedUsers = await database.collection("users").find({}).toArray();
-    const users = storedUsers
-      .map((item) => {
-        return {
-          id: item.id,
-          username: item.username,
-          email: item.email,
-          firstName: item.firstName,
-          lastName: item.lastName,
-          age: calculateAge(item.birthdate),
-          avatarUrl: item.avatarUrl,
-          systemRole: item.systemRole,
-        };
-      })
-      .sort((first, second) => {
-        return first.username.localeCompare(second.username);
-      });
+    let userCursor = database
+      .collection("users")
+      .find(userFilter)
+      .sort({ username: 1 });
+
+    if (options.usesPaging) {
+      userCursor = userCursor.skip(options.skip).limit(options.limit);
+    }
+
+    const storedUsers = await userCursor.toArray();
+    const total = await database.collection("users").countDocuments(userFilter);
+    const users = storedUsers.map((item) => {
+      return {
+        id: item.id,
+        username: item.username,
+        email: item.email,
+        firstName: item.firstName,
+        lastName: item.lastName,
+        age: calculateAge(item.birthdate),
+        avatarUrl: item.avatarUrl,
+        systemRole: item.systemRole,
+      };
+    });
 
     return res.status(200).json({
       valid: true,
       users,
+      total,
+      hasMore: options.usesPaging && options.skip + users.length < total,
     });
   });
 
@@ -128,16 +183,42 @@ function adminRoutes(app) {
       return;
     }
 
+    const options = getListOptions(req.query);
+
+    if (options.error) {
+      return res.status(400).json({ valid: false, message: options.error });
+    }
+
+    const banFilter = {};
+
+    if (options.search) {
+      const searchPattern = getSearchPattern(options.search);
+      banFilter.$or = [
+        { normalizedEmail: searchPattern },
+        { reason: searchPattern },
+      ];
+    }
+
     const database = getDatabase();
-    const systemBans = await database
+    let banCursor = database
       .collection("systemBans")
-      .find({}, { projection: { _id: 0 } })
-      .sort({ bannedAt: -1 })
-      .toArray();
+      .find(banFilter, { projection: { _id: 0 } })
+      .sort({ bannedAt: -1 });
+
+    if (options.usesPaging) {
+      banCursor = banCursor.skip(options.skip).limit(options.limit);
+    }
+
+    const systemBans = await banCursor.toArray();
+    const total = await database
+      .collection("systemBans")
+      .countDocuments(banFilter);
 
     return res.status(200).json({
       valid: true,
       systemBans,
+      total,
+      hasMore: options.usesPaging && options.skip + systemBans.length < total,
     });
   });
 
@@ -149,6 +230,11 @@ function adminRoutes(app) {
     const actionType = ensureText(req.query.actionType);
     const startDate = ensureText(req.query.startDate);
     const endDate = ensureText(req.query.endDate);
+    const options = getListOptions(req.query);
+
+    if (options.error) {
+      return res.status(400).json({ valid: false, message: options.error });
+    }
 
     if (
       (startDate && !isValidDate(startDate)) ||
@@ -186,14 +272,36 @@ function adminRoutes(app) {
       }
     }
 
+    if (options.search) {
+      auditFilter.summary = getSearchPattern(options.search);
+    }
+
     const database = getDatabase();
-    const storedLogs = await database
+    let auditCursor = database
       .collection("auditLogs")
       .find(auditFilter, { projection: { _id: 0 } })
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1 });
+
+    if (options.usesPaging) {
+      auditCursor = auditCursor.skip(options.skip).limit(options.limit);
+    }
+
+    const storedLogs = await auditCursor.toArray();
+    const total = await database
+      .collection("auditLogs")
+      .countDocuments(auditFilter);
+    const actorIds = [...new Set(storedLogs.map((log) => log.actorId))];
+    const groupIds = [
+      ...new Set(storedLogs.map((log) => log.groupId).filter(Boolean)),
+    ];
+    const users = await database
+      .collection("users")
+      .find({ id: { $in: actorIds } })
       .toArray();
-    const users = await database.collection("users").find({}).toArray();
-    const groups = await database.collection("groups").find({}).toArray();
+    const groups = await database
+      .collection("groups")
+      .find({ id: { $in: groupIds } })
+      .toArray();
     const allAuditLogs = await database
       .collection("auditLogs")
       .find({}, { projection: { _id: 0, actionType: 1 } })
@@ -224,6 +332,8 @@ function adminRoutes(app) {
       valid: true,
       auditLogs,
       actionTypes,
+      total,
+      hasMore: options.usesPaging && options.skip + auditLogs.length < total,
     });
   });
 }
