@@ -13,17 +13,25 @@ import { SuperAdminNavigation } from '../super-admin-navigation/super-admin-navi
 export class AuditLogs implements OnInit {
   private readonly auditService = inject(Audit);
   private readonly auth = inject(Auth);
+  private readonly pageSize = 5;
+  private appliedActionType = 'all';
+  private appliedStartDate = '';
+  private appliedEndDate = '';
+  private appliedSearch = '';
 
   protected selectedActionType = 'all';
   protected selectedStartDate = '';
   protected selectedEndDate = '';
+  protected searchTerm = '';
   protected isLoading = true;
   protected auditError = '';
   protected auditLogs: any[] = [];
   protected actionTypes: string[] = [];
+  protected auditTotal = 0;
+  protected auditHasMore = false;
 
   ngOnInit(): void {
-    this.loadAuditLogs();
+    this.applyFilters();
   }
 
   protected applyFilters(): void {
@@ -38,7 +46,15 @@ export class AuditLogs implements OnInit {
       return;
     }
 
-    this.loadAuditLogs();
+    this.appliedActionType = this.selectedActionType;
+    this.appliedStartDate = this.selectedStartDate;
+    this.appliedEndDate = this.selectedEndDate;
+    this.appliedSearch = this.searchTerm.trim();
+    this.loadAuditLogs(true);
+  }
+
+  protected loadMore(): void {
+    this.loadAuditLogs(false);
   }
 
   protected formatActionType(actionType: string): string {
@@ -54,7 +70,7 @@ export class AuditLogs implements OnInit {
     });
   }
 
-  private loadAuditLogs(): void {
+  private loadAuditLogs(reset: boolean): void {
     const currentUser = this.auth.getCurrentUser();
 
     if (!currentUser) {
@@ -66,11 +82,20 @@ export class AuditLogs implements OnInit {
     this.auditError = '';
     this.isLoading = true;
 
+    if (reset) {
+      this.auditLogs = [];
+      this.auditTotal = 0;
+      this.auditHasMore = false;
+    }
+
     this.auditService
       .getAuditLogs(
-        this.selectedActionType,
-        this.selectedStartDate,
-        this.selectedEndDate
+        this.appliedActionType,
+        this.appliedStartDate,
+        this.appliedEndDate,
+        this.appliedSearch,
+        this.auditLogs.length,
+        this.pageSize,
       )
       .subscribe({
         next: (response: any) => {
@@ -81,8 +106,10 @@ export class AuditLogs implements OnInit {
             return;
           }
 
-          this.auditLogs = response.auditLogs;
+          this.auditLogs = reset ? response.auditLogs : [...this.auditLogs, ...response.auditLogs];
           this.actionTypes = response.actionTypes;
+          this.auditTotal = response.total;
+          this.auditHasMore = response.hasMore;
         },
         error: (error) => {
           this.isLoading = false;

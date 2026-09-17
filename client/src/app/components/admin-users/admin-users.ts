@@ -13,14 +13,22 @@ import { SuperAdminNavigation } from '../super-admin-navigation/super-admin-navi
 export class AdminUsers implements OnInit {
   private readonly adminService = inject(Admin);
   private readonly auth = inject(Auth);
+  private readonly pageSize = 5;
+  private appliedUserSearch = '';
+  private appliedBanSearch = '';
 
   protected searchTerm = '';
+  protected banSearchTerm = '';
   protected usersLoading = true;
   protected bansLoading = true;
   protected usersError = '';
   protected bansError = '';
   protected users: any[] = [];
   protected systemBans: any[] = [];
+  protected usersTotal = 0;
+  protected bansTotal = 0;
+  protected usersHaveMore = false;
+  protected bansHaveMore = false;
 
   ngOnInit(): void {
     const currentUser = this.auth.getCurrentUser();
@@ -33,22 +41,26 @@ export class AdminUsers implements OnInit {
       return;
     }
 
-    this.loadUsers();
-    this.loadSystemBans();
+    this.loadUsers(true);
+    this.loadSystemBans(true);
   }
 
-  protected get filteredUsers() {
-    const search = this.searchTerm.trim().toLowerCase();
+  protected searchUsers(): void {
+    this.appliedUserSearch = this.searchTerm.trim();
+    this.loadUsers(true);
+  }
 
-    if (!search) {
-      return this.users;
-    }
+  protected searchSystemBans(): void {
+    this.appliedBanSearch = this.banSearchTerm.trim();
+    this.loadSystemBans(true);
+  }
 
-    return this.users.filter((user) =>
-      `${user.username} ${user.email} ${user.firstName} ${user.lastName}`
-        .toLowerCase()
-        .includes(search)
-    );
+  protected loadMoreUsers(): void {
+    this.loadUsers(false);
+  }
+
+  protected loadMoreSystemBans(): void {
+    this.loadSystemBans(false);
   }
 
   protected formatSystemRole(systemRole: string): string {
@@ -63,41 +75,68 @@ export class AdminUsers implements OnInit {
     });
   }
 
-  private loadUsers(): void {
-    this.adminService.getUsers().subscribe({
-      next: (response: any) => {
-        this.usersLoading = false;
+  private loadUsers(reset: boolean): void {
+    if (reset) {
+      this.users = [];
+      this.usersTotal = 0;
+      this.usersHaveMore = false;
+    }
 
-        if (!response.valid) {
-          this.usersError = response.message || 'Unable to load users.';
-          return;
-        }
+    this.usersError = '';
+    this.usersLoading = true;
 
-        this.users = response.users;
-      },
-      error: (error) => {
-        this.usersLoading = false;
-        this.usersError = error.error?.message || 'Unable to contact the server.';
-      },
-    });
+    this.adminService
+      .getUsers(this.appliedUserSearch, this.users.length, this.pageSize)
+      .subscribe({
+        next: (response: any) => {
+          this.usersLoading = false;
+
+          if (!response.valid) {
+            this.usersError = response.message || 'Unable to load users.';
+            return;
+          }
+
+          this.users = reset ? response.users : [...this.users, ...response.users];
+          this.usersTotal = response.total;
+          this.usersHaveMore = response.hasMore;
+        },
+        error: (error) => {
+          this.usersLoading = false;
+          this.usersError = error.error?.message || 'Unable to contact the server.';
+        },
+      });
   }
 
-  private loadSystemBans(): void {
-    this.adminService.getSystemBans().subscribe({
-      next: (response: any) => {
-        this.bansLoading = false;
+  private loadSystemBans(reset: boolean): void {
+    if (reset) {
+      this.systemBans = [];
+      this.bansTotal = 0;
+      this.bansHaveMore = false;
+    }
 
-        if (!response.valid) {
-          this.bansError = response.message || 'Unable to load permanent system bans.';
-          return;
-        }
+    this.bansError = '';
+    this.bansLoading = true;
 
-        this.systemBans = response.systemBans;
-      },
-      error: (error) => {
-        this.bansLoading = false;
-        this.bansError = error.error?.message || 'Unable to contact the server.';
-      },
-    });
+    this.adminService
+      .getSystemBans(this.appliedBanSearch, this.systemBans.length, this.pageSize)
+      .subscribe({
+        next: (response: any) => {
+          this.bansLoading = false;
+
+          if (!response.valid) {
+            this.bansError = response.message || 'Unable to load permanent system bans.';
+            return;
+          }
+
+          this.systemBans =
+            reset ? response.systemBans : [...this.systemBans, ...response.systemBans];
+          this.bansTotal = response.total;
+          this.bansHaveMore = response.hasMore;
+        },
+        error: (error) => {
+          this.bansLoading = false;
+          this.bansError = error.error?.message || 'Unable to contact the server.';
+        },
+      });
   }
 }

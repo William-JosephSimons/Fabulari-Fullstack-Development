@@ -7,24 +7,38 @@
     <div class="card-body">
       <h2 id="safe-users-heading" class="h4">Safe user list</h2>
 
-      <label class="form-label" for="user-search">Search by username, email or name</label>
-      <input
-        id="user-search"
-        class="form-control mb-3"
-        type="search"
-        name="userSearch"
-        placeholder="Username, email or name"
-        [(ngModel)]="searchTerm"
-        [disabled]="usersLoading"
-      />
+      <form class="row g-2 align-items-end mb-3" (ngSubmit)="searchUsers()">
+        <div class="col-md-9">
+          <label class="form-label" for="user-search">
+            Search by username, email or name
+          </label>
+          <input
+            id="user-search"
+            class="form-control"
+            type="search"
+            name="userSearch"
+            placeholder="Username, email or name"
+            maxlength="100"
+            [(ngModel)]="searchTerm"
+            [disabled]="usersLoading"
+          />
+        </div>
+        <div class="col-md-3 d-grid">
+          <button class="btn btn-outline-dark" type="submit" [disabled]="usersLoading">
+            Search users
+          </button>
+        </div>
+      </form>
 
       @if (usersError) {
         <div class="alert alert-danger" role="alert">{{ usersError }}</div>
       }
 
-      @if (usersLoading) {
+      @if (usersLoading && users.length === 0) {
         <p class="mb-0">Loading users...</p>
       } @else {
+        <p>Showing {{ users.length }} of {{ usersTotal }} users.</p>
+
         <div class="table-responsive">
           <table class="table table-bordered align-middle mb-0">
             <thead class="table-light">
@@ -37,7 +51,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (user of filteredUsers; track user.id) {
+              @for (user of users; track user.id) {
                 <tr>
                   <td>{{ user.username }}</td>
                   <td>{{ user.email }}</td>
@@ -53,6 +67,17 @@
             </tbody>
           </table>
         </div>
+
+        @if (usersHaveMore) {
+          <button
+            class="btn btn-outline-dark mt-3"
+            type="button"
+            [disabled]="usersLoading"
+            (click)="loadMoreUsers()"
+          >
+            {{ usersLoading ? 'Loading...' : 'Load more users' }}
+          </button>
+        }
       }
     </div>
   </section>
@@ -61,13 +86,36 @@
     <div class="card-body">
       <h2 id="system-bans-heading" class="h4">Permanent system bans</h2>
 
+      <form class="row g-2 align-items-end mb-3" (ngSubmit)="searchSystemBans()">
+        <div class="col-md-9">
+          <label class="form-label" for="ban-search">Search by email or reason</label>
+          <input
+            id="ban-search"
+            class="form-control"
+            type="search"
+            name="banSearch"
+            placeholder="Email or reason"
+            maxlength="100"
+            [(ngModel)]="banSearchTerm"
+            [disabled]="bansLoading"
+          />
+        </div>
+        <div class="col-md-3 d-grid">
+          <button class="btn btn-outline-dark" type="submit" [disabled]="bansLoading">
+            Search bans
+          </button>
+        </div>
+      </form>
+
       @if (bansError) {
         <div class="alert alert-danger" role="alert">{{ bansError }}</div>
       }
 
-      @if (bansLoading) {
+      @if (bansLoading && systemBans.length === 0) {
         <p class="mb-0">Loading permanent system bans...</p>
       } @else {
+        <p>Showing {{ systemBans.length }} of {{ bansTotal }} permanent system bans.</p>
+
         <div class="table-responsive">
           <table class="table table-bordered align-middle mb-0">
             <thead class="table-light">
@@ -92,6 +140,17 @@
             </tbody>
           </table>
         </div>
+
+        @if (bansHaveMore) {
+          <button
+            class="btn btn-outline-dark mt-3"
+            type="button"
+            [disabled]="bansLoading"
+            (click)="loadMoreSystemBans()"
+          >
+            {{ bansLoading ? 'Loading...' : 'Load more bans' }}
+          </button>
+        }
       }
     </div>
   </section>

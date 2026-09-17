@@ -13,11 +13,14 @@ export class Audit {
   getAuditLogs(
     actionType: string,
     startDate: string,
-    endDate: string
+    endDate: string,
+    search: string,
+    skip: number,
+    limit: number
   ) {
     return this.http.get(`${this.serverUrl}/api/audit-logs`, {
       headers: this.auth.getAuthHeaders(),
-      params: { actionType, startDate, endDate },
+      params: { actionType, startDate, endDate, search, skip, limit },
     });
   }
 }

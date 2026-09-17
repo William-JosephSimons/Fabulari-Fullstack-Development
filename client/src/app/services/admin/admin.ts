@@ -16,15 +16,17 @@ export class Admin {
     });
   }
 
-  getUsers() {
+  getUsers(search: string, skip: number, limit: number) {
     return this.http.get(`${this.serverUrl}/api/admin/users`, {
       headers: this.auth.getAuthHeaders(),
+      params: { search, skip, limit },
     });
   }
 
-  getSystemBans() {
+  getSystemBans(search: string, skip: number, limit: number) {
     return this.http.get(`${this.serverUrl}/api/admin/system-bans`, {
       headers: this.auth.getAuthHeaders(),
+      params: { search, skip, limit },
     });
   }
 }
