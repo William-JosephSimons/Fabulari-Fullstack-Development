@@ -33,6 +33,8 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
   protected currentUserId = '';
   protected readonly participants = signal<any[]>([]);
   protected readonly messages = signal<any[]>([]);
+  protected readonly connectionStatus = signal('Connecting to live chat...');
+  protected readonly connectionState = signal('connecting');
 
   ngOnInit(): void {
     this.socketService.connect();
@@ -72,6 +74,8 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
       this.socketService.onPresenceState().subscribe((details: any) => {
         if (details.roomId === this.roomId) {
           this.socketError = '';
+          this.connectionStatus.set('Live chat connected.');
+          this.connectionState.set('connected');
           this.participants.set(details.participants);
         }
       }),
@@ -98,17 +102,23 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
     this.socketSubscriptions.push(
       this.socketService.onConnectionError().subscribe((error: any) => {
         this.socketError = error.message || 'Unable to connect to live chat.';
+        this.connectionStatus.set('Unable to connect to live chat.');
+        this.connectionState.set('disconnected');
       }),
     );
     this.socketSubscriptions.push(
       this.socketService.onDisconnected().subscribe(() => {
-        this.socketError = 'The live chat connection was lost. Trying to reconnect.';
+        this.socketError = 'The live chat connection was lost.';
+        this.connectionStatus.set('Live chat disconnected.');
+        this.connectionState.set('disconnected');
         this.participants.set([]);
       }),
     );
     this.socketSubscriptions.push(
       this.socketService.onConnected().subscribe(() => {
         this.socketError = '';
+        this.connectionStatus.set('Live chat connected.');
+        this.connectionState.set('connected');
 
         if (this.roomId && this.currentUserId) {
           this.socketService.joinRoom(this.roomId);
@@ -126,6 +136,8 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
       this.groupId = params.get('groupId') || '';
       this.roomId = params.get('roomId') || '';
       this.socketError = '';
+      this.connectionStatus.set('Connecting to live chat...');
+      this.connectionState.set('connecting');
       this.participants.set([]);
       this.messages.set([]);
       this.loadRoomShell();
@@ -250,12 +262,13 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
               hour: '2-digit',
               minute: '2-digit',
             }),
-          }))
+          })),
         );
 
         this.socketService.joinRoom(this.roomId);
         // Wait for the browser to display the history before measuring the scroll height.
         this.scrollAfterRender();
+        this.focusComposer();
       },
       error: (error) => {
         this.loadError = error.error?.message || 'Unable to load the room messages.';
@@ -288,6 +301,12 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
     // The second frame runs after Angular's signal change has reached the page.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => this.scrollToBottom());
+    });
+  }
+
+  private focusComposer(): void {
+    requestAnimationFrame(() => {
+      document.getElementById('message-text')?.focus();
     });
   }
 

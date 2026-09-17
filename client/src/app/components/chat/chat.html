@@ -48,7 +48,19 @@
 
       <section class="card chat-panel chat-main" aria-labelledby="chat-heading">
         <div class="card-body chat-main-body">
-          <h2 id="chat-heading" class="h4">{{ roomName }}</h2>
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <h2 id="chat-heading" class="h4 mb-0">{{ roomName }}</h2>
+            <p
+              class="connection-status mb-0"
+              [class.connection-connected]="connectionState() === 'connected'"
+              [class.connection-disconnected]="connectionState() === 'disconnected'"
+              [class.connection-connecting]="connectionState() === 'connecting'"
+              role="status"
+              aria-live="polite"
+            >
+              {{ connectionStatus() }}
+            </p>
+          </div>
 
           <div id="message-list" class="message-list" aria-live="polite">
             @for (message of messages(); track $index) {
