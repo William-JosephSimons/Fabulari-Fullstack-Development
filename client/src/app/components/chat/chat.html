@@ -51,7 +51,7 @@
           <h2 id="chat-heading" class="h4">{{ roomName }}</h2>
 
           <div id="message-list" class="message-list" aria-live="polite">
-            @for (message of messages; track $index) {
+            @for (message of messages(); track $index) {
               @if (message.type === 'notice') {
                 <p class="chat-notice">{{ message.text }}</p>
               } @else {
@@ -134,9 +134,11 @@
 
       <aside class="card chat-panel" aria-labelledby="presence-heading">
         <div class="card-body">
-          <h2 id="presence-heading" class="h5">In this room ({{ participants.length }})</h2>
+          <h2 id="presence-heading" class="h5">
+            In this room ({{ participants().length }})
+          </h2>
           <ul class="list-group list-group-flush">
-            @for (participant of participants; track participant.userId) {
+            @for (participant of participants(); track participant.userId) {
               <li class="list-group-item d-flex align-items-center gap-2 px-0">
                 @if (participant.avatarUrl) {
                   <img

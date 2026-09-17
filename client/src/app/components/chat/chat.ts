@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, inject, OnDestroy, OnInit } from '@angular/core';
+import { AfterViewInit, Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -31,9 +31,8 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
   protected uploadingImage = false;
   protected rooms: any[] = [];
   protected currentUserId = '';
-  protected participants: any[] = [];
-
-  protected messages: any[] = [];
+  protected readonly participants = signal<any[]>([]);
+  protected readonly messages = signal<any[]>([]);
 
   ngOnInit(): void {
     this.socketService.connect();
@@ -43,22 +42,29 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
           return;
         }
 
-        this.messages.push({
-          ...message,
-          time: new Date(message.createdAt).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          }),
+        this.messages.update((messages) => {
+          return [
+            ...messages,
+            {
+              ...message,
+              time: new Date(message.createdAt).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              }),
+            },
+          ];
         });
 
-        // Wait for Angular to display the message before updating the scroll position.
-        setTimeout(() => this.scrollToBottom());
+        // Wait for the browser to display the message before measuring the scroll height.
+        this.scrollAfterRender();
       }),
     );
     this.socketSubscriptions.push(
       this.socketService.onMessageDeleted().subscribe((details: any) => {
         if (details.roomId === this.roomId) {
-          this.messages = this.messages.filter((message) => message.id !== details.messageId);
+          this.messages.update((messages) => {
+            return messages.filter((message) => message.id !== details.messageId);
+          });
         }
       }),
     );
@@ -66,7 +72,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
       this.socketService.onPresenceState().subscribe((details: any) => {
         if (details.roomId === this.roomId) {
           this.socketError = '';
-          this.participants = details.participants;
+          this.participants.set(details.participants);
         }
       }),
     );
@@ -97,7 +103,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
     this.socketSubscriptions.push(
       this.socketService.onDisconnected().subscribe(() => {
         this.socketError = 'The live chat connection was lost. Trying to reconnect.';
-        this.participants = [];
+        this.participants.set([]);
       }),
     );
     this.socketSubscriptions.push(
@@ -120,8 +126,8 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
       this.groupId = params.get('groupId') || '';
       this.roomId = params.get('roomId') || '';
       this.socketError = '';
-      this.participants = [];
-      this.messages = [];
+      this.participants.set([]);
+      this.messages.set([]);
       this.loadRoomShell();
     });
   }
@@ -237,17 +243,19 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
   private loadMessages(): void {
     this.groupService.getRoomMessages(this.roomId).subscribe({
       next: (response: any) => {
-        this.messages = response.messages.map((message: any) => ({
-          ...message,
-          time: new Date(message.createdAt).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          }),
-        }));
+        this.messages.set(
+          response.messages.map((message: any) => ({
+            ...message,
+            time: new Date(message.createdAt).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            }),
+          }))
+        );
 
         this.socketService.joinRoom(this.roomId);
-        // Wait for Angular to display the history before updating the scroll position.
-        setTimeout(() => this.scrollToBottom());
+        // Wait for the browser to display the history before measuring the scroll height.
+        this.scrollAfterRender();
       },
       error: (error) => {
         this.loadError = error.error?.message || 'Unable to load the room messages.';
@@ -256,19 +264,31 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private addPresenceNotice(text: string): void {
-    this.messages.push({
-      type: 'notice',
-      userName: '',
-      initial: '',
-      isAdmin: false,
-      time: '',
-      text,
-      id: '',
-      userId: '',
-      avatarUrl: null,
+    this.messages.update((messages) => {
+      return [
+        ...messages,
+        {
+          type: 'notice',
+          userName: '',
+          initial: '',
+          isAdmin: false,
+          time: '',
+          text,
+          id: '',
+          userId: '',
+          avatarUrl: null,
+        },
+      ];
     });
 
-    setTimeout(() => this.scrollToBottom());
+    this.scrollAfterRender();
+  }
+
+  private scrollAfterRender(): void {
+    // The second frame runs after Angular's signal change has reached the page.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => this.scrollToBottom());
+    });
   }
 
   private scrollToBottom(): void {
