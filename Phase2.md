@@ -140,6 +140,10 @@ A safe user contains `id`, `username`, `email`, `firstName`, `lastName`,
 `birthdate`, `avatarUrl`, `systemRole`, `createdAt` and `updatedAt`. Responses
 never include the password hash or MongoDB `_id`.
 
+Express serves uploaded files through `GET /uploads/avatars/<filename>` and
+`GET /uploads/chat/<filename>`. MongoDB stores the relative upload path, and
+Angular adds `http://localhost:3000` when it displays the file.
+
 ### 2.1 Account and profile routes
 
 Account creation uses the following JSON fields:
@@ -307,27 +311,99 @@ decision stores its status, rejection reason where applicable, deciding user
 and decision time. It also writes an approval-specific audit record or a
 `requestRejected` record.
 
-### 2.6 Client socket events
+### 2.6 Message routes
 
-| Event          | Data             | Purpose                                   |
-| -------------- | ---------------- | ----------------------------------------- |
-| `room:join`    | `roomId`         | Requests access to a chat room.           |
-| `room:leave`   | `roomId`         | Leaves the current chat room.             |
-| `message:send` | `roomId`, `text` | Sends a text message to the current room. |
+Chat uses REST for history, image uploads and deletion. All three routes require
+a valid bearer token. Reading or uploading also requires an ordinary user who
+is still a member and meets the group's current age rule.
 
-### 2.7 Server socket events
+| Phase | Method and route                     | Request data                  | Success response and effect                                                                                                                 |
+| ----- | ------------------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| P2    | `GET /api/rooms/:id/messages`        | Room ID in the route          | `200` with the newest five retained `messages`, ordered oldest-to-newest for display and with current sender details.                       |
+| P2    | `POST /api/rooms/:id/message-images` | Multipart field named `image` | `201` with `message` and saved `chatMessage`. Stores the image and message, trims older history, then broadcasts `message:new` to the room. |
+| P2    | `DELETE /api/messages/:id`           | Message ID in the route       | `200` with `message`. The owner deletes the MongoDB record and image file where applicable, then the server broadcasts `message:deleted`.   |
 
-| Event             | Data                  | Purpose                                                     |
-| ----------------- | --------------------- | ----------------------------------------------------------- |
-| `message:new`     | Safe message record   | Adds a message to the room.                                 |
-| `message:deleted` | Message ID            | Removes a deleted message from connected clients.           |
-| `presence:state`  | Safe participant list | Replaces the client's current participant list.             |
-| `presence:joined` | Safe participant      | Reports that a participant joined.                          |
-| `presence:left`   | Safe participant      | Reports that a participant left.                            |
-| `socket:error`    | Friendly message      | Reports a rejected connection, room action or chat message. |
+Chat images accept PNG, JPEG and GIF files under 2 MB. Missing, empty, wrongly
+named, wrongly typed or oversized uploads return `400`. The server removes a
+newly written file when the room does not exist or the account lacks access.
+Missing rooms or messages return `404`. Ineligible room access and attempts to
+delete another user's message return `403`.
 
-The server creates the sender details, Admin flag, message ID and timestamp.
-The client cannot choose those values.
+A message record uses the following fields:
+
+| Field       | Meaning                                                       |
+| ----------- | ------------------------------------------------------------- |
+| `id`        | Server-generated stable message ID.                           |
+| `roomId`    | Room receiving the message.                                   |
+| `userId`    | Authenticated sender ID.                                      |
+| `type`      | `text` or `image`.                                            |
+| `text`      | Present on a text message.                                    |
+| `imageUrl`  | Present on an image message.                                  |
+| `createdAt` | Server-generated ISO timestamp.                               |
+| `userName`  | Sender's current first name added for display.                |
+| `initial`   | First letter used by the default avatar.                      |
+| `avatarUrl` | Sender's current uploaded avatar path, or `null`.             |
+| `isAdmin`   | Whether the sender currently administers the message's group. |
+
+MongoDB keeps only the newest five messages in each room. After saving a text
+or image message, the server removes every older record and deletes any trimmed
+image file. Connected browsers can show more than five live messages until
+they refresh because trimming does not remove already displayed messages. Chat
+messages do not create audit records.
+
+### 2.7 Socket connection and room handling
+
+Angular connects to `http://localhost:3000` and sends the stored opaque token
+as `handshake.auth.token`. Socket.IO middleware checks the token before it
+allows the connection. An invalid token produces a `connect_error`; the normal
+room events are not registered for that socket.
+
+After connecting, the client asks to join `room:<roomId>`. The server loads the
+current user, room and group from MongoDB. It rejects a missing room, Super
+Admin account, non-member or user who no longer meets the minimum age. The
+server leaves the socket's previous Fabulari room before joining a different
+one, and ignores a duplicate join for the same room.
+
+Presence is an in-memory array of socket connections and resets when the server
+restarts. Several tabs for one account count as one participant. The server
+sends `presence:joined` when that account's first tab enters and
+`presence:left` when its final tab leaves. Every join or leave also broadcasts
+the complete deduplicated participant list through `presence:state`.
+
+### 2.8 Client socket events
+
+| Event          | Data object        | Validation and purpose                                                                                            |
+| -------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `room:join`    | `{ roomId }`       | Checks the current MongoDB user, room, group membership and minimum age before joining the room.                  |
+| `room:leave`   | `{ roomId }`       | Leaves only when the supplied ID matches the socket's current room.                                               |
+| `message:send` | `{ roomId, text }` | Requires the socket to have joined that room. Text is trimmed, must not be empty and has a 2,000-character limit. |
+
+Before saving a text message, the server checks the user, room, group,
+membership and age again. It creates the ID, timestamp, sender information and
+current-group Admin flag. It then saves the message, trims older history and
+broadcasts `message:new` only to `room:<roomId>`, including the sender.
+
+### 2.9 Server socket events
+
+| Event             | Data object                | Client use                                                                              |
+| ----------------- | -------------------------- | --------------------------------------------------------------------------------------- |
+| `message:new`     | Complete safe message      | Adds a saved text or image message to the current room display.                         |
+| `message:deleted` | `{ roomId, messageId }`    | Removes the matching message from every connected room client.                          |
+| `presence:state`  | `{ roomId, participants }` | Replaces the participant list with the server's current state.                          |
+| `presence:joined` | `{ roomId, participant }`  | Adds a temporary join notice when an account's first connection enters.                 |
+| `presence:left`   | `{ roomId, participant }`  | Adds a temporary leave notice when an account's final connection leaves.                |
+| `socket:error`    | `{ message }`              | Displays a friendly room or message error that does not close the socket automatically. |
+
+A participant contains `userId`, `name`, `initial`, `avatarUrl` and `isAdmin`.
+The Admin value belongs to the current group rather than being a system role.
+Join and leave notices exist only in the current browser and are not stored as
+messages.
+
+The Angular Socket service also listens for Socket.IO's built-in `connect`,
+`disconnect` and `connect_error` events. The Chat component uses these to show
+its connection status, clear stale participants, and rejoin the selected room
+after a reconnect. It unsubscribes from every Observable, leaves the room and
+disconnects when Angular destroys the component.
 
 ## 3. Angular components, services and models
 
