@@ -209,7 +209,105 @@ Audit `search` checks the summary. `actionType` filters one action unless its
 value is `all`. Dates use `YYYY-MM-DD` and include the whole start and end day.
 Invalid dates or a start date after the end date return `400`.
 
-### 2.3 Client socket events
+### 2.3 Group and room routes
+
+Every route in this section requires a valid login session. Route parameters
+named `:id` contain a group or room string ID. A missing record returns `404`.
+An authenticated account without the required group access receives `403`.
+
+| Phase   | Method and route                        | Access          | Request data                                   | Success response and effect                                                                                                                             |
+| ------- | --------------------------------------- | --------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1 + P2 | `GET /api/groups`                       | Logged in       | None                                           | `200` with safe `groups`, the current user's membership `status`, `isAdmin` and an admin workload summary where applicable.                             |
+| P1 + P2 | `PATCH /api/groups/:id`                 | Group Admin     | `title`, `description`, `minimumAge`, `colour` | `200` with `message`, updated `group` and `removedMemberCount`. It removes newly under-age members, writes an audit log and disconnects their sockets.  |
+| P1 + P2 | `GET /api/groups/:id/users`             | Group Admin     | Group ID in the route                          | `200` with safe group details, alphabetical `members` and newest-first `bannedUsers`.                                                                   |
+| P1 + P2 | `GET /api/groups/:id/rooms`             | Eligible member | Group ID in the route                          | `200` with safe `group` details and ordered `rooms`. The group response includes whether the current user is an admin.                                  |
+| P1 + P2 | `POST /api/groups/:id/rooms`            | Group Admin     | `name`, `description`                          | `201` with `message` and new `room`. Adds its ID to the group and writes a `roomCreated` audit record.                                                  |
+| P1 + P2 | `PATCH /api/rooms/:id`                  | Group Admin     | `name`, `description`                          | `200` with `message` and updated `room`. Updates its group timestamp and writes a `roomUpdated` audit record.                                           |
+| P1 + P2 | `DELETE /api/rooms/:id`                 | Group Admin     | Room ID in the route                           | `200` with `message` and `roomId`. Deletes its messages and image files, removes its group reference, writes an audit log and disconnects room sockets. |
+| P1 + P2 | `POST /api/groups/:id/join-requests`    | Ordinary user   | `reason`                                       | `201` with `message` and pending membership `request`. The requester is taken from the session.                                                         |
+| P1 + P2 | `POST /api/groups/:id/admins`           | Group Admin     | `targetUserId`                                 | `200` with `message`, `groupId` and updated `adminIds`. Promotes an existing member and writes an audit log.                                            |
+| P1 + P2 | `DELETE /api/groups/:id/admins/:userId` | Group Admin     | Target user ID in the route                    | `200` with `message`, `groupId` and updated `adminIds`. Demotes another admin and writes an audit log.                                                  |
+
+The group list uses these membership status values:
+
+| Status      | Meaning                                                    |
+| ----------- | ---------------------------------------------------------- |
+| `readOnly`  | The current account is Super Admin and cannot join groups. |
+| `banned`    | The account has a permanent ban from this group.           |
+| `member`    | The account is already a member.                           |
+| `pending`   | The account has a pending membership request.              |
+| `underAge`  | The account does not meet the group's current minimum age. |
+| `available` | The account can submit a membership request.               |
+
+Group settings require a title, description, whole-number minimum age from 0
+to 120, and six-digit hexadecimal colour. Room names and descriptions are
+required. Group titles are unique across the application, while room names are
+unique only within their group. These duplicate conflicts return `409`.
+
+Raising a group's minimum age cannot remove every Group Admin. Promotion is
+limited to an existing member. Demotion cannot remove the final admin, target a
+non-admin, or be used by an admin on themselves. These rule conflicts return
+`403` or `409` with an explanation.
+
+A membership request requires a reason. Super Admin cannot join a group, and a
+user cannot request membership when under age, permanently banned, already a
+member, or already waiting for a decision.
+
+### 2.4 Request routes
+
+All request routes derive the requester from the login session. Each new
+request has a server-generated ID, `pending` status, creation time and empty
+decision fields. The server also writes an audit record. There is no route for
+cancelling a pending request.
+
+A returned request contains `id`, `type`, `requesterId`, its relevant group,
+target or proposed data, `reason`, `status`, `rejectionReason`, `decidedBy`,
+`createdAt` and `decidedAt`. An approved creation or ban also records the ID of
+the group, room or ban produced by that decision.
+
+| Phase   | Method and route                           | Access          | Request data                                             | Success response and purpose                                                                                              |
+| ------- | ------------------------------------------ | --------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| P1 + P2 | `POST /api/group-requests`                 | Ordinary user   | `title`, `description`, `minimumAge`, `colour`, `reason` | `201` with `message` and group-creation `request`. The proposed group details remain inside the request until approval.   |
+| P1 + P2 | `GET /api/requests/mine`                   | Logged in       | None                                                     | `200` with the current user's newest-first pending and rejected `requests`, plus safe group and target names.             |
+| P1 + P2 | `GET /api/groups/:id/requests`             | Group Admin     | Group ID in the route                                    | `200` with safe `group` details and pending membership, room-proposal and group-ban `requests`, including names and ages. |
+| P1 + P2 | `POST /api/groups/:id/room-requests`       | Eligible member | `name`, `description`, `reason`                          | `201` with `message` and room-proposal `request`.                                                                         |
+| P1 + P2 | `POST /api/groups/:id/ban-reports`         | Group Admin     | `targetUserId`, `reason`                                 | `201` with `message` and group-ban-report `request`.                                                                      |
+| P1 + P2 | `POST /api/groups/:id/delete-request`      | Group Admin     | `reason`                                                 | `201` with `message` and group-deletion `request`.                                                                        |
+| P1 + P2 | `POST /api/groups/:id/system-ban-requests` | Group Admin     | `targetUserId`, `reason`                                 | `201` with `message` and system-hard-ban `request`.                                                                       |
+| P1 + P2 | `PUT /api/requests/:id/decision`           | Relevant admin  | `decision`, optional `rejectionReason`                   | `200` with `message`, decided `request` and relevant `group`. Approval performs the action described in section 2.5.      |
+
+A room proposal must come from an eligible member and cannot duplicate an
+existing room or pending proposal in the same group. A group-ban report must
+target a current member, cannot target its submitter, and cannot duplicate a
+ban or pending report. Group deletion and system hard-ban requests also reject
+duplicates. A hard-ban request must target another ordinary member of the
+requester's group. Missing data returns `400`, missing groups return `404`, and
+rule conflicts return `403` or `409`.
+
+### 2.5 Request decisions
+
+The decision body contains `decision`, which must be `approved` or `rejected`.
+A rejection also requires `rejectionReason`. The route rejects missing,
+unknown, or already-decided requests. It checks the current state again before
+approval because membership, age, roles, names, or other records may have
+changed since submission.
+
+| Request type     | Decision-maker | Approval effect                                                                                                                                                        |
+| ---------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `groupCreation`  | Super Admin    | Creates a unique group, then makes the requester its first member and Group Admin.                                                                                     |
+| `membership`     | Group Admin    | Adds the still-eligible, non-banned requester to the group.                                                                                                            |
+| `roomProposal`   | Group Admin    | Creates the uniquely named room, adds it to the group and records the requester and approving admin.                                                                   |
+| `groupBanReport` | Group Admin    | A different admin creates the permanent ban, removes the target's membership and admin access, and disconnects their sockets. The final Group Admin cannot be banned.  |
+| `groupDeletion`  | Super Admin    | Deletes the group, rooms, retained messages, image files, group bans and other pending group requests. Connected room sockets are disconnected.                        |
+| `systemBan`      | Super Admin    | Keeps the normalized banned email, then removes the account, sessions, messages, images, group bans, memberships, admin access and unresolved requests. Sockets close. |
+
+System hard-ban approval is rejected if the target is the final administrator
+of any group. Rejection changes no group, room, membership or ban data. Every
+decision stores its status, rejection reason where applicable, deciding user
+and decision time. It also writes an approval-specific audit record or a
+`requestRejected` record.
+
+### 2.6 Client socket events
 
 | Event          | Data             | Purpose                                   |
 | -------------- | ---------------- | ----------------------------------------- |
@@ -217,7 +315,7 @@ Invalid dates or a start date after the end date return `400`.
 | `room:leave`   | `roomId`         | Leaves the current chat room.             |
 | `message:send` | `roomId`, `text` | Sends a text message to the current room. |
 
-### 2.4 Server socket events
+### 2.7 Server socket events
 
 | Event             | Data                  | Purpose                                                     |
 | ----------------- | --------------------- | ----------------------------------------------------------- |
