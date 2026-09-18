@@ -9,57 +9,122 @@
 
 ## 1. Specifications and requirements
 
-Fabulari is a role-based community chat application. The requirements and
-assumptions stated for Phase 1 still apply. Phase 2 completes the chat
-features and replaces prototype behaviour with the final MEAN application.
+Fabulari is a role-based community chat application built with Angular,
+Express, Node.js, MongoDB and Socket.IO. It supports ordinary users, one Super
+Admin and group-specific Group Admin access. The following table describes the
+final application rather than only the changes made after Phase 1.
 
-| ID    | Requirement                                                                                            |
-| ----- | ------------------------------------------------------------------------------------------------------ |
-| P2-01 | Group members send and receive text messages in real time.                                             |
-| P2-02 | Messages are sent only to users connected to the selected room.                                        |
-| P2-03 | Super Admin cannot connect to a group chat room.                                                       |
-| P2-04 | The server checks group membership and age eligibility before allowing a room connection.              |
-| P2-05 | A room displays its current participants and reports when a user joins or leaves.                      |
-| P2-06 | The participant list identifies users who have Group Admin access in the current group.                |
-| P2-07 | Messages show a stable ID, sender, profile image and timestamp.                                        |
-| P2-08 | Group members can send PNG, JPEG and GIF images smaller than 2 MB.                                     |
-| P2-09 | Entering a room loads the latest five stored messages.                                                 |
-| P2-10 | Only the creator of a message can delete it, and connected room members see that deletion immediately. |
-| P2-11 | User accounts store a birthdate, and the server calculates the current age when applying age rules.     |
+The phase column uses `P1` for work completed in Phase 1, `P1 + P2` when
+Phase 2 migrated or extended existing work, and `P2` for functionality first
+added in Phase 2.
 
-### 1.1 MongoDB design
+### 1.1 Phase 2 additions
 
-Phase 2 stores application data in a MongoDB database named `fabulari`. The
-existing JSON arrays map to separate collections so the current relationships
-and route behaviour do not need to be redesigned during the change.
+| Area                | Phase 1 position                       | Phase 2 work                                                                                 |
+| ------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Storage             | JSON file persistence                  | Native MongoDB driver, nine collections, indexes, a repeatable seed and restart persistence. |
+| Account data        | Stored age and local profile changes   | Birthdates, persistent profiles, verified password changes and profile image uploads.        |
+| Authentication      | Current-user data in local storage     | Opaque MongoDB sessions used by REST and Socket.IO, plus logout and session restoration.     |
+| Chat                | Static visual prototype                | Room messages, images, history, presence, notices, live deletion and Angular signals.        |
+| Destructive actions | Basic JSON-backed request decisions    | Complete data, file and session cleanup plus immediate socket disconnection.                 |
+| Larger lists        | Full lists loaded in one request       | Server search, paging, totals and Angular load-more controls.                                |
+| Accessibility       | Responsive forms and labelled controls | Connection status, and text bar focus                                                        |
 
-| Collection     | Main fields                                                                                                      | Purpose                                                                         |
-| -------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `users`        | `id`, `username`, `email`, names, `birthdate`, `passwordHash`, `avatarUrl`, `systemRole`, timestamps             | Stores active accounts.                               |
-| `groups`       | `id`, `title`, `description`, `minimumAge`, `colour`, `memberIds`, `adminIds`, `roomIds`, timestamps             | Stores group details and the IDs used for membership and Group Admin access.    |
-| `rooms`        | `id`, `groupId`, `name`, `description`, `createdBy`, timestamps                                                  | Stores rooms separately while inheriting age and colour from the group.         |
-| `requests`     | `id`, `type`, requester and target IDs, proposed data, reason, status, decision details, timestamps             | Stores actions that require an administrator's decision.                        |
-| `groupBans`    | `id`, `groupId`, `bannedUserId`, `sourceRequestId`, `approvedBy`, `reason`, `bannedAt`                           | Prevents a banned account from rejoining the same group.                        |
-| `systemBans`   | `id`, `normalizedEmail`, `deletedUserId`, `sourceRequestId`, `reason`, `bannedAt`                                | Keeps the email required to block registration after deleting an account.       |
-| `auditLogs`    | `id`, `actorId`, `actionType`, entity details, optional `groupId`, `summary`, `createdAt`                        | Records administrative and data-changing actions.                              |
-| `messages`     | `id`, `roomId`, `userId`, `type`, text or image path, `createdAt`                                                | Stores the latest five text or image messages for each room.                    |
-| `authSessions` | `token`, `userId`, `createdAt`                                                                                   | Connects a login token to an account so login survives a server restart. |
+### 1.2 Final requirements
+
+| ID    | Phase   | Area                    | Requirement                                                                                                                                             |
+| ----- | ------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-01 | P1 + P2 | First-run setup         | Setup creates the first and only Super Admin when the database contains no users. Later setup attempts are rejected.                                    |
+| FR-02 | P1 + P2 | Registration            | A person registers their own user account with a unique username, unique email, names, birthdate and password.                                          |
+| FR-03 | P1 + P2 | Login                   | A user logs in with their username and password. A successful login creates an opaque session token in MongoDB.                                         |
+| FR-04 | P2      | Session restoration     | Angular checks the stored token with the server after a refresh and restores the current safe user when the session is valid.                           |
+| FR-05 | P1 + P2 | Logout                  | Logout deletes the MongoDB session and removes the token and current user from local storage.                                                           |
+| FR-06 | P1 + P2 | Permissions             | Angular guards protect page navigation, while Express and Socket.IO separately check every protected action.                                            |
+| FR-07 | P1 + P2 | Private profile         | A user reads and edits only their own profile. Email stays fixed, and usernames remain unique.                                                          |
+| FR-08 | P2      | Password change         | A user supplies their current password before replacing it with a new bcrypt password hash.                                                             |
+| FR-09 | P2      | Profile image           | A user uploads a PNG, JPEG or GIF profile image smaller than 2 MB. The previous uploaded avatar is removed.                                             |
+| FR-10 | P1 + P2 | Group browsing          | Every authenticated user can browse the available groups, including groups they cannot join because of age or a ban.                                    |
+| FR-11 | P1 + P2 | Group creation          | A user requests a group with a title, description, minimum age and colour. Only Super Admin decides the request.                                        |
+| FR-12 | P1 + P2 | Initial Group Admin     | Approval creates the group and gives its requester Group Admin access for that group.                                                                   |
+| FR-13 | P1 + P2 | Membership              | A user requests their own group membership. A Group Admin approves or rejects the request after age and ban checks.                                     |
+| FR-14 | P1      | No invitations          | There is no invitation operation. Every user must request their own membership.                                                                         |
+| FR-15 | P1 + P2 | Group Admin access      | Group Admin is derived from a group's `adminIds` and is not a third system role. A user can administer several groups.                                  |
+| FR-16 | P1 + P2 | Admin continuity        | A Group Admin can promote an eligible member or demote another admin, but every group must retain at least one admin.                                   |
+| FR-17 | P1 + P2 | Group settings          | A Group Admin directly edits the title, description, minimum age and colour of a group they administer.                                                 |
+| FR-18 | P1 + P2 | Age changes             | Raising a minimum age removes members who are now too young and disconnects them from that group's live rooms.                                          |
+| FR-19 | P1 + P2 | Room management         | A Group Admin directly creates, edits and deletes rooms. Room names are unique within their group.                                                      |
+| FR-20 | P1 + P2 | Room proposals          | A group member proposes a room for a Group Admin to approve or reject. A rejection requires a reason.                                                   |
+| FR-21 | P1 + P2 | Room access             | Membership gives access to every current and future room in the group. Rooms inherit the group's colour and age rule.                                   |
+| FR-22 | P1 + P2 | Request records         | Requests store their type, requester, targets, reason, status, decision details and timestamps.                                                         |
+| FR-23 | P1 + P2 | Request history         | Users see their pending and rejected requests. Pending requests cannot be cancelled.                                                                    |
+| FR-24 | P1      | Rejections              | Every rejected request records and displays a reason.                                                                                                   |
+| FR-25 | P1 + P2 | Group-ban report        | A permanent group ban starts with a report and must be approved by a different Group Admin.                                                             |
+| FR-26 | P1 + P2 | Permanent group ban     | Approval removes the account from the group, disconnects its room sockets and permanently prevents it from rejoining.                                   |
+| FR-27 | P1 + P2 | Group deletion          | A Group Admin requests deletion and only Super Admin decides it. Approval removes related rooms, messages, bans and requests.                           |
+| FR-28 | P1 + P2 | System hard ban         | A Group Admin requests a system hard ban and only Super Admin decides it.                                                                               |
+| FR-29 | P2      | Hard-ban cleanup        | Approval removes the account, sessions, memberships, avatars, retained messages and unresolved requests unless it would leave a group without an admin. |
+| FR-30 | P1 + P2 | Banned email            | A minimal permanent record keeps the normalized email so the deleted account cannot register again.                                                     |
+| FR-31 | P1 + P2 | Scoped user information | Group Admin user lists contain only the safe details needed to manage that group.                                                                       |
+| FR-32 | P1 + P2 | System administration   | Super Admin views safe users, permanent system bans, pending system requests and filtered audit logs.                                                   |
+| FR-33 | P1 + P2 | Audit logs              | Administrative and data-changing actions create audit records. Ordinary message sends do not.                                                           |
+| FR-34 | P2      | Text chat               | Eligible members send text messages of up to 2,000 characters to one Socket.IO room.                                                                    |
+| FR-35 | P2      | Image chat              | Eligible members upload PNG, JPEG or GIF chat images smaller than 2 MB.                                                                                 |
+| FR-36 | P2      | Presence                | Each room shows a unique participant list plus first-connection join and final-connection leave notices.                                                |
+| FR-37 | P2      | Chat identity           | The server supplies message sender details and current-group Admin badges instead of trusting client-provided identity.                                 |
+| FR-38 | P2      | Message history         | MongoDB retains the newest five messages per room and returns them oldest-to-newest for display.                                                        |
+| FR-39 | P2      | Message deletion        | Only the creator deletes a message. The server broadcasts the deletion and removes an uploaded image where applicable.                                  |
+| FR-40 | P2      | Persistent storage      | Users, groups, rooms, requests, bans, audit logs, messages and login sessions persist in MongoDB.                                                       |
+| FR-41 | P2      | Larger lists            | User, system-ban and audit-log routes support server search, paging, totals and incremental loading.                                                    |
+| FR-42 | P1 + P2 | Validation              | Angular and the server validate important fields and return messages that explain how the user can recover.                                             |
+| FR-43 | P1 + P2 | Responsive interface    | The interface remains usable at desktop and tablet widths.                                                                                              |
+
+### 1.3 Roles and fixed decisions
+
+| Topic              | Final decision                                                                                                                    |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| System roles       | `systemRole` contains only `user` and `superAdmin`. Exactly one Super Admin exists.                                               |
+| Group Admin        | A user has Group Admin access when their ID is in a group's `adminIds`.                                                           |
+| Birthdate          | Accounts store a birthdate. The server calculates age when it checks a group rule so stored ages cannot become stale.             |
+| Public identifiers | Application records use readable string IDs. MongoDB's `_id` stays internal and is removed from responses.                        |
+| Authentication     | HTTP requests use `Authorization: Bearer <token>`. Socket.IO sends the same token through `handshake.auth`.                       |
+| Session storage    | MongoDB stores opaque random tokens. Local storage keeps the token and safe current-user record needed by Angular.                |
+| Presence           | Presence stays in server memory because it describes current connections and resets after a restart.                              |
+| Upload storage     | Image files stay under the local server's upload folders. MongoDB stores their public paths.                                      |
+| Message retention  | Only the newest five messages per room persist. A currently connected browser may display additional messages until it refreshes. |
+| Deletion           | Missing old image files do not make an otherwise successful database deletion fail.                                               |
+
+### 1.4 Phase 2 MongoDB design
+
+The application stores its data in a local MongoDB database named `fabulari`.
+
+| Collection     | Main fields                                                                                          | Purpose                                                                      |
+| -------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `users`        | `id`, `username`, `email`, names, `birthdate`, `passwordHash`, `avatarUrl`, `systemRole`, timestamps | Stores active accounts.                                                      |
+| `groups`       | `id`, `title`, `description`, `minimumAge`, `colour`, `memberIds`, `adminIds`, `roomIds`, timestamps | Stores group details and the IDs used for membership and Group Admin access. |
+| `rooms`        | `id`, `groupId`, `name`, `description`, `createdBy`, timestamps                                      | Stores rooms separately while inheriting age and colour from the group.      |
+| `requests`     | `id`, `type`, requester and target IDs, proposed data, reason, status, decision details, timestamps  | Stores actions that require an administrator's decision.                     |
+| `groupBans`    | `id`, `groupId`, `bannedUserId`, `sourceRequestId`, `approvedBy`, `reason`, `bannedAt`               | Prevents a banned account from rejoining the same group.                     |
+| `systemBans`   | `id`, `normalizedEmail`, `deletedUserId`, `sourceRequestId`, `reason`, `bannedAt`                    | Keeps the email required to block registration after deleting an account.    |
+| `auditLogs`    | `id`, `actorId`, `actionType`, entity details, optional `groupId`, `summary`, `createdAt`            | Records administrative and data-changing actions.                            |
+| `messages`     | `id`, `roomId`, `userId`, `type`, text or image path, `createdAt`                                    | Stores the latest five text or image messages for each room.                 |
+| `authSessions` | `token`, `userId`, `createdAt`                                                                       | Connects a login token to an account so login survives a server restart.     |
 
 MongoDB creates its own `_id` for each document, but I keep the
-existing string `id` fields for routes and relationships. Groups, 
-rooms, requests and messages refer to related records by these string 
-IDs. Proposed group and room details stay inside their request 
+existing string `id` fields for routes and relationships. Groups,
+rooms, requests and messages refer to related records by these string
+IDs. Proposed group and room details stay inside their request
 because they belong only to that request until approval.
 
-The current JSON file remains as the source of the demonstration data while
-MongoDB is introduced. After every route uses MongoDB, the server stops reading
-and writing from the JSON file.
+The JSON file remains only as the readable source for demonstration data.
+`npm run seed` clears the MongoDB collections and inserts that data again. The
+running application does not read or write JSON state.
 
 The database uses indexes for the fields that the server searches often. Public
 IDs, usernames, emails, group titles, group room names, ban records and session
 tokens are unique where required by the application rules. Other indexes support
 request inboxes, audit-log filtering and room message history. Username, group
 title and room-name indexes ignore differences in uppercase and lowercase text.
+The indexes are created when the server starts.
 
 ## 2. Server API
 
@@ -89,27 +154,115 @@ The client cannot choose those values.
 
 ## 3. Angular components, services and models
 
-The existing Angular components/services are documented in `Phase1.md`.
-Modifications/Additions include:
+Each component keeps its
+TypeScript, HTML and CSS together under `client/src/app/components`. Services
+hold HTTP or Socket.IO communication, while components keep page state and
+respond to the service results.
 
-| Item     | Type      | Responsibility                                                                                     |
-| -------- | --------- | -------------------------------------------------------------------------------------------------- |
-| `Chat`   | Component | Displays room messages and participants, sends messages, and subscribes to incoming events.        |
-| `Socket` | Service   | Connects and disconnects Socket.IO, emits client events, and exposes server events as Observables. |
+The same phase labels used in the requirements table appear below. Most page
+layouts began in Phase 1 and were connected to MongoDB or live data in Phase 2.
 
-The socket service keeps connection code out of the component. This also
-avoids registering the same event-handling code in more than one page. The
-component unsubscribes when the user leaves the chat page.
+### 3.1 Root component and routed pages
+
+| Route                            | Component             | Phase   | Responsibility                                                                                   |
+| -------------------------------- | --------------------- | ------- | ------------------------------------------------------------------------------------------------ |
+| application root                 | `App`                 | P1 + P2 | Hosts the router and checks a stored session when Angular starts.                                |
+| `/setup`                         | `FirstRunSetup`       | P1 + P2 | Checks bootstrap status and creates the only Super Admin when setup is available.                |
+| `/login`                         | `Login`               | P1 + P2 | Sends username/password login and stores the returned safe user and token.                       |
+| `/register`                      | `Register`            | P1 + P2 | Validates matching passwords and creates an ordinary user account.                               |
+| `/user-dashboard`                | `UserDashboard`       | P1 + P2 | Summarises the current user's groups and recent request history.                                 |
+| `/group-admin-dashboard`         | `GroupAdminDashboard` | P1 + P2 | Lists groups the current user administers and their pending decision counts.                     |
+| `/super-admin-dashboard`         | `SuperAdminDashboard` | P1 + P2 | Displays system totals and pending Super Admin request counts.                                   |
+| `/groups`                        | `Groups`              | P1 + P2 | Searches groups and submits group-creation or membership requests.                               |
+| `/groups/:groupId`               | `GroupDetail`         | P1 + P2 | Displays accessible rooms and allows a member to propose a room.                                 |
+| `/groups/:groupId/admin`         | `RoomManagement`      | P1 + P2 | Maintains settings, members, admins, rooms, reports and deletion requests for one group.         |
+| `/groups/:groupId/requests`      | `GroupRequests`       | P1 + P2 | Displays and decides the selected group's membership, room and ban requests.                     |
+| `/groups/:groupId/rooms/:roomId` | `Chat`                | P1 + P2 | Replaces the Phase 1 mock chat with retained messages, live presence and text or image messages. |
+| `/requests`                      | `Requests`            | P1 + P2 | Displays the current user's pending and rejected request history.                                |
+| `/profile`                       | `Profile`             | P1 + P2 | Loads and saves the private profile, password and profile image.                                 |
+| `/admin/requests`                | `AdminRequests`       | P1 + P2 | Displays and decides pending group creation, group deletion and system-ban requests.             |
+| `/admin/users`                   | `AdminUsers`          | P1 + P2 | Searches and incrementally loads safe users and permanent system bans.                           |
+| `/admin/audit-logs`              | `AuditLogs`           | P1 + P2 | Searches, filters and incrementally loads administrative audit records.                          |
+
+The empty path redirects to `/login`. Parameter routes appear before the
+general group route because Angular uses the first matching route. The wildcard
+route remains last and redirects unknown paths to login.
+
+### 3.2 Shared navigation components
+
+| Component              | Phase | Responsibility                                                                           |
+| ---------------------- | ----- | ---------------------------------------------------------------------------------------- |
+| `AuthNavigation`       | P1    | Displays the logo plus login and registration navigation.                                |
+| `MainNavigation`       | P1    | Displays user, Group Admin, group, request, profile and logout navigation.               |
+| `SuperAdminNavigation` | P1    | Displays the separate Super Admin dashboard, request, user, audit and logout navigation. |
+
+The main navigation deliberately includes both User and Group Administrator
+dashboards because Group Admin is an attribute of an ordinary user account.
+
+### 3.3 Services
+
+| Service   | Phase   | Responsibility                                                                                                           |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `Auth`    | P1 + P2 | Sends setup, registration, login, logout, session, profile, password and avatar requests. It also manages local storage. |
+| `Group`   | P1 + P2 | Sends group, member, admin, room, proposal, moderation and message HTTP requests.                                        |
+| `Request` | P1 + P2 | Loads personal, group and Super Admin inboxes and sends request decisions.                                               |
+| `Admin`   | P1 + P2 | Loads the Super Admin dashboard plus paged user and system-ban records.                                                  |
+| `Audit`   | P1 + P2 | Sends action, date, search and paging values when loading audit logs.                                                    |
+| `Socket`  | P2      | Connects with the stored token, emits room/message events and exposes incoming Socket.IO events as Observables.          |
+
+Every HTTP service uses Angular `HttpClient`. Protected calls obtain the bearer
+header from `Auth`, which keeps token handling in one place. Image methods use
+`FormData` because Multer receives multipart uploads rather than JSON.
+
+Phase 1 created the routed page shells, navigation and the first HTTP services.
+Phase 2 kept that structure. It added MongoDB session restoration to `App` and
+`Auth`, persistent profile and image operations, the `Socket` service, live
+chat state, and paged administration lists.
+
+### 3.4 Guard, forms and live state
+
+`authGuard` requires both a stored safe user and token. It checks the required
+system role from route data and redirects a user to the correct dashboard when
+they try to open a page for the other role. Express still performs the final
+permission check because local-storage values can be changed in the browser.
+
+Forms use `FormsModule` and `ngModel`. Components disable important actions
+while requests are running and display success, validation, empty and server
+error states. URL parameters are read through `ActivatedRoute.paramMap`.
+
+`Chat` receives Socket.IO events through Observable subscriptions. Angular
+signals hold the current messages, participants and connection state. The
+component unsubscribes, leaves the room and disconnects its socket when Angular
+destroys it.
+
+### 3.5 Models
+
+The application does not use separate Angular model or interface files. It uses
+the JSON objects returned by Express directly. Variables use arrays and objects
+with descriptive names, while MongoDB collection fields are documented in
+section 1.4.
 
 ## 4. Design documents
 
-The existing [chat and presence storyboard](docs/storyboards/chat_presence_storyboard.png)
-already shows the message list, image control, participant list, join and leave
-notices, Admin badges and owner-only deletion. It does not need to change for
-the socket implementation.
+The following storyboards were created in Phase 1 and remain the design
+baseline for the final application:
 
-The other Phase 1 storyboards remain part of the application design and will be
-updated only if Phase 2 changes their structure.
+- [Authentication screens](docs/storyboards/authentication_screens_storyboard.png)
+- [Dashboards](docs/storyboards/dashboards_storyboard.png)
+- [Group browsing](docs/storyboards/group_browsing_storyboard.png)
+- [Profile and requests](docs/storyboards/profile_requests_storyboard.png)
+- [Group administration](docs/storyboards/group_administration_storyboard.png)
+- [System administration](docs/storyboards/system_administration_storyboard.png)
+- [Chat and presence](docs/storyboards/chat_presence_storyboard.png)
+
+Phase 2 keeps the page structure from these storyboards. The chat storyboard
+shows the message list, image control, participant list, join and leave notices,
+Admin badges and owner-only deletion. The final page keeps that structure while
+adding the Fabulari colours, live connection status and responsive behaviour.
+
+The other storyboards also keep their original page structure. Phase 2 adds
+colour, loading states, validation messages and incremental loading without
+changing the navigation or main content shown in those designs.
 
 ## 5. Testing
 
