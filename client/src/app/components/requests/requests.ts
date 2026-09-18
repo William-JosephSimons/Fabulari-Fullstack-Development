@@ -24,6 +24,7 @@ export class Requests implements OnInit {
     this.loadRequests();
   }
 
+  // Return the personal request selected for more details.
   protected get selectedPersonalRequest() {
     return this.personalRequests.find((request) => request.id === this.selectedPersonalRequestId);
   }

@@ -28,6 +28,7 @@ export class AdminRequests implements OnInit {
     this.loadRequests();
   }
 
+  // Return the request currently selected for rejection.
   protected get rejectionRequest() {
     return this.requests.find((request) => request.id === this.rejectionRequestId);
   }

@@ -35,6 +35,7 @@ export class Profile implements OnInit {
     confirmPassword: '',
   };
 
+  // Use the first name initial when the user has no profile image.
   protected get profileInitial(): string {
     return this.profile.firstName.charAt(0).toUpperCase() || '?';
   }

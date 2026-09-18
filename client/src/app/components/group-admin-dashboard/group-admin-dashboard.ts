@@ -26,10 +26,12 @@ export class GroupAdminDashboard implements OnInit {
     this.loadGroups();
   }
 
+  // Return the administered group selected on the dashboard.
   protected get selectedGroup() {
     return this.administeredGroups.find((group) => group.id === this.selectedGroupId);
   }
 
+  // Build the pending-request counts for the selected group.
   protected get pendingItems() {
     const summary = this.selectedGroup?.adminSummary;
 

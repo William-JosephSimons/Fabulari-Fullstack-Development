@@ -65,14 +65,17 @@ export class RoomManagement implements OnInit {
     this.loadRooms();
   }
 
+  // Count the current administrators for final-admin protection.
   protected get administratorCount(): number {
     return this.members.filter((member) => member.isAdmin).length;
   }
 
+  // Return the member selected for a group-ban report.
   protected get banTarget() {
     return this.members.find((member) => member.id === this.banTargetId);
   }
 
+  // Return the member selected for a system-ban request.
   protected get systemBanTarget() {
     return this.members.find((member) => member.id === this.systemBanTargetId);
   }

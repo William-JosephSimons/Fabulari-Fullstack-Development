@@ -33,6 +33,7 @@ export class GroupRequests implements OnInit {
     this.loadRequests();
   }
 
+  // Return the group request currently selected for rejection.
   protected get rejectionRequest() {
     return this.requests.find((request) => request.id === this.rejectionRequestId);
   }

@@ -42,6 +42,7 @@ export class Groups implements OnInit {
     this.loadGroups();
   }
 
+  // Filter the displayed groups using the current search text.
   protected get filteredGroups() {
     const search = this.searchTerm.trim().toLowerCase();
 
