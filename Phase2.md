@@ -128,9 +128,88 @@ The indexes are created when the server starts.
 
 ## 2. Server API
 
-The existing REST endpoints are documented in `Phase1.md`.
+The Angular client sends requests to `http://localhost:3000/api`. JSON
+responses use `valid: true` for success. Expected validation and permission
+failures use `valid: false` with a user-readable `message`.
 
-### 2.1 Client events
+Protected routes require an `Authorization` header containing
+`Bearer <token>`. The server looks up that opaque token in `authSessions` and
+then loads its user. It does not trust a user ID supplied by the client.
+
+A safe user contains `id`, `username`, `email`, `firstName`, `lastName`,
+`birthdate`, `avatarUrl`, `systemRole`, `createdAt` and `updatedAt`. Responses
+never include the password hash or MongoDB `_id`.
+
+### 2.1 Account and profile routes
+
+Account creation uses the following JSON fields:
+
+| Field       | Type   | Validation                                                               |
+| ----------- | ------ | ------------------------------------------------------------------------ |
+| `username`  | string | Required, 3 to 30 characters and unique without regard to letter case.   |
+| `email`     | string | Required, email-shaped, stored in lowercase, unique and not hard-banned. |
+| `firstName` | string | Required.                                                                |
+| `lastName`  | string | Required.                                                                |
+| `birthdate` | string | Required `YYYY-MM-DD` date that produces an age from 1 to 120.           |
+| `password`  | string | Required and at least 8 characters.                                      |
+
+| Phase   | Method and route            | Access      | Request data                                     | Success response and effect                                                                                                            |
+| ------- | --------------------------- | ----------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| P1 + P2 | `GET /api/bootstrap-status` | Public      | None                                             | `200` with `valid` and `setupRequired`. Setup is required only when the `users` collection is empty.                                   |
+| P1 + P2 | `POST /api/bootstrap`       | Public once | Account creation JSON                            | `201` with `message` and safe `user`. Creates the only Super Admin and an `accountCreated` audit record.                               |
+| P1 + P2 | `POST /api/register`        | Public      | Account creation JSON                            | `201` with `message` and safe `user`. Creates an ordinary user and an `accountCreated` audit record.                                   |
+| P1 + P2 | `POST /api/login`           | Public      | `username`, `password`                           | `200` with `message`, safe `user` and `token`. Inserts an opaque random token into `authSessions`.                                     |
+| P1 + P2 | `POST /api/logout`          | Logged in   | Bearer token                                     | `200` with `message`. Deletes the matching MongoDB session.                                                                            |
+| P2      | `GET /api/session`          | Logged in   | Bearer token                                     | `200` with safe `user`. Removes the session and returns `401` if its account no longer exists.                                         |
+| P1 + P2 | `GET /api/profile`          | Logged in   | Bearer token                                     | `200` with the current safe `user`.                                                                                                    |
+| P1 + P2 | `PUT /api/profile`          | Logged in   | `username`, `firstName`, `lastName`, `birthdate` | `200` with `message` and updated safe `user`. Updates MongoDB and writes a `profileUpdated` audit record.                              |
+| P2      | `PUT /api/profile/password` | Logged in   | `currentPassword`, `newPassword`                 | `200` with `message`. Verifies the current password, stores a new bcrypt hash and writes a `passwordChanged` audit record.             |
+| P2      | `POST /api/profile/avatar`  | Logged in   | Multipart field named `avatar`                   | `200` with `message` and updated safe `user`. Stores the file, updates `avatarUrl`, removes the previous file and writes an audit log. |
+
+Bootstrap returns `409` after any account exists. Registration returns `409`
+until setup is complete, when a username or email already exists, or when the
+email has been hard-banned. Account and profile validation failures return
+`400`. Incorrect login details and invalid sessions return `401`. Profile
+updates return `400` if an email change is attempted and `409` when another
+account already uses the username.
+
+Password changes return `400` for missing values or a new password shorter
+than 8 characters. An incorrect current password returns `401`. Avatar uploads
+accept PNG, JPEG and GIF files under 2 MB. A missing, empty, wrongly named,
+wrongly typed or oversized upload returns `400`. The multipart route expects
+one field named `avatar`.
+
+### 2.2 Super Admin routes
+
+Every route in this section requires a valid Super Admin session. A missing or
+invalid session returns `401`. An ordinary user receives `403`.
+
+The user, system-ban and audit-log routes accept `search`, `skip` and `limit`
+query parameters. Search text is optional and can contain up to 100 characters.
+When paging is supplied, `skip` must be zero or more and `limit` must be from 1
+to 50. Invalid values return `400`. The response includes `total` before paging
+and `hasMore` for the Angular load-more button.
+
+| Phase   | Method and route             | Query data                                                | Success response and purpose                                                                                                                                        |
+| ------- | ---------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1 + P2 | `GET /api/admin/dashboard`   | None                                                      | `200` with `summary`: user, group, system-ban and pending-request counts, including a count for each Super Admin request type.                                      |
+| P1 + P2 | `GET /api/admin/requests`    | None                                                      | `200` with newest-first pending group creation, group deletion and system-ban `requests`. Each record includes safe requester, group and target names where needed. |
+| P1 + P2 | `GET /api/admin/users`       | `search`, `skip`, `limit`                                 | `200` with safe `users`, `total` and `hasMore`. Search checks username, email and first or last name. Users are ordered by username.                                |
+| P1 + P2 | `GET /api/admin/system-bans` | `search`, `skip`, `limit`                                 | `200` with `systemBans`, `total` and `hasMore`. Search checks normalized email and reason. Bans are ordered newest-first.                                           |
+| P1 + P2 | `GET /api/audit-logs`        | `actionType`, `startDate`, `endDate`, paging and `search` | `200` with `auditLogs`, available `actionTypes`, `total` and `hasMore`. Logs are ordered newest-first.                                                              |
+
+Each safe user in `/api/admin/users` contains `id`, `username`, `email`, names,
+calculated `age`, `avatarUrl` and `systemRole`. System-ban records contain the
+normalized email, deleted account ID, request ID, reason and ban date. Audit
+records contain their action, actor, affected entity, optional group, summary
+and date. The audit response also adds `actorUsername` and `groupName`, using
+"Deleted user" or "Deleted group" when the original record no longer exists.
+
+Audit `search` checks the summary. `actionType` filters one action unless its
+value is `all`. Dates use `YYYY-MM-DD` and include the whole start and end day.
+Invalid dates or a start date after the end date return `400`.
+
+### 2.3 Client socket events
 
 | Event          | Data             | Purpose                                   |
 | -------------- | ---------------- | ----------------------------------------- |
@@ -138,7 +217,7 @@ The existing REST endpoints are documented in `Phase1.md`.
 | `room:leave`   | `roomId`         | Leaves the current chat room.             |
 | `message:send` | `roomId`, `text` | Sends a text message to the current room. |
 
-### 2.2 Server events
+### 2.4 Server socket events
 
 | Event             | Data                  | Purpose                                                     |
 | ----------------- | --------------------- | ----------------------------------------------------------- |
