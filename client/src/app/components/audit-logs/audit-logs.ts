@@ -30,10 +30,12 @@ export class AuditLogs implements OnInit {
   protected auditTotal = 0;
   protected auditHasMore = false;
 
+  // Load the first page of audit records and available action types.
   ngOnInit(): void {
     this.applyFilters();
   }
 
+  // Validate the dates and restart the list with the selected filters.
   protected applyFilters(): void {
     this.auditError = '';
 
@@ -53,16 +55,19 @@ export class AuditLogs implements OnInit {
     this.loadAuditLogs(true);
   }
 
+  // Append the next page of matching audit records.
   protected loadMore(): void {
     this.loadAuditLogs(false);
   }
 
+  // Split a stored camel-case action into readable words.
   protected formatActionType(actionType: string): string {
     // Add spaces before capital letters so camelCase action types are readable.
     const words = actionType.replace(/([A-Z])/g, ' $1');
     return words.charAt(0).toUpperCase() + words.slice(1);
   }
 
+  // Format an ISO timestamp using the browser's local date and time.
   protected formatDateTime(createdAt: string): string {
     return new Date(createdAt).toLocaleString('en-AU', {
       dateStyle: 'medium',
@@ -70,6 +75,7 @@ export class AuditLogs implements OnInit {
     });
   }
 
+  // Load records, either replacing the list or appending its next page.
   private loadAuditLogs(reset: boolean): void {
     const currentUser = this.auth.getCurrentUser();
 

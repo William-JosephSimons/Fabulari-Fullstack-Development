@@ -39,6 +39,7 @@ export class Profile implements OnInit {
     return this.profile.firstName.charAt(0).toUpperCase() || '?';
   }
 
+  // Load the private profile from the authenticated server route.
   ngOnInit(): void {
     this.auth.getProfile().subscribe({
       next: (response: any) => {
@@ -58,6 +59,7 @@ export class Profile implements OnInit {
     });
   }
 
+  // Validate and save the editable profile fields.
   protected saveProfile(): void {
     this.profileMessage = '';
     this.profileError = '';
@@ -98,6 +100,7 @@ export class Profile implements OnInit {
     });
   }
 
+  // Upload the selected profile image and refresh the stored safe user.
   protected uploadAvatar(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -143,6 +146,7 @@ export class Profile implements OnInit {
     });
   }
 
+  // Show or hide the password form and clear old values.
   protected togglePasswordForm(): void {
     this.showPasswordForm = !this.showPasswordForm;
     this.profileMessage = '';
@@ -156,6 +160,7 @@ export class Profile implements OnInit {
     };
   }
 
+  // Validate matching replacement passwords and submit the change.
   protected changePassword(): void {
     this.passwordMessage = '';
     this.passwordError = '';
@@ -208,6 +213,7 @@ export class Profile implements OnInit {
       });
   }
 
+  // Copy a safe user response into the displayed profile fields.
   private setProfile(user: any): void {
     this.auth.saveCurrentUser(user);
     this.email = user.email;

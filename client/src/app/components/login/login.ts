@@ -20,6 +20,7 @@ export class Login implements OnInit {
     password: '',
   };
 
+  // Redirect an existing valid local login to its dashboard.
   ngOnInit(): void {
     this.auth.getBootstrapStatus().subscribe({
       next: (response: any) => {
@@ -33,6 +34,7 @@ export class Login implements OnInit {
     });
   }
 
+  // Validate and submit the login form.
   protected submitLogin(): void {
     this.loginMessage = '';
 

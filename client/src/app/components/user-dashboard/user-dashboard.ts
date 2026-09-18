@@ -24,6 +24,7 @@ export class UserDashboard implements OnInit {
   protected groups: any[] = [];
   protected recentRequests: any[] = [];
 
+  // Load the current user, memberships and recent request history.
   ngOnInit(): void {
     const currentUser = this.auth.getCurrentUser();
 
@@ -39,6 +40,7 @@ export class UserDashboard implements OnInit {
     this.loadRecentRequests();
   }
 
+  // Turn each request type into a short dashboard description.
   protected getRequestDescription(request: any): string {
     let requestType = 'membership';
 
@@ -63,10 +65,12 @@ export class UserDashboard implements OnInit {
     return `${request.groupName || 'Group'} ${requestType}`;
   }
 
+  // Capitalise the stored request status for display.
   protected formatStatus(status: string): string {
     return status.charAt(0).toUpperCase() + status.slice(1);
   }
 
+  // Load only the groups where the current user is a member.
   private loadGroups(): void {
     this.groupService.getGroups().subscribe({
       next: (response: any) => {
@@ -86,6 +90,7 @@ export class UserDashboard implements OnInit {
     });
   }
 
+  // Load a small newest-first request summary for the dashboard.
   private loadRecentRequests(): void {
     this.requestService.getMyRequests().subscribe({
       next: (response: any) => {

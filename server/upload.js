@@ -20,18 +20,22 @@ fs.mkdirSync(chatImageFolder, { recursive: true });
 
 // diskStorage tells Multer where to write a file and how to name it.
 const avatarStorage = multer.diskStorage({
+  // Save profile images in the avatar upload folder.
   destination(req, file, callback) {
     callback(null, avatarFolder);
   },
+  // Replace the original name with a random ID and trusted extension.
   filename(req, file, callback) {
     callback(null, `${randomUUID()}${imageExtensions[file.mimetype]}`);
   },
 });
 
 const chatImageStorage = multer.diskStorage({
+  // Save message images separately from profile images.
   destination(req, file, callback) {
     callback(null, chatImageFolder);
   },
+  // Replace the original name with a random ID and trusted extension.
   filename(req, file, callback) {
     callback(null, `${randomUUID()}${imageExtensions[file.mimetype]}`);
   },
@@ -41,6 +45,7 @@ const chatImageStorage = multer.diskStorage({
 const receiveAvatarFile = multer({
   storage: avatarStorage,
   limits: { fileSize: 2 * 1024 * 1024 }, // roughly 2MB.
+  // Reject file types outside the three profile-image formats.
   fileFilter(req, file, callback) {
     if (!imageExtensions[file.mimetype]) {
       callback(new Error("Only PNG, JPEG and GIF profile images are allowed."));
@@ -54,6 +59,7 @@ const receiveAvatarFile = multer({
 const receiveChatImage = multer({
   storage: chatImageStorage,
   limits: { fileSize: 2 * 1024 * 1024 },
+  // Reject file types outside the three chat-image formats.
   fileFilter(req, file, callback) {
     if (!imageExtensions[file.mimetype]) {
       callback(new Error("Only PNG, JPEG and GIF chat images are allowed."));
@@ -64,6 +70,7 @@ const receiveChatImage = multer({
   },
 }).single("image");
 
+// Convert Multer avatar errors into the JSON response used by Angular.
 function uploadAvatar(req, res, next) {
   receiveAvatarFile(req, res, (error) => {
     if (!error) {
@@ -83,6 +90,7 @@ function uploadAvatar(req, res, next) {
   });
 }
 
+// Convert Multer chat-image errors into the JSON response used by Angular.
 function uploadChatImage(req, res, next) {
   receiveChatImage(req, res, (error) => {
     if (!error) {
@@ -102,6 +110,7 @@ function uploadChatImage(req, res, next) {
   });
 }
 
+// File cleanup should not fail the database operation that already succeeded.
 function removeAvatar(avatarUrl) {
   if (!avatarUrl) {
     return;
@@ -118,6 +127,7 @@ function removeAvatar(avatarUrl) {
   }
 }
 
+// Chat-image cleanup follows the same best-effort rule as avatar cleanup.
 function removeChatImage(imageUrl) {
   if (!imageUrl) {
     return;

@@ -21,6 +21,7 @@ export class GroupAdminDashboard implements OnInit {
   protected groupsError = '';
   protected administeredGroups: any[] = [];
 
+  // Load the current user and the groups they administer.
   ngOnInit(): void {
     this.loadGroups();
   }
@@ -39,6 +40,7 @@ export class GroupAdminDashboard implements OnInit {
     ];
   }
 
+  // Build the dashboard rows from groups with admin access.
   private loadGroups(): void {
     const currentUser = this.auth.getCurrentUser();
 

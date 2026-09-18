@@ -33,10 +33,12 @@ export class GroupDetail implements OnInit {
     reason: '',
   };
 
+  // Read the selected group ID and load its accessible rooms.
   ngOnInit(): void {
     this.loadRooms();
   }
 
+  // Validate and submit a member's proposed room.
   protected submitRoomProposal(): void {
     if (!this.groupId || !this.currentUserId) {
       this.proposalError = 'A group and current user are required.';
@@ -72,6 +74,7 @@ export class GroupDetail implements OnInit {
       });
   }
 
+  // Load the selected group's details and room list.
   private loadRooms(): void {
     if (!this.groupId || !this.currentUserId) {
       this.isLoading = false;

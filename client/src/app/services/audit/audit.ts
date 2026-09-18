@@ -10,6 +10,7 @@ export class Audit {
   private readonly auth = inject(Auth);
   private readonly serverUrl = 'http://localhost:3000';
 
+  // Load one filtered and searched page of audit records.
   getAuditLogs(
     actionType: string,
     startDate: string,

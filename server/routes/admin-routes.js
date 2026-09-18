@@ -2,6 +2,7 @@ import { requireSuperAdmin } from "../authentication.js";
 import { getDatabase } from "../database.js";
 import { calculateAge, ensureText, isValidDate } from "./route-helpers.js";
 
+// Parse the search and optional paging values shared by the larger admin lists.
 function getListOptions(query = {}) {
   const search = ensureText(query.search);
   const usesPaging = query.skip !== undefined || query.limit !== undefined;
@@ -28,14 +29,15 @@ function getListOptions(query = {}) {
   return { search, usesPaging, skip, limit };
 }
 
+// Escape regular-expression characters so search behaves as ordinary text.
 function getSearchPattern(search) {
-  // convert search into case insensitive mongoDB regex
-  // Prepend backslash to special characters to make the search behave as ordinary text.
   const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return { $regex: escapedSearch, $options: "i" };
 }
 
+// Register dashboard, request inbox, user, ban and audit routes for Super Admin.
 function adminRoutes(app) {
+  // Return totals and pending-request counts for the Super Admin dashboard.
   app.get("/api/admin/dashboard", async (req, res) => {
     if (!(await requireSuperAdmin(req, res))) {
       return;
@@ -75,6 +77,7 @@ function adminRoutes(app) {
     });
   });
 
+  // Return pending requests that require a Super Admin decision.
   app.get("/api/admin/requests", async (req, res) => {
     if (!(await requireSuperAdmin(req, res))) {
       return;
@@ -122,6 +125,7 @@ function adminRoutes(app) {
     });
   });
 
+  // Search and page through safe user records.
   app.get("/api/admin/users", async (req, res) => {
     if (!(await requireSuperAdmin(req, res))) {
       return;
@@ -178,6 +182,7 @@ function adminRoutes(app) {
     });
   });
 
+  // Search and page through permanent system-ban records.
   app.get("/api/admin/system-bans", async (req, res) => {
     if (!(await requireSuperAdmin(req, res))) {
       return;
@@ -222,6 +227,7 @@ function adminRoutes(app) {
     });
   });
 
+  // Filter, search and page through newest-first audit records.
   app.get("/api/audit-logs", async (req, res) => {
     if (!(await requireSuperAdmin(req, res))) {
       return;

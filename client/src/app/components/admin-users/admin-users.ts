@@ -30,6 +30,7 @@ export class AdminUsers implements OnInit {
   protected usersHaveMore = false;
   protected bansHaveMore = false;
 
+  // Load the first user and system-ban pages.
   ngOnInit(): void {
     const currentUser = this.auth.getCurrentUser();
 
@@ -45,28 +46,34 @@ export class AdminUsers implements OnInit {
     this.loadSystemBans(true);
   }
 
+  // Restart the user list using the entered search text.
   protected searchUsers(): void {
     this.appliedUserSearch = this.searchTerm.trim();
     this.loadUsers(true);
   }
 
+  // Restart the ban list using the entered search text.
   protected searchSystemBans(): void {
     this.appliedBanSearch = this.banSearchTerm.trim();
     this.loadSystemBans(true);
   }
 
+  // Append the next page of matching users.
   protected loadMoreUsers(): void {
     this.loadUsers(false);
   }
 
+  // Append the next page of matching system bans.
   protected loadMoreSystemBans(): void {
     this.loadSystemBans(false);
   }
 
+  // Convert the stored system role into a readable label.
   protected formatSystemRole(systemRole: string): string {
     return systemRole === 'superAdmin' ? 'Super Admin' : 'User';
   }
 
+  // Format an ISO ban date using the browser's local date style.
   protected formatDate(bannedAt: string): string {
     return new Date(bannedAt).toLocaleDateString('en-AU', {
       day: 'numeric',
@@ -75,6 +82,7 @@ export class AdminUsers implements OnInit {
     });
   }
 
+  // Load users, either replacing the list or appending its next page.
   private loadUsers(reset: boolean): void {
     if (reset) {
       this.users = [];
@@ -107,6 +115,7 @@ export class AdminUsers implements OnInit {
       });
   }
 
+  // Load bans, either replacing the list or appending its next page.
   private loadSystemBans(reset: boolean): void {
     if (reset) {
       this.systemBans = [];

@@ -20,6 +20,7 @@ export class SuperAdminDashboard implements OnInit {
   protected systemSummary: any[] = [];
   protected pendingItems: any[] = [];
 
+  // Load the current Super Admin and dashboard counts.
   ngOnInit(): void {
     const currentUser = this.auth.getCurrentUser();
 

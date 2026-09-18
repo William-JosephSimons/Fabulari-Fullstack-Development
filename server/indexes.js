@@ -1,5 +1,6 @@
 const caseInsensitive = { locale: "en", strength: 2 };
 
+// Create the uniqueness rules and lookup indexes used by the route modules.
 async function createIndexes(database) {
   await database.collection("users").createIndex({ id: 1 }, { unique: true });
   await database

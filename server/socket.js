@@ -4,6 +4,7 @@ import { getDatabase } from "./database.js";
 import { ensureText, meetsMinimumAge } from "./routes/route-helpers.js";
 import { removeChatImage } from "./upload.js";
 
+// Remove connection-only fields before sending a participant to browsers.
 function getParticipantDetails(connection) {
   return {
     userId: connection.userId,
@@ -14,6 +15,7 @@ function getParticipantDetails(connection) {
   };
 }
 
+// Show one participant per account even when that account has several tabs open.
 function getRoomParticipants(connections, roomId) {
   const participants = [];
 
@@ -30,6 +32,7 @@ function getRoomParticipants(connections, roomId) {
   return participants;
 }
 
+// Remove one socket and announce a leave only after that user's final tab exits.
 function leaveCurrentRoom(io, socket, connections) {
   const connectionIndex = connections.findIndex(
     (item) => item.socketId === socket.id,
@@ -65,11 +68,13 @@ function leaveCurrentRoom(io, socket, connections) {
   console.log(`Socket ${socket.id} left room ${connection.roomId}.`);
 }
 
+// Register socket authentication, room, presence and text-message handlers.
 function connectSockets(io) {
   // Presence resets whenever the server restarts because it represents live connections.
   const connections = [];
 
   // Socket.IO runs this check before allowing the connection event below.
+  // Authenticate the token before allowing any live-chat event handlers.
   io.use(async (socket, next) => {
     try {
       const token = ensureText(socket.handshake.auth.token);
@@ -88,9 +93,11 @@ function connectSockets(io) {
     }
   });
 
+  // Register room and message handlers for each authenticated connection.
   io.on("connection", (socket) => {
     console.log(`Socket connected: ${socket.id}`);
 
+    // Check current MongoDB access before joining one Socket.IO room.
     socket.on("room:join", async (details = {}) => {
       const roomId = ensureText(details.roomId);
 
@@ -199,6 +206,7 @@ function connectSockets(io) {
       }
     });
 
+    // Leave only when the request matches the socket's current room.
     socket.on("room:leave", (details = {}) => {
       const roomId = ensureText(details.roomId);
 
@@ -209,6 +217,7 @@ function connectSockets(io) {
       leaveCurrentRoom(io, socket, connections);
     });
 
+    // Validate, retain and broadcast one text message.
     socket.on("message:send", async (details = {}) => {
       const roomId = ensureText(details.roomId);
       const text = ensureText(details.text);
@@ -307,6 +316,7 @@ function connectSockets(io) {
       }
     });
 
+    // Remove this connection from presence after any kind of disconnect.
     socket.on("disconnect", () => {
       leaveCurrentRoom(io, socket, connections);
       console.log(`Socket disconnected: ${socket.id}`);

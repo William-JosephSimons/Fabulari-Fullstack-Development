@@ -36,6 +36,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
   protected readonly connectionStatus = signal('Connecting to live chat...');
   protected readonly connectionState = signal('connecting');
 
+  // Connect live events, watch route changes and load the selected room.
   ngOnInit(): void {
     this.socketService.connect();
     this.socketSubscriptions.push(
@@ -144,10 +145,12 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  // Start the initial message view at the bottom of its scroll area.
   ngAfterViewInit(): void {
     this.scrollToBottom();
   }
 
+  // Remove listeners, leave the room and close the socket on navigation.
   ngOnDestroy(): void {
     for (const subscription of this.socketSubscriptions) {
       subscription.unsubscribe();
@@ -160,6 +163,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
     this.socketService.disconnect();
   }
 
+  // Send non-empty composer text to the current Socket.IO room.
   protected sendMessage(): void {
     const text = this.messageText.trim();
 
@@ -172,6 +176,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
     this.messageText = '';
   }
 
+  // Request deletion of one message owned by the current user.
   protected deleteMessage(messageId: string): void {
     this.socketError = '';
 
@@ -182,6 +187,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  // Upload the selected image through the message REST route.
   protected uploadImage(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -206,14 +212,17 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  // Turn an optional avatar path into a server URL.
   protected getAvatarUrl(avatarUrl: string | null): string {
     return avatarUrl ? this.auth.getUploadUrl(avatarUrl) : '';
   }
 
+  // Turn a chat-image path into a server URL.
   protected getMessageImageUrl(imageUrl: string): string {
     return this.auth.getUploadUrl(imageUrl);
   }
 
+  // Load the selected group's rooms before entering live chat.
   private loadRoomShell(): void {
     const currentUser = this.auth.getCurrentUser();
 
@@ -252,6 +261,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  // Load retained history, then join the live room.
   private loadMessages(): void {
     this.groupService.getRoomMessages(this.roomId).subscribe({
       next: (response: any) => {
@@ -276,6 +286,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  // Add a temporary join or leave notice without persisting it.
   private addPresenceNotice(text: string): void {
     this.messages.update((messages) => {
       return [
@@ -297,6 +308,7 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
     this.scrollAfterRender();
   }
 
+  // Wait for Angular and the browser before scrolling new content into view.
   private scrollAfterRender(): void {
     // The second frame runs after Angular's signal change has reached the page.
     requestAnimationFrame(() => {
@@ -304,12 +316,14 @@ export class Chat implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  // Move keyboard focus to the message input after room entry.
   private focusComposer(): void {
     requestAnimationFrame(() => {
       document.getElementById('message-text')?.focus();
     });
   }
 
+  // Move the message panel to its newest displayed item.
   private scrollToBottom(): void {
     const messageList = document.getElementById('message-list');
 

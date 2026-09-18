@@ -59,6 +59,7 @@ export class RoomManagement implements OnInit {
   protected roomDetails = { name: '', description: '' };
   protected rooms: any[] = [];
 
+  // Read the group ID and load its management data.
   ngOnInit(): void {
     this.loadGroupUsers();
     this.loadRooms();
@@ -76,10 +77,12 @@ export class RoomManagement implements OnInit {
     return this.members.find((member) => member.id === this.systemBanTargetId);
   }
 
+  // Switch between group settings, users, rooms and moderation sections.
   protected showSection(section: string): void {
     this.activeSection = section;
   }
 
+  // Validate and save direct changes to the selected group.
   protected saveGroupSettings(): void {
     if (!this.groupId || !this.currentUserId) {
       this.settingsError = 'A group and current user are required.';
@@ -131,6 +134,7 @@ export class RoomManagement implements OnInit {
       });
   }
 
+  // Submit the entered reason for Super Admin deletion approval.
   protected submitGroupDeletionRequest(): void {
     if (!this.groupId || !this.currentUserId) {
       this.groupDeletionError = 'A group and current user are required.';
@@ -171,6 +175,7 @@ export class RoomManagement implements OnInit {
       });
   }
 
+  // Promote the selected existing member to Group Admin.
   protected promoteMember(member: any): void {
     if (!this.groupId || !this.currentUserId) {
       this.usersError = 'A group and current user are required.';
@@ -205,6 +210,7 @@ export class RoomManagement implements OnInit {
       });
   }
 
+  // Demote the selected admin after browser confirmation.
   protected demoteAdmin(member: any): void {
     if (!this.groupId || !this.currentUserId) {
       this.usersError = 'A group and current user are required.';
@@ -237,6 +243,7 @@ export class RoomManagement implements OnInit {
       });
   }
 
+  // Open the group-ban form for one member.
   protected beginBanReport(memberId: string): void {
     this.closeSystemBanRequest();
     this.systemBanMessage = '';
@@ -246,12 +253,14 @@ export class RoomManagement implements OnInit {
     this.banReportError = '';
   }
 
+  // Close and clear the group-ban form.
   protected closeBanReport(): void {
     this.banTargetId = null;
     this.banReason = '';
     this.banReportError = '';
   }
 
+  // Validate and submit the current group-ban report.
   protected submitBanReport(): void {
     if (!this.groupId || !this.currentUserId || !this.banTargetId) {
       this.banReportError = 'A group, Group Admin and target member are required.';
@@ -292,6 +301,7 @@ export class RoomManagement implements OnInit {
       });
   }
 
+  // Open the system hard-ban form for one member.
   protected beginSystemBanRequest(memberId: string): void {
     this.closeBanReport();
     this.banReportMessage = '';
@@ -301,12 +311,14 @@ export class RoomManagement implements OnInit {
     this.systemBanError = '';
   }
 
+  // Close and clear the system hard-ban form.
   protected closeSystemBanRequest(): void {
     this.systemBanTargetId = null;
     this.systemBanReason = '';
     this.systemBanError = '';
   }
 
+  // Validate and submit the current system hard-ban request.
   protected submitSystemBanRequest(): void {
     if (!this.groupId || !this.currentUserId || !this.systemBanTargetId) {
       this.systemBanError = 'A group, Group Admin and target member are required.';
@@ -348,6 +360,7 @@ export class RoomManagement implements OnInit {
       });
   }
 
+  // Create a room or save the room currently being edited.
   protected saveRoom(): void {
     if (!this.groupId || !this.currentUserId) {
       this.roomError = 'A group and current user are required.';
@@ -409,6 +422,7 @@ export class RoomManagement implements OnInit {
     });
   }
 
+  // Copy one room into the editing form.
   protected startRoomEdit(room: any): void {
     this.editingRoomId = room.id;
     this.roomDetails = {
@@ -419,11 +433,13 @@ export class RoomManagement implements OnInit {
     this.roomError = '';
   }
 
+  // Return the room form to its empty creation state.
   protected cancelRoomEdit(): void {
     this.editingRoomId = null;
     this.roomDetails = { name: '', description: '' };
   }
 
+  // Delete the selected room after browser confirmation.
   protected deleteRoom(room: any): void {
     if (!this.currentUserId) {
       this.roomError = 'A current user is required.';
@@ -461,6 +477,7 @@ export class RoomManagement implements OnInit {
     });
   }
 
+  // Refresh the selected group's safe member and ban lists.
   private loadGroupUsers(): void {
     if (!this.groupId || !this.currentUserId) {
       this.usersLoading = false;
@@ -496,6 +513,7 @@ export class RoomManagement implements OnInit {
     });
   }
 
+  // Refresh the selected group's settings and room list.
   private loadRooms(): void {
     if (!this.groupId || !this.currentUserId) {
       this.roomsLoading = false;

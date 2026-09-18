@@ -25,6 +25,7 @@ export class Register {
     confirmPassword: ''
   };
 
+  // Validate matching passwords and submit the registration form.
   protected submitRegistration(): void {
     this.registrationMessage = '';
     this.registrationError = '';

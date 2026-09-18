@@ -19,7 +19,9 @@ import {
   createAuditLog,
 } from "./route-helpers.js";
 
+// Register setup, login, session and private-profile routes.
 function accountRoutes(app) {
+  // Tell Angular whether the first Super Admin still needs to be created.
   app.get("/api/bootstrap-status", async (req, res) => {
     const database = getDatabase();
     const userCount = await database.collection("users").countDocuments();
@@ -30,6 +32,7 @@ function accountRoutes(app) {
     });
   });
 
+  // Create the first and only Super Admin account.
   app.post("/api/bootstrap", async (req, res) => {
     const database = getDatabase();
     const users = database.collection("users");
@@ -72,6 +75,7 @@ function accountRoutes(app) {
     });
   });
 
+  // Register an ordinary account after first-run setup is complete.
   app.post("/api/register", async (req, res) => {
     const database = getDatabase();
     const users = database.collection("users");
@@ -114,6 +118,7 @@ function accountRoutes(app) {
     });
   });
 
+  // Check credentials and create an opaque MongoDB session.
   app.post("/api/login", async (req, res) => {
     const username = ensureText(req.body?.username);
     const password =
@@ -154,6 +159,7 @@ function accountRoutes(app) {
     });
   });
 
+  // Delete the session represented by the bearer token.
   app.post("/api/logout", async (req, res) => {
     const token = getBearerToken(req);
 
@@ -182,6 +188,7 @@ function accountRoutes(app) {
     });
   });
 
+  // Validate a stored session and return its current safe user.
   app.get("/api/session", async (req, res) => {
     const token = getBearerToken(req);
 
@@ -222,6 +229,7 @@ function accountRoutes(app) {
     });
   });
 
+  // Return the authenticated user's private profile.
   app.get("/api/profile", async (req, res) => {
     const user = await requireLogin(req, res);
 
@@ -235,6 +243,7 @@ function accountRoutes(app) {
     });
   });
 
+  // Save editable profile fields while keeping the email fixed.
   app.put("/api/profile", async (req, res) => {
     const user = await requireLogin(req, res);
 
@@ -310,6 +319,7 @@ function accountRoutes(app) {
     });
   });
 
+  // Verify the current password before storing a new hash.
   app.put("/api/profile/password", async (req, res) => {
     const user = await requireLogin(req, res);
 
@@ -376,6 +386,7 @@ function accountRoutes(app) {
     });
   });
 
+  // Replace the authenticated user's profile image.
   app.post(
     "/api/profile/avatar",
     // login middleware required here because authentication is needed before image upload

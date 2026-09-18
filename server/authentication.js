@@ -1,6 +1,7 @@
 import { getDatabase } from "./database.js";
 import { ensureText } from "./routes/route-helpers.js";
 
+// Read the opaque token from an Authorization: Bearer header.
 function getBearerToken(req) {
   const authorization = ensureText(req.headers.authorization);
 
@@ -11,6 +12,7 @@ function getBearerToken(req) {
   return ensureText(authorization.slice(7));
 }
 
+// Resolve a session to its account and remove it if that account was deleted.
 async function getUserFromToken(token) {
   if (!token) {
     return null;
@@ -36,10 +38,12 @@ async function getUserFromToken(token) {
   return user;
 }
 
+// Combine header parsing and session lookup for protected HTTP routes.
 async function getAuthenticatedUser(req) {
   return getUserFromToken(getBearerToken(req));
 }
 
+// Send the shared 401 response when an HTTP request has no valid account.
 async function requireLogin(req, res) {
   const user = await getAuthenticatedUser(req);
 
@@ -54,6 +58,7 @@ async function requireLogin(req, res) {
   return user;
 }
 
+// Apply the system-role check after the normal login check succeeds.
 async function requireSuperAdmin(req, res) {
   const user = await requireLogin(req, res);
 
@@ -72,6 +77,7 @@ async function requireSuperAdmin(req, res) {
   return user;
 }
 
+// Middleware form of requireLogin used before Multer processes an upload.
 async function loginRequiredMiddleware(req, res, next) {
   const user = await requireLogin(req, res);
 

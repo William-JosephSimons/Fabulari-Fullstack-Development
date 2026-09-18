@@ -37,6 +37,7 @@ export class Groups implements OnInit {
 
   protected groups: any[] = [];
 
+  // Load the group list and current user when the page opens.
   ngOnInit(): void {
     this.loadGroups();
   }
@@ -53,11 +54,13 @@ export class Groups implements OnInit {
     );
   }
 
+  // Open the selected group only when the user is already a member.
   protected openGroup(groupId: string): void {
     // The selected group ID becomes part of the URL for the detail page to read.
     this.router.navigate(['/groups', groupId]);
   }
 
+  // Open the membership form for one available group.
   protected beginMembershipRequest(groupId: string): void {
     this.membershipRequestGroupId = groupId;
     this.membershipReason = '';
@@ -65,12 +68,14 @@ export class Groups implements OnInit {
     this.membershipError = '';
   }
 
+  // Close and clear the membership form without submitting it.
   protected cancelMembershipRequest(): void {
     this.membershipRequestGroupId = null;
     this.membershipReason = '';
     this.membershipError = '';
   }
 
+  // Submit the current user's membership reason.
   protected submitMembershipRequest(groupId: string): void {
     const reason = this.membershipReason.trim();
 
@@ -117,6 +122,7 @@ export class Groups implements OnInit {
       });
   }
 
+  // Validate and submit a proposed group.
   protected submitGroupRequest(): void {
     this.requestMessage = '';
     this.requestError = '';
@@ -155,6 +161,7 @@ export class Groups implements OnInit {
     });
   }
 
+  // Refresh the groups and their membership states from the server.
   private loadGroups(): void {
     const currentUser = this.auth.getCurrentUser();
 

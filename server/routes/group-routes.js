@@ -17,7 +17,9 @@ import {
   getGroupMembershipStatus,
 } from "./route-helpers.js";
 
+// Register group browsing, maintenance, room and administrator routes.
 function groupRoutes(app, io) {
+  // Return every group with the current user's membership and admin status.
   app.get("/api/groups", async (req, res) => {
     const user = await requireLogin(req, res);
 
@@ -84,6 +86,7 @@ function groupRoutes(app, io) {
     });
   });
 
+  // Update one administered group and remove members made under age.
   app.patch("/api/groups/:id", async (req, res) => {
     const actingUser = await requireLogin(req, res);
 
@@ -209,6 +212,7 @@ function groupRoutes(app, io) {
     });
   });
 
+  // Return the safe member and banned-user lists for one administered group.
   app.get("/api/groups/:id/users", async (req, res) => {
     const user = await requireLogin(req, res);
 
@@ -290,6 +294,7 @@ function groupRoutes(app, io) {
     });
   });
 
+  // Return rooms to an eligible member of their group.
   app.get("/api/groups/:id/rooms", async (req, res) => {
     const user = await requireLogin(req, res);
 
@@ -342,6 +347,7 @@ function groupRoutes(app, io) {
     });
   });
 
+  // Let a Group Admin create a room directly.
   app.post("/api/groups/:id/rooms", async (req, res) => {
     const actingUser = await requireLogin(req, res);
 
@@ -435,6 +441,7 @@ function groupRoutes(app, io) {
     });
   });
 
+  // Let a Group Admin update a room's name and description.
   app.patch("/api/rooms/:id", async (req, res) => {
     const actingUser = await requireLogin(req, res);
 
@@ -529,6 +536,7 @@ function groupRoutes(app, io) {
     });
   });
 
+  // Delete a room together with its retained messages and image files.
   app.delete("/api/rooms/:id", async (req, res) => {
     const actingUser = await requireLogin(req, res);
 
@@ -613,6 +621,7 @@ function groupRoutes(app, io) {
     });
   });
 
+  // Submit the current user's own membership request.
   app.post("/api/groups/:id/join-requests", async (req, res) => {
     const requester = await requireLogin(req, res);
 
@@ -722,6 +731,7 @@ function groupRoutes(app, io) {
     });
   });
 
+  // Promote an existing member without creating a separate request.
   app.post("/api/groups/:id/admins", async (req, res) => {
     const actingUser = await requireLogin(req, res);
 
@@ -816,6 +826,7 @@ function groupRoutes(app, io) {
     });
   });
 
+  // Demote another admin while keeping at least one Group Admin.
   app.delete("/api/groups/:id/admins/:userId", async (req, res) => {
     const actingUser = await requireLogin(req, res);
 

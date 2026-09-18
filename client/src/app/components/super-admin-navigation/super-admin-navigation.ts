@@ -12,6 +12,7 @@ export class SuperAdminNavigation {
   private readonly auth = inject(Auth);
   private readonly router = inject(Router);
 
+  // Clear the current login and return to the login page.
   protected logout(): void {
     this.auth.logout();
     this.router.navigate(['/login']);

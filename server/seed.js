@@ -6,11 +6,13 @@ import { closeDatabase, connectDatabase, getDatabase } from "./database.js";
 const currentFolder = path.dirname(fileURLToPath(import.meta.url));
 const seedFile = path.join(currentFolder, "data", "fabulari.json");
 
+// Keep the demonstration data readable in JSON before inserting it into MongoDB.
 function loadSeedData() {
   const fileContents = fs.readFileSync(seedFile, "utf8");
   return JSON.parse(fileContents);
 }
 
+// Replace every development collection so repeated seeds produce the same state.
 async function seedDatabase() {
   try {
     await connectDatabase();

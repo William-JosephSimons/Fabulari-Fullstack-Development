@@ -16,7 +16,9 @@ import {
   getSystemBanRequestDetails,
 } from "./route-helpers.js";
 
+// Register request submission, inbox and decision routes.
 function requestRoutes(app, io) {
+  // Submit a proposed group for the Super Admin to decide.
   app.post("/api/group-requests", async (req, res) => {
     const requester = await requireLogin(req, res);
 
@@ -76,6 +78,7 @@ function requestRoutes(app, io) {
     });
   });
 
+  // Return the current user's pending and rejected request history.
   app.get("/api/requests/mine", async (req, res) => {
     const user = await requireLogin(req, res);
 
@@ -126,6 +129,7 @@ function requestRoutes(app, io) {
     });
   });
 
+  // Return pending requests that belong to one administered group.
   app.get("/api/groups/:id/requests", async (req, res) => {
     const user = await requireLogin(req, res);
 
@@ -195,6 +199,7 @@ function requestRoutes(app, io) {
     });
   });
 
+  // Submit a member's proposed room for a Group Admin to decide.
   app.post("/api/groups/:id/room-requests", async (req, res) => {
     const requester = await requireLogin(req, res);
 
@@ -300,6 +305,7 @@ function requestRoutes(app, io) {
     });
   });
 
+  // Submit a permanent group-ban report about a current member.
   app.post("/api/groups/:id/ban-reports", async (req, res) => {
     const requester = await requireLogin(req, res);
 
@@ -416,6 +422,7 @@ function requestRoutes(app, io) {
     });
   });
 
+  // Ask the Super Admin to delete an administered group.
   app.post("/api/groups/:id/delete-request", async (req, res) => {
     const requester = await requireLogin(req, res);
 
@@ -502,6 +509,7 @@ function requestRoutes(app, io) {
     });
   });
 
+  // Ask the Super Admin to hard-ban a current group member.
   app.post("/api/groups/:id/system-ban-requests", async (req, res) => {
     const requester = await requireLogin(req, res);
 
@@ -613,6 +621,7 @@ function requestRoutes(app, io) {
     });
   });
 
+  // Decide a pending request and perform its type-specific approval action.
   app.put("/api/requests/:id/decision", async (req, res) => {
     const decider = await requireLogin(req, res);
 

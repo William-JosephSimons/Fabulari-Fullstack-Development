@@ -7,7 +7,9 @@ import { getDatabase } from "../database.js";
 import { removeChatImage, uploadChatImage } from "../upload.js";
 import { meetsMinimumAge } from "./route-helpers.js";
 
+// Register retained history, chat-image and owner-only deletion routes.
 function messageRoutes(app, io) {
+  // Return the latest five messages to an eligible room member.
   app.get("/api/rooms/:id/messages", async (req, res) => {
     const user = await requireLogin(req, res);
 
@@ -75,6 +77,7 @@ function messageRoutes(app, io) {
     });
   });
 
+  // Store an uploaded image message and broadcast it to the room.
   app.post(
     "/api/rooms/:id/message-images",
     // Check the login before Multer writes an uploaded file to disk.
@@ -176,6 +179,7 @@ function messageRoutes(app, io) {
     },
   );
 
+  // Delete a message only when the current user created it.
   app.delete("/api/messages/:id", async (req, res) => {
     const user = await requireLogin(req, res);
 

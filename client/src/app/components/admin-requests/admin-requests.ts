@@ -23,6 +23,7 @@ export class AdminRequests implements OnInit {
   protected isLoading = true;
   protected requests: any[] = [];
 
+  // Load requests waiting for a Super Admin decision.
   ngOnInit(): void {
     this.loadRequests();
   }
@@ -31,6 +32,7 @@ export class AdminRequests implements OnInit {
     return this.requests.find((request) => request.id === this.rejectionRequestId);
   }
 
+  // Convert each system request type into a readable label.
   protected getRequestType(request: any): string {
     switch (request.type) {
       case 'groupDeletion':
@@ -42,6 +44,7 @@ export class AdminRequests implements OnInit {
     }
   }
 
+  // Describe the group or user affected by one request.
   protected getRequestTarget(request: any): string {
     switch (request.type) {
       case 'groupDeletion':
@@ -53,6 +56,7 @@ export class AdminRequests implements OnInit {
     }
   }
 
+  // Approve one request after locating it in the current inbox.
   protected approveRequest(requestId: string): void {
     const request = this.requests.find((item) => item.id === requestId);
     if (!request) {
@@ -76,6 +80,7 @@ export class AdminRequests implements OnInit {
     this.sendDecision(request, 'approved');
   }
 
+  // Open the rejection form for one request.
   protected beginRejection(requestId: string): void {
     this.rejectionRequestId = requestId;
     this.rejectionReason = '';
@@ -84,6 +89,7 @@ export class AdminRequests implements OnInit {
     this.rejectionError = '';
   }
 
+  // Validate the rejection reason and send the decision.
   protected confirmRejection(): void {
     if (!this.rejectionReason.trim()) {
       this.rejectionError = 'A rejection reason is required.';
@@ -96,12 +102,14 @@ export class AdminRequests implements OnInit {
     }
   }
 
+  // Close and clear the rejection form.
   protected closeRejection(): void {
     this.rejectionRequestId = null;
     this.rejectionReason = '';
     this.rejectionError = '';
   }
 
+  // Refresh the Super Admin's pending request inbox.
   private loadRequests(): void {
     const currentUser = this.auth.getCurrentUser();
 
@@ -131,6 +139,7 @@ export class AdminRequests implements OnInit {
     });
   }
 
+  // Send an approval or rejection and refresh the dashboard data.
   private sendDecision(request: any, decision: string, rejectionReason = ''): void {
     const currentUser = this.auth.getCurrentUser();
 

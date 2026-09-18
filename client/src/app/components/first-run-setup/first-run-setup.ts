@@ -27,6 +27,7 @@ export class FirstRunSetup implements OnInit {
     confirmPassword: '',
   };
 
+  // Check whether first-run setup is still available.
   ngOnInit(): void {
     this.auth.getBootstrapStatus().subscribe({
       next: (response: any) => {
@@ -44,6 +45,7 @@ export class FirstRunSetup implements OnInit {
     });
   }
 
+  // Validate and submit the first Super Admin form.
   protected submitSetup(): void {
     this.setupMessage = '';
     this.setupError = '';

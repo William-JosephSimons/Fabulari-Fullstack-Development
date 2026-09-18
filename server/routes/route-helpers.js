@@ -1,10 +1,12 @@
 import { randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
 
+// Request values pass through this helper before validation or database queries.
 function ensureText(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+// Check the date format and the real calendar date because JavaScript adjusts invalid dates.
 function isValidDate(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return false;
@@ -21,6 +23,7 @@ function isValidDate(value) {
   );
 }
 
+// Calculate age from birthdate each time so a stored age cannot become stale.
 function calculateAge(birthdate) {
   if (!isValidDate(birthdate)) {
     return null;
@@ -40,11 +43,13 @@ function calculateAge(birthdate) {
   return age;
 }
 
+// Group access checks use the same current-age calculation throughout the server.
 function meetsMinimumAge(user, minimumAge) {
   const age = calculateAge(user.birthdate);
   return age !== null && age >= minimumAge;
 }
 
+// Copy only the account fields accepted from setup and registration forms.
 function getUserDetails(body = {}) {
   return {
     username: ensureText(body.username),
@@ -57,6 +62,7 @@ function getUserDetails(body = {}) {
   };
 }
 
+// Check all fields required to create an account.
 function validateUserDetails(details) {
   if (
     !details.username ||
@@ -89,6 +95,7 @@ function validateUserDetails(details) {
   return null;
 }
 
+// Copy only the fields a user can change on their own profile.
 function getProfileDetails(body = {}) {
   return {
     username: ensureText(body.username),
@@ -98,6 +105,7 @@ function getProfileDetails(body = {}) {
   };
 }
 
+// Check the editable profile values before saving them.
 function validateProfileDetails(details) {
   if (
     !details.username ||
@@ -120,6 +128,7 @@ function validateProfileDetails(details) {
   return null;
 }
 
+// Reject a username or email that is already used or permanently banned.
 async function findAccountConflict(database, details) {
   const users = database.collection("users");
   // Usernames are unique even when the letter case is different.
@@ -148,6 +157,7 @@ async function findAccountConflict(database, details) {
   return null;
 }
 
+// Build the stored account and hash its password before a route inserts it.
 async function createUser(details, systemRole) {
   const now = new Date().toISOString();
 
@@ -167,6 +177,7 @@ async function createUser(details, systemRole) {
   };
 }
 
+// Remove database-only and password fields before returning an account.
 function safeUser(user) {
   // Password hashes are never sent over the network
   const userSafe = { ...user };
@@ -175,6 +186,7 @@ function safeUser(user) {
   return userSafe;
 }
 
+// Return only the account details needed for group administration.
 function safeGroupUser(user, isAdmin = false) {
   return {
     id: user.id,
@@ -187,6 +199,7 @@ function safeGroupUser(user, isAdmin = false) {
   };
 }
 
+// Build audit records in one consistent format.
 function createAuditLog(details) {
   return {
     id: `audit-${randomUUID()}`,
@@ -200,6 +213,7 @@ function createAuditLog(details) {
   };
 }
 
+// Request-detail helpers prevent route handlers from saving unrelated body fields.
 function getGroupRequestDetails(body = {}) {
   return {
     title: ensureText(body.title),
@@ -210,6 +224,7 @@ function getGroupRequestDetails(body = {}) {
   };
 }
 
+// Check all fields stored in a proposed group request.
 function validateGroupRequest(details) {
   if (
     !details.title ||
@@ -235,6 +250,7 @@ function validateGroupRequest(details) {
   return null;
 }
 
+// Copy the group fields an existing Group Admin can edit.
 function getGroupSettingsDetails(body = {}) {
   return {
     title: ensureText(body.title),
@@ -244,6 +260,7 @@ function getGroupSettingsDetails(body = {}) {
   };
 }
 
+// Check direct group-setting changes before saving them.
 function validateGroupSettings(details) {
   if (
     !details.title ||
@@ -268,6 +285,7 @@ function validateGroupSettings(details) {
   return null;
 }
 
+// Copy the decision and optional rejection reason from a request body.
 function getRequestDecisionDetails(body = {}) {
   return {
     decision: ensureText(body.decision).toLowerCase(),
@@ -275,18 +293,21 @@ function getRequestDecisionDetails(body = {}) {
   };
 }
 
+// Copy the reason supplied with a membership request.
 function getMembershipRequestDetails(body = {}) {
   return {
     reason: ensureText(body.reason),
   };
 }
 
+// Copy the member ID used for promotion.
 function getAdminChangeDetails(body = {}) {
   return {
     targetUserId: ensureText(body.targetUserId),
   };
 }
 
+// Copy the editable name and description of a room.
 function getRoomDetails(body = {}) {
   return {
     name: ensureText(body.name),
@@ -294,6 +315,7 @@ function getRoomDetails(body = {}) {
   };
 }
 
+// Require both fields used by direct room maintenance.
 function validateRoomDetails(details) {
   if (!details.name || !details.description) {
     return "A room name and description are required.";
@@ -302,6 +324,7 @@ function validateRoomDetails(details) {
   return null;
 }
 
+// Copy the room details and reason stored in a member proposal.
 function getRoomProposalDetails(body = {}) {
   return {
     name: ensureText(body.name),
@@ -310,6 +333,7 @@ function getRoomProposalDetails(body = {}) {
   };
 }
 
+// Check all fields required for a room proposal.
 function validateRoomProposal(details) {
   if (
     !details.name ||
@@ -322,6 +346,7 @@ function validateRoomProposal(details) {
   return null;
 }
 
+// Copy the target and reason used in a group-ban report.
 function getGroupBanReportDetails(body = {}) {
   return {
     targetUserId: ensureText(body.targetUserId),
@@ -329,12 +354,14 @@ function getGroupBanReportDetails(body = {}) {
   };
 }
 
+// Copy the reason supplied with a group-deletion request.
 function getGroupDeletionRequestDetails(body = {}) {
   return {
     reason: ensureText(body.reason),
   };
 }
 
+// Copy the target and reason used in a system hard-ban request.
 function getSystemBanRequestDetails(body = {}) {
   return {
     targetUserId: ensureText(body.targetUserId),
@@ -342,6 +369,7 @@ function getSystemBanRequestDetails(body = {}) {
   };
 }
 
+// Describe the action available to one user when Angular displays the group list.
 function getGroupMembershipStatus(data, group, user) {
   if (user.systemRole === "superAdmin") {
     return "readOnly";

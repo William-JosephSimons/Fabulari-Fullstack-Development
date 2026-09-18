@@ -19,6 +19,7 @@ export class Requests implements OnInit {
   protected requestError = '';
   protected personalRequests: any[] = [];
 
+  // Load the current user's pending and rejected request history.
   ngOnInit(): void {
     this.loadRequests();
   }
@@ -27,6 +28,7 @@ export class Requests implements OnInit {
     return this.personalRequests.find((request) => request.id === this.selectedPersonalRequestId);
   }
 
+  // Convert a stored request type into a readable label.
   protected getRequestType(type: string): string {
     switch (type) {
       case 'groupCreation':
@@ -44,6 +46,7 @@ export class Requests implements OnInit {
     }
   }
 
+  // Describe the group or account affected by one request.
   protected getRequestSummary(request: any): string {
     // Each request type stores its main subject in a different field.
     switch (request.type) {
@@ -61,10 +64,12 @@ export class Requests implements OnInit {
     }
   }
 
+  // Capitalise the stored status for display.
   protected formatStatus(status: string): string {
     return status.charAt(0).toUpperCase() + status.slice(1);
   }
 
+  // Format an ISO date using the browser's local date style.
   protected formatDate(date: string): string {
     return new Date(date).toLocaleDateString('en-AU', {
       day: 'numeric',
@@ -73,6 +78,7 @@ export class Requests implements OnInit {
     });
   }
 
+  // Request the current user's history and update the page state.
   private loadRequests(): void {
     const currentUser = this.auth.getCurrentUser();
 

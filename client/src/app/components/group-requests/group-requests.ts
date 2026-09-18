@@ -28,6 +28,7 @@ export class GroupRequests implements OnInit {
   protected isLoading = true;
   protected requests: any[] = [];
 
+  // Read the group ID and load its pending request inbox.
   ngOnInit(): void {
     this.loadRequests();
   }
@@ -36,6 +37,7 @@ export class GroupRequests implements OnInit {
     return this.requests.find((request) => request.id === this.rejectionRequestId);
   }
 
+  // Convert each group request type into a readable label.
   protected getRequestType(request: any): string {
     switch (request.type) {
       case 'roomProposal':
@@ -47,6 +49,7 @@ export class GroupRequests implements OnInit {
     }
   }
 
+  // Approve one request after locating it in the current inbox.
   protected approveRequest(requestId: string): void {
     const request = this.requests.find((item) => item.id === requestId);
     if (!request) {
@@ -56,6 +59,7 @@ export class GroupRequests implements OnInit {
     this.sendDecision(request, 'approved');
   }
 
+  // Open the rejection form for one request.
   protected beginRejection(requestId: string): void {
     this.rejectionRequestId = requestId;
     this.rejectionReason = '';
@@ -64,6 +68,7 @@ export class GroupRequests implements OnInit {
     this.decisionError = '';
   }
 
+  // Validate the rejection reason and send the decision.
   protected confirmRejection(): void {
     if (!this.rejectionReason.trim()) {
       this.decisionError = 'A rejection reason is required.';
@@ -76,12 +81,14 @@ export class GroupRequests implements OnInit {
     }
   }
 
+  // Close and clear the rejection form.
   protected closeRejection(): void {
     this.rejectionRequestId = null;
     this.rejectionReason = '';
     this.decisionError = '';
   }
 
+  // Refresh pending requests for the selected group.
   private loadRequests(): void {
     const currentUser = this.auth.getCurrentUser();
 
@@ -116,6 +123,7 @@ export class GroupRequests implements OnInit {
     });
   }
 
+  // Send an approval or rejection and update the inbox afterward.
   private sendDecision(request: any, decision: string, rejectionReason = ''): void {
     const currentUser = this.auth.getCurrentUser();
 
@@ -154,6 +162,7 @@ export class GroupRequests implements OnInit {
       });
   }
 
+  // Remove a decided request from the local pending list.
   private removeRequest(requestId: string): void {
     this.requests = this.requests.filter((request) => request.id !== requestId);
   }

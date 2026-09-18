@@ -12,6 +12,7 @@ export class App implements OnInit {
   private readonly auth = inject(Auth);
   private readonly router = inject(Router);
 
+  // Validate any stored login with the server when Angular starts.
   ngOnInit(): void {
     const currentUser = this.auth.getCurrentUser();
     const token = this.auth.getAuthToken();

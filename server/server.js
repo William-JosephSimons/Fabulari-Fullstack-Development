@@ -26,6 +26,7 @@ app.use("/uploads", express.static(uploadsFolder));
 routes(app, io);
 connectSockets(io);
 
+// Connect MongoDB and create its indexes before accepting requests.
 async function startServer() {
   try {
     // Do not accept requests until MongoDB and its indexes are ready.
