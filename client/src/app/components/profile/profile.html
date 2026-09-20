@@ -187,6 +187,54 @@
           </button>
         </form>
       }
+
+      <hr class="my-4" />
+
+      <section aria-labelledby="delete-account-heading">
+        <h2 id="delete-account-heading" class="h4">Delete account</h2>
+
+        @if (!showDeleteConfirmation) {
+          <p class="text-muted">Permanently remove your account and its related data.</p>
+          <button
+            class="btn btn-outline-danger"
+            type="button"
+            [disabled]="profileLoading"
+            (click)="beginAccountDeletion()"
+          >
+            Delete account
+          </button>
+        } @else {
+          <div class="border border-danger rounded p-3">
+            <p class="mb-3">
+              This cannot be undone. If you are the final administrator of a group, you must
+              promote another member first.
+            </p>
+
+            @if (accountDeleteError) {
+              <div class="alert alert-danger" role="alert">{{ accountDeleteError }}</div>
+            }
+
+            <div class="d-flex flex-wrap gap-2">
+              <button
+                class="btn btn-danger"
+                type="button"
+                [disabled]="accountDeleting"
+                (click)="deleteAccount()"
+              >
+                {{ accountDeleting ? 'Deleting...' : 'Delete permanently' }}
+              </button>
+              <button
+                class="btn btn-outline-dark"
+                type="button"
+                [disabled]="accountDeleting"
+                (click)="cancelAccountDeletion()"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        }
+      </section>
     </div>
   </section>
 </main>

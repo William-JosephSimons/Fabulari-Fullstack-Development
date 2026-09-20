@@ -88,6 +88,13 @@ export class Auth {
     });
   }
 
+  // Permanently delete the authenticated user's account.
+  deleteAccount() {
+    return this.http.delete(`${this.serverUrl}/api/profile`, {
+      headers: this.getAuthHeaders(),
+    });
+  }
+
   // Send one avatar file using the multipart field expected by Multer.
   uploadProfileImage(file: File) {
     const formData = new FormData();

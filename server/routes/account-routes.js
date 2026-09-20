@@ -6,7 +6,7 @@ import {
   loginRequiredMiddleware,
 } from "../authentication.js";
 import { getDatabase } from "../database.js";
-import { removeAvatar, uploadAvatar } from "../upload.js";
+import { removeAvatar, removeChatImage, uploadAvatar } from "../upload.js";
 import {
   ensureText,
   getUserDetails,
@@ -20,7 +20,7 @@ import {
 } from "./route-helpers.js";
 
 // Register setup, login, session and private-profile routes.
-function accountRoutes(app) {
+function accountRoutes(app, io) {
   // Tell Angular whether the first Super Admin still needs to be created.
   app.get("/api/bootstrap-status", async (req, res) => {
     const database = getDatabase();
@@ -383,6 +383,114 @@ function accountRoutes(app) {
     return res.status(200).json({
       valid: true,
       message: "Password changed successfully.",
+    });
+  });
+
+  // Delete the current user's account and its related private data.
+  app.delete("/api/profile", async (req, res) => {
+    const user = await requireLogin(req, res);
+
+    if (!user) {
+      return;
+    }
+
+    if (user.systemRole === "superAdmin") {
+      return res.status(403).json({
+        valid: false,
+        message: "The Super Admin account cannot be deleted.",
+      });
+    }
+
+    const database = getDatabase();
+    const administeredGroups = await database
+      .collection("groups")
+      .find({ adminIds: user.id }, { projection: { _id: 0 } })
+      .toArray();
+    const groupWithoutReplacement = administeredGroups.find((group) => {
+      return group.adminIds.length === 1;
+    });
+
+    if (groupWithoutReplacement) {
+      return res.status(409).json({
+        valid: false,
+        message: `Promote another administrator in ${groupWithoutReplacement.title} before deleting your account.`,
+      });
+    }
+
+    const affectedGroups = await database
+      .collection("groups")
+      .find(
+        {
+          $or: [{ memberIds: user.id }, { adminIds: user.id }],
+        },
+        { projection: { _id: 0 } },
+      )
+      .toArray();
+    const userMessages = await database
+      .collection("messages")
+      .find({ userId: user.id })
+      .toArray();
+    const deletedAt = new Date().toISOString();
+
+    for (const group of affectedGroups) {
+      group.memberIds = group.memberIds.filter((userId) => userId !== user.id);
+      group.adminIds = group.adminIds.filter((userId) => userId !== user.id);
+
+      await database.collection("groups").updateOne(
+        { id: group.id },
+        {
+          $set: {
+            memberIds: group.memberIds,
+            adminIds: group.adminIds,
+            updatedAt: deletedAt,
+          },
+        },
+      );
+    }
+
+    await database.collection("requests").deleteMany({
+      $or: [{ requesterId: user.id }, { targetUserId: user.id }],
+    });
+    await database
+      .collection("groupBans")
+      .deleteMany({ bannedUserId: user.id });
+    await database.collection("messages").deleteMany({ userId: user.id });
+    await database.collection("authSessions").deleteMany({ userId: user.id });
+    await database.collection("users").deleteOne({ id: user.id });
+    await database.collection("auditLogs").insertOne(
+      createAuditLog({
+        actorId: user.id,
+        actionType: "accountDeleted",
+        entityType: "user",
+        entityId: user.id,
+        summary: `${user.username} deleted their account.`,
+        createdAt: deletedAt,
+      }),
+    );
+
+    removeAvatar(user.avatarUrl);
+
+    for (const message of userMessages) {
+      if (message.type === "image") {
+        removeChatImage(message.imageUrl);
+      }
+
+      io.to(`room:${message.roomId}`).emit("message:deleted", {
+        roomId: message.roomId,
+        messageId: message.id,
+      });
+    }
+
+    // Close every live-chat connection belonging to the deleted account.
+    for (const socket of io.sockets.sockets.values()) {
+      if (socket.data.userId === user.id) {
+        socket.disconnect(true);
+      }
+    }
+
+    return res.status(200).json({
+      valid: true,
+      message: "Your account has been deleted.",
     });
   });
 

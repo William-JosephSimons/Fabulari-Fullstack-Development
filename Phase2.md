@@ -20,15 +20,15 @@ added in Phase 2.
 
 ### 1.1 Phase 2 additions
 
-| Area                | Phase 1 position                       | Phase 2 work                                                                                 |
-| ------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Storage             | JSON file persistence                  | Native MongoDB driver, nine collections, indexes, a repeatable seed and restart persistence. |
-| Account data        | Stored age and local profile changes   | Birthdates, persistent profiles, verified password changes and profile image uploads.        |
-| Authentication      | Current-user data in local storage     | Opaque MongoDB sessions used by REST and Socket.IO, plus logout and session restoration.     |
-| Chat                | Static visual prototype                | Room messages, images, history, presence, notices, live deletion and Angular signals.        |
-| Destructive actions | Basic JSON-backed request decisions    | Complete data, file and session cleanup plus immediate socket disconnection.                 |
-| Larger lists        | Full lists loaded in one request       | Server search, paging, totals and Angular load-more controls.                                |
-| Accessibility       | Responsive forms and labelled controls | Connection status, and text bar focus                                                        |
+| Area                | Phase 1 position                       | Phase 2 work                                                                                  |
+| ------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Storage             | JSON file persistence                  | Native MongoDB driver, nine collections, indexes, a repeatable seed and restart persistence.  |
+| Account data        | Stored age and local profile changes   | Birthdates, persistent profiles, verified password changes, profile images and self-deletion. |
+| Authentication      | Current-user data in local storage     | Opaque MongoDB sessions used by REST and Socket.IO, plus logout and session restoration.      |
+| Chat                | Static visual prototype                | Room messages, images, history, presence, notices, live deletion and Angular signals.         |
+| Destructive actions | Basic JSON-backed request decisions    | Complete data, file and session cleanup plus immediate socket disconnection.                  |
+| Larger lists        | Full lists loaded in one request       | Server search, paging, totals and Angular load-more controls.                                 |
+| Accessibility       | Responsive forms and labelled controls | Connection status, and text bar focus                                                         |
 
 ### 1.2 Final requirements
 
@@ -43,40 +43,41 @@ added in Phase 2.
 | FR-07 | P1 + P2 | Private profile         | A user reads and edits only their own profile. Email stays fixed, and usernames remain unique.                                                          |
 | FR-08 | P2      | Password change         | A user supplies their current password before replacing it with a new bcrypt password hash.                                                             |
 | FR-09 | P2      | Profile image           | A user uploads a PNG, JPEG or GIF profile image smaller than 2 MB. The previous uploaded avatar is removed.                                             |
-| FR-10 | P1 + P2 | Group browsing          | Every authenticated user can browse the available groups, including groups they cannot join because of age or a ban.                                    |
-| FR-11 | P1 + P2 | Group creation          | A user requests a group with a title, description, minimum age and colour. Only Super Admin decides the request.                                        |
-| FR-12 | P1 + P2 | Initial Group Admin     | Approval creates the group and gives its requester Group Admin access for that group.                                                                   |
-| FR-13 | P1 + P2 | Membership              | A user requests their own group membership. A Group Admin approves or rejects the request after age and ban checks.                                     |
-| FR-14 | P1      | No invitations          | There is no invitation operation. Every user must request their own membership.                                                                         |
-| FR-15 | P1 + P2 | Group Admin access      | Group Admin is derived from a group's `adminIds` and is not a third system role. A user can administer several groups.                                  |
-| FR-16 | P1 + P2 | Admin continuity        | A Group Admin can promote an eligible member or demote another admin, but every group must retain at least one admin.                                   |
-| FR-17 | P1 + P2 | Group settings          | A Group Admin directly edits the title, description, minimum age and colour of a group they administer.                                                 |
-| FR-18 | P1 + P2 | Age changes             | Raising a minimum age removes members who are now too young and disconnects them from that group's live rooms.                                          |
-| FR-19 | P1 + P2 | Room management         | A Group Admin directly creates, edits and deletes rooms. Room names are unique within their group.                                                      |
-| FR-20 | P1 + P2 | Room proposals          | A group member proposes a room for a Group Admin to approve or reject. A rejection requires a reason.                                                   |
-| FR-21 | P1 + P2 | Room access             | Membership gives access to every current and future room in the group. Rooms inherit the group's colour and age rule.                                   |
-| FR-22 | P1 + P2 | Request records         | Requests store their type, requester, targets, reason, status, decision details and timestamps.                                                         |
-| FR-23 | P1 + P2 | Request history         | Users see their pending and rejected requests. Pending requests cannot be cancelled.                                                                    |
-| FR-24 | P1      | Rejections              | Every rejected request records and displays a reason.                                                                                                   |
-| FR-25 | P1 + P2 | Group-ban report        | A permanent group ban starts with a report and must be approved by a different Group Admin.                                                             |
-| FR-26 | P1 + P2 | Permanent group ban     | Approval removes the account from the group, disconnects its room sockets and permanently prevents it from rejoining.                                   |
-| FR-27 | P1 + P2 | Group deletion          | A Group Admin requests deletion and only Super Admin decides it. Approval removes related rooms, messages, bans and requests.                           |
-| FR-28 | P1 + P2 | System hard ban         | A Group Admin requests a system hard ban and only Super Admin decides it.                                                                               |
-| FR-29 | P2      | Hard-ban cleanup        | Approval removes the account, sessions, memberships, avatars, retained messages and unresolved requests unless it would leave a group without an admin. |
-| FR-30 | P1 + P2 | Banned email            | A minimal permanent record keeps the normalized email so the deleted account cannot register again.                                                     |
-| FR-31 | P1 + P2 | Scoped user information | Group Admin user lists contain only the safe details needed to manage that group.                                                                       |
-| FR-32 | P1 + P2 | System administration   | Super Admin views safe users, permanent system bans, pending system requests and filtered audit logs.                                                   |
-| FR-33 | P1 + P2 | Audit logs              | Administrative and data-changing actions create audit records. Ordinary message sends do not.                                                           |
-| FR-34 | P2      | Text chat               | Eligible members send text messages of up to 2,000 characters to one Socket.IO room.                                                                    |
-| FR-35 | P2      | Image chat              | Eligible members upload PNG, JPEG or GIF chat images smaller than 2 MB.                                                                                 |
-| FR-36 | P2      | Presence                | Each room shows a unique participant list plus first-connection join and final-connection leave notices.                                                |
-| FR-37 | P2      | Chat identity           | The server supplies message sender details and current-group Admin badges instead of trusting client-provided identity.                                 |
-| FR-38 | P2      | Message history         | MongoDB retains the newest five messages per room and returns them oldest-to-newest for display.                                                        |
-| FR-39 | P2      | Message deletion        | Only the creator deletes a message. The server broadcasts the deletion and removes an uploaded image where applicable.                                  |
-| FR-40 | P2      | Persistent storage      | Users, groups, rooms, requests, bans, audit logs, messages and login sessions persist in MongoDB.                                                       |
-| FR-41 | P2      | Larger lists            | User, system-ban and audit-log routes support server search, paging, totals and incremental loading.                                                    |
-| FR-42 | P1 + P2 | Validation              | Angular and the server validate important fields and return messages that explain how the user can recover.                                             |
-| FR-43 | P1 + P2 | Responsive interface    | The interface remains usable at desktop and tablet widths.                                                                                              |
+| FR-10 | P1 + P2 | Account deletion        | A user can permanently delete their own account unless they are the final Group Admin of a group. Self-deletion does not ban the email.                 |
+| FR-11 | P1 + P2 | Group browsing          | Every authenticated user can browse the available groups, including groups they cannot join because of age or a ban.                                    |
+| FR-12 | P1 + P2 | Group creation          | A user requests a group with a title, description, minimum age and colour. Only Super Admin decides the request.                                        |
+| FR-13 | P1 + P2 | Initial Group Admin     | Approval creates the group and gives its requester Group Admin access for that group.                                                                   |
+| FR-14 | P1 + P2 | Membership              | A user requests their own group membership. A Group Admin approves or rejects the request after age and ban checks.                                     |
+| FR-15 | P1      | No invitations          | There is no invitation operation. Every user must request their own membership.                                                                         |
+| FR-16 | P1 + P2 | Group Admin access      | Group Admin is derived from a group's `adminIds` and is not a third system role. A user can administer several groups.                                  |
+| FR-17 | P1 + P2 | Admin continuity        | A Group Admin can promote an eligible member or demote another admin, but every group must retain at least one admin.                                   |
+| FR-18 | P1 + P2 | Group settings          | A Group Admin directly edits the title, description, minimum age and colour of a group they administer.                                                 |
+| FR-19 | P1 + P2 | Age changes             | Raising a minimum age removes members who are now too young and disconnects them from that group's live rooms.                                          |
+| FR-20 | P1 + P2 | Room management         | A Group Admin directly creates, edits and deletes rooms. Room names are unique within their group.                                                      |
+| FR-21 | P1 + P2 | Room proposals          | A group member proposes a room for a Group Admin to approve or reject. A rejection requires a reason.                                                   |
+| FR-22 | P1 + P2 | Room access             | Membership gives access to every current and future room in the group. Rooms inherit the group's colour and age rule.                                   |
+| FR-23 | P1 + P2 | Request records         | Requests store their type, requester, targets, reason, status, decision details and timestamps.                                                         |
+| FR-24 | P1 + P2 | Request history         | Users see their pending and rejected requests. Pending requests cannot be cancelled.                                                                    |
+| FR-25 | P1      | Rejections              | Every rejected request records and displays a reason.                                                                                                   |
+| FR-26 | P1 + P2 | Group-ban report        | A permanent group ban starts with a report and must be approved by a different Group Admin.                                                             |
+| FR-27 | P1 + P2 | Permanent group ban     | Approval removes the account from the group, disconnects its room sockets and permanently prevents it from rejoining.                                   |
+| FR-28 | P1 + P2 | Group deletion          | A Group Admin requests deletion and only Super Admin decides it. Approval removes related rooms, messages, bans and requests.                           |
+| FR-29 | P1 + P2 | System hard ban         | A Group Admin requests a system hard ban and only Super Admin decides it.                                                                               |
+| FR-30 | P2      | Hard-ban cleanup        | Approval removes the account, sessions, memberships, avatars, retained messages and unresolved requests unless it would leave a group without an admin. |
+| FR-31 | P1 + P2 | Banned email            | A minimal permanent record keeps the normalized email so the deleted account cannot register again.                                                     |
+| FR-32 | P1 + P2 | Scoped user information | Group Admin user lists contain only the safe details needed to manage that group.                                                                       |
+| FR-33 | P1 + P2 | System administration   | Super Admin views safe users, permanent system bans, pending system requests and filtered audit logs.                                                   |
+| FR-34 | P1 + P2 | Audit logs              | Administrative and data-changing actions create audit records. Ordinary message sends do not.                                                           |
+| FR-35 | P2      | Text chat               | Eligible members send text messages of up to 2,000 characters to one Socket.IO room.                                                                    |
+| FR-36 | P2      | Image chat              | Eligible members upload PNG, JPEG or GIF chat images smaller than 2 MB.                                                                                 |
+| FR-37 | P2      | Presence                | Each room shows a unique participant list plus first-connection join and final-connection leave notices.                                                |
+| FR-38 | P2      | Chat identity           | The server supplies message sender details and current-group Admin badges instead of trusting client-provided identity.                                 |
+| FR-39 | P2      | Message history         | MongoDB retains the newest five messages per room and returns them oldest-to-newest for display.                                                        |
+| FR-40 | P2      | Message deletion        | Only the creator deletes a message. The server broadcasts the deletion and removes an uploaded image where applicable.                                  |
+| FR-41 | P2      | Persistent storage      | Users, groups, rooms, requests, bans, audit logs, messages and login sessions persist in MongoDB.                                                       |
+| FR-42 | P2      | Larger lists            | User, system-ban and audit-log routes support server search, paging, totals and incremental loading.                                                    |
+| FR-43 | P1 + P2 | Validation              | Angular and the server validate important fields and return messages that explain how the user can recover.                                             |
+| FR-44 | P1 + P2 | Responsive interface    | The interface remains usable at desktop and tablet widths.                                                                                              |
 
 ### 1.3 Roles and fixed decisions
 
@@ -167,6 +168,7 @@ Account creation uses the following JSON fields:
 | P2      | `GET /api/session`          | Logged in   | Bearer token                                     | `200` with safe `user`. Removes the session and returns `401` if its account no longer exists.                                         |
 | P1 + P2 | `GET /api/profile`          | Logged in   | Bearer token                                     | `200` with the current safe `user`.                                                                                                    |
 | P1 + P2 | `PUT /api/profile`          | Logged in   | `username`, `firstName`, `lastName`, `birthdate` | `200` with `message` and updated safe `user`. Updates MongoDB and writes a `profileUpdated` audit record.                              |
+| P1 + P2 | `DELETE /api/profile`       | Logged in   | Bearer token                                     | `200` with `message`. Deletes the user, sessions, memberships, messages, files, bans and requests, then writes an audit record.        |
 | P2      | `PUT /api/profile/password` | Logged in   | `currentPassword`, `newPassword`                 | `200` with `message`. Verifies the current password, stores a new bcrypt hash and writes a `passwordChanged` audit record.             |
 | P2      | `POST /api/profile/avatar`  | Logged in   | Multipart field named `avatar`                   | `200` with `message` and updated safe `user`. Stores the file, updates `avatarUrl`, removes the previous file and writes an audit log. |
 
@@ -175,7 +177,8 @@ until setup is complete, when a username or email already exists, or when the
 email has been hard-banned. Account and profile validation failures return
 `400`. Incorrect login details and invalid sessions return `401`. Profile
 updates return `400` if an email change is attempted and `409` when another
-account already uses the username.
+account already uses the username. Account deletion returns `403` for the Super
+Admin and `409` when the user is a group's final administrator.
 
 Password changes return `400` for missing values or a new password shorter
 than 8 characters. An incorrect current password returns `401`. Avatar uploads
@@ -432,7 +435,7 @@ layouts began in Phase 1 and were connected to MongoDB or live data in Phase 2.
 | `/groups/:groupId/requests`      | `GroupRequests`       | P1 + P2 | Displays and decides the selected group's membership, room and ban requests.                     |
 | `/groups/:groupId/rooms/:roomId` | `Chat`                | P1 + P2 | Replaces the Phase 1 mock chat with retained messages, live presence and text or image messages. |
 | `/requests`                      | `Requests`            | P1 + P2 | Displays the current user's pending and rejected request history.                                |
-| `/profile`                       | `Profile`             | P1 + P2 | Loads and saves the private profile, password and profile image.                                 |
+| `/profile`                       | `Profile`             | P1 + P2 | Loads and saves the private profile, password and profile image, and confirms account deletion.  |
 | `/admin/requests`                | `AdminRequests`       | P1 + P2 | Displays and decides pending group creation, group deletion and system-ban requests.             |
 | `/admin/users`                   | `AdminUsers`          | P1 + P2 | Searches and incrementally loads safe users and permanent system bans.                           |
 | `/admin/audit-logs`              | `AuditLogs`           | P1 + P2 | Searches, filters and incrementally loads administrative audit records.                          |
@@ -454,14 +457,14 @@ dashboards because Group Admin is an attribute of an ordinary user account.
 
 ### 3.3 Services
 
-| Service   | Phase   | Responsibility                                                                                                           |
-| --------- | ------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `Auth`    | P1 + P2 | Sends setup, registration, login, logout, session, profile, password and avatar requests. It also manages local storage. |
-| `Group`   | P1 + P2 | Sends group, member, admin, room, proposal, moderation and message HTTP requests.                                        |
-| `Request` | P1 + P2 | Loads personal, group and Super Admin inboxes and sends request decisions.                                               |
-| `Admin`   | P1 + P2 | Loads the Super Admin dashboard plus paged user and system-ban records.                                                  |
-| `Audit`   | P1 + P2 | Sends action, date, search and paging values when loading audit logs.                                                    |
-| `Socket`  | P2      | Connects with the stored token, emits room/message events and exposes incoming Socket.IO events as Observables.          |
+| Service   | Phase   | Responsibility                                                                                                                             |
+| --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Auth`    | P1 + P2 | Sends setup, registration, login, logout, session, profile, password, avatar and account-deletion requests. It also manages local storage. |
+| `Group`   | P1 + P2 | Sends group, member, admin, room, proposal, moderation and message HTTP requests.                                                          |
+| `Request` | P1 + P2 | Loads personal, group and Super Admin inboxes and sends request decisions.                                                                 |
+| `Admin`   | P1 + P2 | Loads the Super Admin dashboard plus paged user and system-ban records.                                                                    |
+| `Audit`   | P1 + P2 | Sends action, date, search and paging values when loading audit logs.                                                                      |
+| `Socket`  | P2      | Connects with the stored token, emits room/message events and exposes incoming Socket.IO events as Observables.                            |
 
 Every HTTP service uses Angular `HttpClient`. Protected calls obtain the bearer
 header from `Auth`, which keeps token handling in one place. Image methods use

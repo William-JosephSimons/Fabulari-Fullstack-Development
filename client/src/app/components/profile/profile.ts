@@ -1,5 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { MainNavigation } from '../main-navigation/main-navigation';
 import { Auth } from '../../services/auth/auth';
 
@@ -11,6 +12,7 @@ import { Auth } from '../../services/auth/auth';
 })
 export class Profile implements OnInit {
   private readonly auth = inject(Auth);
+  private readonly router = inject(Router);
 
   protected profileMessage = '';
   protected profileError = '';
@@ -21,6 +23,9 @@ export class Profile implements OnInit {
   protected passwordSaving = false;
   protected passwordMessage = '';
   protected passwordError = '';
+  protected showDeleteConfirmation = false;
+  protected accountDeleting = false;
+  protected accountDeleteError = '';
   protected email = '';
   protected avatarUrl = '';
   protected profile = {
@@ -212,6 +217,43 @@ export class Profile implements OnInit {
           this.passwordError = error.error?.message || 'Unable to contact the server.';
         },
       });
+  }
+
+  // Show the warning before allowing permanent account deletion.
+  protected beginAccountDeletion(): void {
+    this.showDeleteConfirmation = true;
+    this.accountDeleteError = '';
+  }
+
+  // Hide the account-deletion warning without changing any data.
+  protected cancelAccountDeletion(): void {
+    this.showDeleteConfirmation = false;
+    this.accountDeleteError = '';
+  }
+
+  // Delete the account, clear its local login and return to the login page.
+  protected deleteAccount(): void {
+    this.accountDeleteError = '';
+    this.accountDeleting = true;
+
+    this.auth.deleteAccount().subscribe({
+      next: (response: any) => {
+        this.accountDeleting = false;
+
+        if (!response.valid) {
+          this.accountDeleteError = response.message || 'Unable to delete your account.';
+          return;
+        }
+
+        this.auth.clearLogin();
+        this.router.navigate(['/login']);
+      },
+      error: (error) => {
+        this.accountDeleting = false;
+        this.accountDeleteError =
+          error.error?.message || 'Unable to delete your account. Please try again.';
+      },
+    });
   }
 
   // Copy a safe user response into the displayed profile fields.
