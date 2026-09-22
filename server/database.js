@@ -1,12 +1,12 @@
 import { MongoClient } from "mongodb";
 
 const mongoUrl = "mongodb://localhost:27017";
-const databaseName = "fabulari";
+const defaultDatabaseName = "fabulari";
 const client = new MongoClient(mongoUrl);
 let database;
 
-// Open one shared connection before the server starts accepting requests.
-async function connectDatabase() {
+// Open one shared connection and select the requested database.
+async function connectDatabase(databaseName = defaultDatabaseName) {
   await client.connect();
   database = client.db(databaseName);
   await database.command({ ping: 1 });
