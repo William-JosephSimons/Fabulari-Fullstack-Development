@@ -522,5 +522,84 @@ changing the navigation or main content shown in those designs.
 
 ## 5. Testing
 
-Testing tools and automated-test results will be documented after the Week 10
-testing material is taught and the tests have been written.
+The suites contain 11 server integration tests and 10 Angular unit tests. Both
+suites pass on my local machine.
+
+### 5.1 Tools and method
+
+The server tests use Mocha to run the tests, Chai for assertions and Chai HTTP
+to send requests to the real Express routes. They use the local MongoDB
+`fabulari_test` database, not the development `fabulari` database. Before each
+test, a small set of users, groups, rooms, messages and sessions is inserted.
+The test helper clears the test collections before the next test and after the
+suite finishes. It checks the database name before clearing anything.
+
+The server tests check HTTP responses and, where relevant, the records saved in
+MongoDB. A small fake Socket.IO object records broadcasts made by HTTP routes.
+This checks that a route requested the right broadcast; it does not test a live
+socket connection.
+
+The Auth service tests use Angular's HTTP
+testing controller to inspect requests without contacting the server. Guard
+and Profile tests supply small fake services with `vi.fn()`. The Profile tests
+render the component to check its read-only email field and call its form
+methods to check validation errors.
+
+### 5.2 Running the tests
+
+For the server tests, the local MongoDB service needs to be running. For all other tests
+the Express server and Angular development server do not need to be running. From the
+repository root, run these commands.
+
+```
+cd server
+npm test
+```
+
+```
+cd client
+npm test
+```
+
+The expected results are 11 passing server tests and 10 passing Angular tests.
+The server tests clear `fabulari_test`, so that database should only contain
+test data.
+
+### 5.3 Server integration tests
+
+| ID  | Test                                                                                                                 | Result |
+| --- | -------------------------------------------------------------------------------------------------------------------- | ------ |
+| B01 | First-run setup creates one Super Admin and rejects a second attempt.                                                | Pass   |
+| B02 | Registration rejects an email on the permanent system-ban list, regardless of letter case.                           | Pass   |
+| B03 | Login creates a stored session, while a private profile rejects missing authentication and returns no password hash. | Pass   |
+| B04 | Raising a group's minimum age removes an under-age member while retaining eligible administrators.                   | Pass   |
+| B05 | A Group Admin creates a room; a second room with the same name in different letter case is rejected.                 | Pass   |
+| B06 | The final Group Admin cannot be demoted.                                                                             | Pass   |
+| B07 | Super Admin approval of a group request creates the group with its requester as member and first administrator.      | Pass   |
+| B08 | A ban-report submitter cannot approve their own report; another Group Admin can.                                     | Pass   |
+| B09 | An eligible member receives the latest five stored messages in display order; a non-member is denied.                | Pass   |
+| B10 | A non-owner cannot delete a message; owner deletion removes it and requests a room broadcast.                        | Pass   |
+| B11 | Self-deletion removes the user, their sessions and messages, and their group membership.                             | Pass   |
+
+These tests are in [`server/test/api.test.js`](server/test/api.test.js). The data
+set is in [`server/test/test-data.js`](server/test/test-data.js).
+
+### 5.4 Angular unit tests
+
+| ID  | Test                                                                           | Result |
+| --- | ------------------------------------------------------------------------------ | ------ |
+| A01 | Auth stores and restores the safe user and token and builds the bearer header. | Pass   |
+| A02 | Auth requires both stored values for a login and clears both values.           | Pass   |
+| A03 | Logout sends the token to the server and clears local storage.                 | Pass   |
+| A04 | The guard sends a visitor without a complete login to the login page.          | Pass   |
+| A05 | The guard sends a normal user away from a Super Admin route.                   | Pass   |
+| A06 | The guard permits a user whose role matches the route.                         | Pass   |
+| A07 | Profile loads account details and keeps the email field read only.             | Pass   |
+| A08 | Profile rejects an invalid birthdate before making an update request.          | Pass   |
+| A09 | Profile rejects a non-image file before upload.                                | Pass   |
+| A10 | Successful account deletion clears local login data and returns to login.      | Pass   |
+
+These tests are in the Auth service, auth guard and Profile component `*.spec.ts`
+files. They do not require a running server or MongoDB.
+
+### 5.5 End-to-end testing
