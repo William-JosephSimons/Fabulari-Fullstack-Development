@@ -38,6 +38,11 @@ testem.log
 /typings
 __screenshots__/
 
+# Generated Cypress test output
+/cypress/downloads/
+/cypress/screenshots/
+/cypress/videos/
+
 # System files
 .DS_Store
 Thumbs.db
