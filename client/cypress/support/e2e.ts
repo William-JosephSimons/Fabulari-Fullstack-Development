@@ -1,1 +1,4 @@
-// Cypress loads this before each E2E spec. Add shared setup here if needed.
+// Each test starts with the same users, groups, and requests in fabulari_e2e.
+beforeEach(() => {
+  cy.task('seedE2eDatabase');
+});
