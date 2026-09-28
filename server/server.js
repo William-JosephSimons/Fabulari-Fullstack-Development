@@ -9,6 +9,7 @@ import { connectSockets } from "./socket.js";
 const app = express();
 const server = http.createServer(app);
 const port = 3000;
+const databaseName = process.argv.includes("--e2e") ? "fabulari_e2e" : "fabulari";
 
 const io = new SocketIOServer(server, {
   cors: {
@@ -24,7 +25,7 @@ connectSockets(io);
 async function startServer() {
   try {
     // Do not accept requests until MongoDB and its indexes are ready.
-    await connectDatabase();
+    await connectDatabase(databaseName);
     await createIndexes(getDatabase());
 
     server.listen(port, () => {

@@ -1,10 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import bcrypt from "bcryptjs";
 import { closeDatabase, connectDatabase, getDatabase } from "./database.js";
 
 const currentFolder = path.dirname(fileURLToPath(import.meta.url));
 const seedFile = path.join(currentFolder, "data", "fabulari.json");
+const useE2eData = process.argv.includes("--e2e");
+const databaseName = useE2eData ? "fabulari_e2e" : "fabulari";
 
 // Keep the demonstration data readable in JSON before inserting it into MongoDB.
 function loadSeedData() {
@@ -12,13 +15,28 @@ function loadSeedData() {
   return JSON.parse(fileContents);
 }
 
-// Replace every development collection so repeated seeds produce the same state.
+// Replace collections so repeated seeds produce the same starting state.
 async function seedDatabase() {
   try {
-    await connectDatabase();
+    await connectDatabase(databaseName);
 
     const database = getDatabase();
+
+    if (useE2eData && database.databaseName !== "fabulari_e2e") {
+      throw new Error("Refusing to replace data outside the E2E database.");
+    }
+
     const data = loadSeedData();
+
+    if (useE2eData) {
+      // Browser tests use one known password without changing the demonstration seed file.
+      const passwordHash = await bcrypt.hash("e2e-password", 10);
+
+      for (const user of data.users) {
+        user.passwordHash = passwordHash;
+      }
+    }
+
     const collectionData = {
       users: data.users,
       groups: data.groups,
