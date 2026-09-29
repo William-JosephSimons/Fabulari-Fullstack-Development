@@ -10,5 +10,36 @@ The assignment has two phases:
 - Phase 2 adds MongoDB and Socket.IO real-time chat to complete the MEAN
   application.
 
-The repository uses separate `client` and `server` folders. This keeps each
-part of the application easy to run, test and explain.
+## Running the application
+
+```text
+cd server
+npm install
+cd ../client
+npm install
+```
+
+With MongoDB running, fill the development database once from the demonstration
+data in `server/data/fabulari.json`:
+
+```text
+cd server
+npm run seed
+```
+
+Run the two parts in separate terminals from the repository root:
+
+```text
+cd server
+npm run dev
+```
+
+```text
+cd client
+ng serve
+```
+
+Open `http://localhost:4200`. The seed command replaces the data in the
+development `fabulari` database, so do not run it again if you want to keep
+changes made through the application. The server creates its MongoDB indexes
+when it starts.

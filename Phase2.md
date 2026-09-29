@@ -28,7 +28,7 @@ added in Phase 2.
 | Chat                | Static visual prototype                | Room messages, images, history, presence, notices, live deletion and Angular signals.         |
 | Destructive actions | Basic JSON-backed request decisions    | Complete data, file and session cleanup plus immediate socket disconnection.                  |
 | Larger lists        | Full lists loaded in one request       | Server search, paging, totals and Angular load-more controls.                                 |
-| Accessibility       | Responsive forms and labelled controls | Connection status, and text bar focus                                                         |
+| Accessibility       | Responsive forms and labelled controls | Live connection status, and chat input focus                                                  |
 
 ### 1.2 Final requirements
 
@@ -522,8 +522,8 @@ changing the navigation or main content shown in those designs.
 
 ## 5. Testing
 
-The suites contain 11 server integration tests and 10 Angular unit tests. Both
-suites pass on my local machine.
+The suites contain 11 server integration tests, 10 Angular unit tests and six
+Cypress end-to-end tests. All three suites pass on my local machine.
 
 ### 5.1 Tools and method
 
@@ -545,11 +545,19 @@ and Profile tests supply small fake services with `vi.fn()`. The Profile tests
 render the component to check its read-only email field and call its form
 methods to check validation errors.
 
+Cypress runs user journeys through the Angular pages against the real Express
+server and the separate `fabulari_e2e` MongoDB database. A shared `beforeEach`
+hook runs the seed script before every test, so one test's database changes
+cannot affect the next. The chat test uses one Cypress browser and a second Socket.IO client
+started by a Cypress task. This checks live room broadcasts between two
+connections, although Cypress does not control two browser windows in that
+test.
+
 ### 5.2 Running the tests
 
-For the server tests, the local MongoDB service needs to be running. For all other tests
-the Express server and Angular development server do not need to be running. From the
-repository root, run these commands.
+Start the local MongoDB service before the server or Cypress tests. The server
+and Angular unit tests do not need the application servers running. From the
+repository root, run each command in its own package:
 
 ```
 cd server
@@ -564,6 +572,31 @@ npm test
 The expected results are 11 passing server tests and 10 passing Angular tests.
 The server tests clear `fabulari_test`, so that database should only contain
 test data.
+
+Cypress needs the E2E server and Angular client running in separate terminals.
+Run these commands from the repository root:
+
+```text
+cd server
+npm run e2e:start
+```
+
+```text
+cd client
+ng serve
+```
+
+Then, in a third terminal:
+
+```text
+cd client
+npm run e2e:run
+```
+
+This runs the six tests in Cypress's Electron browser. The Cypress hook seeds `fabulari_e2e` automatically before each test. Do not use `npm run seed`
+for this, since that command replaces the normal development database. The
+E2E server must use `npm run e2e:start`, not `npm run dev`, so it connects to
+`fabulari_e2e`.
 
 ### 5.3 Server integration tests
 
@@ -603,3 +636,17 @@ These tests are in the Auth service, auth guard and Profile component `*.spec.ts
 files. They do not require a running server or MongoDB.
 
 ### 5.5 End-to-end testing
+
+| ID  | Test                                                                                                            | Result |
+| --- | --------------------------------------------------------------------------------------------------------------- | ------ |
+| E01 | A visitor is sent to login; a user logs in, survives refresh, cannot open Super Admin pages and logs out.       | Pass   |
+| E02 | A wrong password gives a useful message without creating a local session.                                       | Pass   |
+| E03 | A user requests a group; Super Admin approves it; the requester sees the group and Group Admin access.          | Pass   |
+| E04 | A Group Admin approves a room proposal, then creates, edits and deletes another room.                           | Pass   |
+| E05 | A Group Admin promotes and demotes a member, then raises the age limit and sees under-age removals.             | Pass   |
+| E06 | Two room connections exchange text, an image and presence notices; owner controls and latest-five history work. | Pass   |
+
+These tests are in [`client/cypress/e2e`](client/cypress/e2e). The shared reset
+hook is in [`client/cypress/support/e2e.ts`](client/cypress/support/e2e.ts), and
+the database and second-chat-client tasks are in
+[`client/cypress.config.ts`](client/cypress.config.ts).
