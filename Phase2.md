@@ -598,6 +598,10 @@ for this, since that command replaces the normal development database. The
 E2E server must use `npm run e2e:start`, not `npm run dev`, so it connects to
 `fabulari_e2e`.
 
+To log in with the development seed data, find a username in
+[`server/data/fabulari.json`](server/data/fabulari.json). The password is the
+capitalised first name followed by `123!`, for example `Jordan123!`.
+
 ### 5.3 Server integration tests
 
 | ID  | Test                                                                                                                 | Result |
