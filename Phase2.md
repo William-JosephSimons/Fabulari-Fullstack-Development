@@ -500,8 +500,7 @@ section 1.4.
 
 ## 4. Design documents
 
-The following storyboards were created in Phase 1 and remain the design
-baseline for the final application:
+The following storyboards were modified slighty for Phase 2 to reflect the final design:
 
 - [Authentication screens](docs/storyboards/authentication_screens_storyboard.png)
 - [Dashboards](docs/storyboards/dashboards_storyboard.png)
@@ -510,15 +509,6 @@ baseline for the final application:
 - [Group administration](docs/storyboards/group_administration_storyboard.png)
 - [System administration](docs/storyboards/system_administration_storyboard.png)
 - [Chat and presence](docs/storyboards/chat_presence_storyboard.png)
-
-Phase 2 keeps the page structure from these storyboards. The chat storyboard
-shows the message list, image control, participant list, join and leave notices,
-Admin badges and owner-only deletion. The final page keeps that structure while
-adding the Fabulari colours, live connection status and responsive behaviour.
-
-The other storyboards also keep their original page structure. Phase 2 adds
-colour, loading states, validation messages and incremental loading without
-changing the navigation or main content shown in those designs.
 
 ## 5. Testing
 
