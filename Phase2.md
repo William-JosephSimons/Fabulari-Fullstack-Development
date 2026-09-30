@@ -583,7 +583,7 @@ npm run e2e:start
 
 ```text
 cd client
-ng serve
+npm start
 ```
 
 Then, in a third terminal:

@@ -31,12 +31,12 @@ Run the two parts in separate terminals from the repository root:
 
 ```text
 cd server
-npm run dev
+npm start
 ```
 
 ```text
 cd client
-ng serve
+npm start
 ```
 
 Open `http://localhost:4200`. The seed command replaces the data in the
